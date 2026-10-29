@@ -1,0 +1,45 @@
+@model IReadOnlyList<SistemiPos.Application.Suppliers.SupplierDto>
+@{
+    ViewData["Title"] = "Proveedores";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Proveedores</p>
+        <h1>Proveedores</h1>
+    </div>
+    <a asp-action="Create" class="button-primary link-button" data-crud-modal>+ Nuevo proveedor</a>
+</section>
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por razón social, NIT, nombre comercial, contacto o estado" aria-label="Buscar proveedores" /></div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Razón social</th>
+                <th>NIT</th>
+                <th>Comercial</th>
+                <th>Contacto</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.LegalName</td>
+                <td>@item.Nit</td>
+                <td>@item.TradeName</td>
+                <td>@item.ContactName</td>
+                <td>@(item.IsActive ? "Activo" : "Inactivo")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" data-crud-modal>Editar</a> |
+                    <a asp-action="History" asp-route-id="@item.Id">Historial</a>
+                </td>
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="6">No se encontraron proveedores.</td></tr>
+        </tbody>
+    </table>
+</div>

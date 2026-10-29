@@ -1,0 +1,22 @@
+@model SistemiPos.Web.Models.Reports.PurchaseReportViewModel
+@{
+    ViewData["Title"] = "Reporte de compras";
+}
+
+<section class="page-header"><div><p class="eyebrow">Reportes</p><h1>Compras</h1></div></section>
+<div class="topbar-actions">
+    <a asp-action="Sales" class="button-secondary link-button">Ventas</a>
+    <a asp-action="Inventory" class="button-secondary link-button">Inventario</a>
+    <a asp-action="Products" class="button-secondary link-button">Productos</a>
+    <a asp-action="Cash" class="button-secondary link-button">Caja</a>
+</div>
+<div class="form-card">
+    <form method="get" class="form-grid two-column-grid">
+        <div class="field"><label>Desde</label><input asp-for="FromDate" class="input" type="date" /></div>
+        <div class="field"><label>Hasta</label><input asp-for="ToDate" class="input" type="date" /></div>
+        <div class="field"><label>Proveedor</label><select asp-for="SupplierId" asp-items="Model.Suppliers" class="input"><option value="">Todos</option></select></div>
+        <div class="field"><label>Nombre</label><select asp-for="ProductId" asp-items="Model.Products" class="input"><option value="">Todos</option></select></div>
+        <div class="action-row full-span"><button type="submit" class="button-primary">Filtrar</button></div>
+    </form>
+</div>
+<div class="table-card"><table class="data-table"><thead><tr><th>Número</th><th>Fecha</th><th>Proveedor</th><th>Usuario</th><th>Estado</th><th>Total</th></tr></thead><tbody>@foreach (var item in Model.Rows){<tr><td>@item.Number</td><td>@item.PurchaseDateUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@item.SupplierName</td><td>@item.UserName</td><td>@item.Status</td><td>Q @item.Total.ToString("N2")</td></tr>}</tbody></table></div>

@@ -1,0 +1,94 @@
+@model IReadOnlyList<SistemiPos.Web.Models.Security.UserListItemViewModel>
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad</p>
+        <h1>Gestión de Usuarios</h1>
+        <p class="lead">Administra las cuentas de empleados, asignación de roles y estados de acceso.</p>
+    </div>
+    <a asp-action="Create" class="button-primary link-button">+ Nuevo usuario</a>
+</section>
+
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success" style="padding: 1rem; border-radius: 0.5rem; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; margin-bottom: 1.5rem;">
+        <strong>¡Éxito!</strong> @successMsg
+    </div>
+}
+@if (TempData["ErrorMessage"] is string errorMsg)
+{
+    <div class="alert alert-danger" style="padding: 1rem; border-radius: 0.5rem; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; margin-bottom: 1.5rem;">
+        <strong>Error:</strong> @errorMsg
+    </div>
+}
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar">
+        <input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por usuario, nombre, correo, rol o estado..." aria-label="Buscar usuarios" />
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol asignado</th>
+                <th>Último acceso</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td><strong>@item.UserName</strong></td>
+                <td>@item.FullName</td>
+                <td>@item.Email</td>
+                <td>
+                    <span class="badge" style="background: #f1f5f9; color: #334155; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">@item.Roles</span>
+                </td>
+                <td>
+                    @(item.LastLoginAtUtc.HasValue ? item.LastLoginAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Sin ingresos")
+                </td>
+                <td>
+                    @if (item.IsActive)
+                    {
+                        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #166534; font-weight: 500; font-size: 0.875rem;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span> Activo
+                        </span>
+                    }
+                    else
+                    {
+                        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #991b1b; font-weight: 500; font-size: 0.875rem;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></span> Inactivo
+                        </span>
+                    }
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                    <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="button-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">Editar</a>
+                        <a asp-action="ResetPassword" asp-route-id="@item.Id" class="button-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" title="Restablecer contraseña">Clave</a>
+                        
+                        <form asp-action="ToggleStatus" asp-route-id="@item.Id" method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que deseas @(item.IsActive ? "desactivar" : "activar") al usuario @item.UserName?');">
+                            @Html.AntiForgeryToken()
+                            @if (item.IsActive)
+                            {
+                                <button type="submit" class="button-danger" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">Desactivar</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="button-primary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; background: #16a34a;">Activar</button>
+                            }
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="7">No se encontraron usuarios.</td></tr>
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,127 @@
+@model SistemiPos.Application.Finance.PettyCashDto
+@using SistemiPos.Domain.Finance
+@{
+    ViewData["Title"] = "Caja activa";
+    var currentUserName = ViewBag.CurrentUserName as string ?? User.Identity?.Name ?? "Usuario";
+    var symbol = ViewBag.CurrencySymbol as string ?? "Q";
+    var decimals = ViewBag.CurrencyDecimals is int decimalCount ? decimalCount : 2;
+    string Money(decimal amount) => $"{symbol} {amount.ToString($"N{decimals}")}";
+}
+
+<div class="petty-cash-active-meta"><span>Responsable: <strong>@Model.ResponsibleUserName</strong></span><span>@(Model.CurrentCycleId is null ? "Sin ciclo activo" : $"Abierta {Model.OpenedAtUtc?.ToLocalTime():dd/MM/yyyy HH:mm}")</span>@if (User.IsInRole(SistemiPos.Application.Security.SecurityRoleNames.SuperAdministrator)) { <a asp-action="Manage" class="button-secondary link-button">Administrar asignaciones</a> }</div>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert-error">@error</div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert-success">@success</div>
+}
+
+<div class="stats-grid">
+    <article class="stat-card"><span>Fondo acumulado</span><strong>@Money(Model.FundAmount)</strong></article>
+    <article class="stat-card"><span>Saldo</span><strong>@Money(Model.Balance)</strong></article>
+</div>
+
+@if (Model.CurrentCycleId is null)
+{
+<div class="table-card petty-cash-card"><h2>Abrir Caja chica</h2><form asp-action="Open" method="post" class="action-row">@Html.AntiForgeryToken()<div class="field"><label>Saldo inicial</label><input name="initialBalance" type="number" min="0" step="0.01" class="input" required /></div><button class="button-primary">Abrir</button></form></div>
+}
+else
+{
+<div class="table-card petty-cash-card">
+    <h2>Registrar movimiento</h2>
+    <form asp-action="AddMovement" method="post" class="form-grid two-column-grid petty-cash-movement-form" data-petty-cash-movement-form>
+        @Html.AntiForgeryToken()
+        <div class="field">
+            <label for="petty-cash-type">Tipo</label>
+            <select id="petty-cash-type" name="type" class="input" data-petty-cash-type>
+                <option value="@PettyCashMovementType.Replenishment">Entrada / reposición</option>
+                <option value="@PettyCashMovementType.Expense">Gasto</option>
+            </select>
+        </div>
+        <div class="field"><label for="petty-cash-amount">Monto</label><input id="petty-cash-amount" name="amount" type="number" min="0.01" step="0.01" class="input" required /></div>
+        <div class="field"><label for="petty-cash-concept">Concepto</label><input id="petty-cash-concept" name="concept" class="input" required /></div>
+        <div class="field"><label for="petty-cash-category">Categoría</label><input type="search" class="input" placeholder="Buscar categoría" data-catalog-search="petty-cash-category" autocomplete="off"/><div class="catalog-picker"><select id="petty-cash-category" name="categoryId" class="input"><option value="">Sin categoría</option>@foreach (var category in Model.Categories) { <option value="@category.Id">@category.Name</option> }</select><button type="button" class="button-secondary" data-quick-create-open="petty-cash-category-modal">+ Crear categoría</button></div></div>
+        <div class="field"><label for="petty-cash-document">Documento</label><input id="petty-cash-document" name="document" class="input" /></div>
+        <div class="field"><label for="petty-cash-beneficiary">Proveedor / beneficiario</label><input id="petty-cash-beneficiary" name="beneficiary" class="input" /></div>
+        <div class="field full-span">
+            <label>Usuario que registra</label>
+            <input value="@currentUserName" class="input" readonly aria-readonly="true" />
+            <p class="helper-text">Se toma automáticamente del usuario que inició sesión.</p>
+        </div>
+
+
+        <div class="field full-span"><label for="petty-cash-observation">Observación</label><textarea id="petty-cash-observation" name="observation" class="input textarea"></textarea></div>
+        <div class="action-row full-span"><button class="button-primary">Registrar movimiento</button></div>
+    </form>
+</div>
+}
+
+@if (Model.CurrentCycleId is not null)
+{
+<div class="table-card petty-cash-active-movements" data-filter-table>
+    <form method="get" class="form-grid compact-form-grid petty-cash-movement-filters" data-auto-filter-form>
+        <div class="field"><label>Tipo de movimiento</label><select name="movementType" class="input"><option value="">Todos</option><option value="@PettyCashMovementType.Replenishment" selected="@(ViewBag.MovementType == PettyCashMovementType.Replenishment)">Entrada / reposición</option><option value="@PettyCashMovementType.Expense" selected="@(ViewBag.MovementType == PettyCashMovementType.Expense)">Gasto</option></select></div>
+        <div class="field"><label>Categoría</label><select name="category" class="input"><option value="">Todas</option>@foreach (var item in Model.Categories) { <option value="@item.Name" selected="@(ViewBag.Category == item.Name)">@item.Name</option> }</select></div>
+        <div class="field"><label>Desde</label><input name="from" type="date" value="@(((DateTime?)ViewBag.From)?.ToString("yyyy-MM-dd"))" class="input" /></div>
+        <div class="field"><label>Hasta</label><input name="to" type="date" value="@(((DateTime?)ViewBag.To)?.ToString("yyyy-MM-dd"))" class="input" /></div>
+        <div class="field"><label>Buscar</label><input name="search" type="search" value="@ViewBag.Search" class="input" placeholder="Concepto, documento o beneficiario" data-auto-filter-search /></div>
+        <div class="action-row"><a asp-action="Index" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="table-responsive"><table class="data-table petty-cash-active-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Categoría</th><th>Monto</th><th>Documento</th><th>Estado</th><th class="action-column">Acción</th></tr></thead>
+        <tbody>
+        @foreach (var movement in Model.Movements)
+        {
+            <tr>
+                <td>@movement.OccurredAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@movement.Type</td>
+                <td>@movement.Concept</td>
+                <td>@Money(movement.Amount)</td>
+                <td>@(movement.Document ?? "—")</td>
+                <td>@(movement.IsCancelled ? "Anulado" : "Vigente")</td>
+                <td class="action-column">
+                    @if (!movement.IsCancelled)
+                    {
+                        <details>
+                            <summary>Anular</summary>
+                            <form asp-action="CancelMovement" method="post" class="form-grid cancellation-form" data-confirm="El movimiento quedará anulado y se conservará en el historial. ¿Desea continuar?" data-confirm-title="Anular movimiento" data-confirm-text="Sí, anular movimiento">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="movementId" value="@movement.Id" />
+                                <div class="field"><label>Motivo</label><input name="reason" class="input" required /></div>
+                                <button class="button-secondary">Confirmar anulación</button>
+                            </form>
+                        </details>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+</div>
+}
+
+@if (Model.CurrentCycleId is not null)
+{
+<div class="table-card petty-cash-card">
+    <h2>Liquidación y cierre</h2>
+    <form asp-action="Settle" method="post" class="action-row petty-cash-settlement-form" data-confirm="La liquidación cerrará el ciclo actual de caja chica. ¿Desea continuar?" data-confirm-title="Liquidar caja chica" data-confirm-text="Sí, liquidar y cerrar">
+        @Html.AntiForgeryToken()
+        <input name="countedCash" type="number" min="0" step="0.01" class="input" placeholder="Efectivo contado" required />
+        <input name="observation" class="input" placeholder="Observación" />
+        <button class="button-secondary">Liquidar y cerrar</button>
+    </form>
+</div>
+}
+
+<dialog id="petty-cash-category-modal" class="quick-create-modal" data-quick-create data-endpoint="@Url.Action("CreateCategory")" data-target="petty-cash-category">
+    <form method="dialog" class="quick-create-panel" data-quick-create-form>
+        @Html.AntiForgeryToken()
+        <div class="modal-header"><h2>Nueva categoría</h2><button type="button" class="icon-button" aria-label="Cerrar" data-quick-create-cancel>×</button></div>
+        <div class="field"><label>Nombre</label><input name="name" class="input" required autocomplete="off" /></div>
+        <p class="validation" data-quick-create-error></p>
+        <div class="action-row"><button type="button" class="button-secondary" data-quick-create-cancel>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div>
+    </form>
+</dialog>

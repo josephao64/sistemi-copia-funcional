@@ -1,0 +1,22 @@
+@model IReadOnlyList<SistemiPos.Application.Orders.OrderDto>
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Pedidos";
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+}
+<section class="page-header compact-page-header">
+    <h1>Pedidos</h1><div class="action-row">
+    <a asp-action="Terminals" class="button-secondary link-button">Terminales (@ViewBag.TerminalCount)</a>
+    @if (permissions.Contains(PermissionCodes.OrdersCreate)) { <a asp-action="Create" class="button-primary link-button">Nuevo pedido</a> }
+    </div>
+</section>
+<div class="table-card"><div class="table-responsive"><table class="data-table">
+    <thead><tr><th>Pedido</th><th>Estado</th><th>Líneas</th><th>Preparando</th><th>Preparado</th><th>Despachado</th><th class="action-column">Acción</th></tr></thead>
+    <tbody>
+    @foreach (var order in Model)
+    {
+        <tr><td>@order.Id.ToString("N")[..8]</td><td>@(order.IsConfirmed ? "Confirmado" : "Borrador")</td><td>@order.Lines.Count</td><td>@order.Lines.Sum(x => x.Preparing)</td><td>@order.Lines.Sum(x => x.Prepared)</td><td>@order.Lines.Sum(x => x.Dispatched)</td><td class="action-column"><a asp-action="Details" asp-route-id="@order.Id">Ver detalle</a></td></tr>
+    }
+    @if (Model.Count == 0) { <tr><td colspan="7">No hay pedidos en esta sucursal.</td></tr> }
+    </tbody>
+</table></div></div>

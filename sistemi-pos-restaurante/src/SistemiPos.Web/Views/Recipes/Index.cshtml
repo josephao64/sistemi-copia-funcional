@@ -1,0 +1,23 @@
+@model SistemiPos.Web.Models.Recipes.RecipesIndexViewModel
+@using SistemiPos.Application.Security
+@using SistemiPos.Domain.Catalog
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Recetas";
+    var canManage = (await NavigationPermissions.GetPermissionCodesAsync()).Contains(PermissionCodes.RecipesManage);
+}
+<section class="page-header compact-page-header"><div><h1>Recetas</h1></div>@if (canManage){<a asp-action="Create" class="button-primary link-button" data-crud-modal>+ Nueva receta</a>}</section>
+<div class="table-card">
+    <form method="get" class="form-grid compact-form-grid" data-auto-filter-form>
+        <div class="field"><label for="recipe-search">Buscar receta</label><input id="recipe-search" name="query" value="@Model.Query" type="search" class="input" placeholder="Nombre o código del producto" /></div>
+        <div class="field"><label for="recipe-status">Estado</label><select id="recipe-status" name="isActive" class="input"><option value="">Todos</option><option value="true" selected="@(Model.IsActive == true)">Activas</option><option value="false" selected="@(Model.IsActive == false)">Inactivas</option></select></div>
+        <div class="action-row"><a asp-action="Index" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="table-responsive"><table class="data-table"><thead><tr><th>Código</th><th>Producto elaborado</th><th>Tipo</th><th>Rendimiento</th><th>Componentes</th><th>Estado</th><th class="action-column">Acción</th></tr></thead><tbody>
+    @foreach (var recipe in Model.Recipes)
+    {
+        <tr><td>@recipe.ProductCode</td><td>@recipe.ProductName</td><td>@recipe.ArticleType.Label()</td><td>@recipe.YieldQuantity.ToString("0.######") @recipe.YieldUnitCode</td><td>@recipe.Ingredients.Count</td><td><span class="status-badge">@(recipe.IsActive ? "Activa" : "Inactiva")</span></td><td class="action-column"><div class="table-actions"><a asp-action="Details" asp-route-id="@recipe.Id">Ver detalle</a>@if (canManage){<a asp-action="Edit" asp-route-id="@recipe.Id" data-crud-modal>Editar</a>}</div></td></tr>
+    }
+    @if (Model.Recipes.Count == 0){<tr><td colspan="7">No se encontraron recetas. Crea primero los productos e insumos en el catálogo.</td></tr>}
+    </tbody></table></div>
+</div>

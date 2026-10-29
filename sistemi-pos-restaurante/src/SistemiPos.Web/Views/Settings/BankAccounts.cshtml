@@ -1,0 +1,38 @@
+@model IReadOnlyList<SistemiPos.Application.Settings.BankAccountDto>
+@{
+    ViewData["Title"] = "Cuentas bancarias";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Configuración</p>
+        <h1>Cuentas bancarias receptoras</h1>
+    </div>
+    <a asp-action="CreateBankAccount" class="button-primary link-button" data-crud-modal>+ Nueva cuenta</a>
+</section>
+
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Banco</th>
+                <th>Cuenta</th>
+                <th>Número</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Bank</td>
+                <td>@item.AccountName</td>
+                <td>@item.AccountNumber</td>
+                <td>@(item.IsActive ? "Activa" : "Inactiva")</td>
+                <td><a asp-action="EditBankAccount" asp-route-id="@item.Id" data-crud-modal>Editar</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

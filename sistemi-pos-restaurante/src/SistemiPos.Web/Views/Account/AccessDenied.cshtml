@@ -1,0 +1,21 @@
+@{
+    ViewData["Title"] = "Acceso restringido";
+}
+
+<section class="form-card access-denied-card">
+    <div>
+        <p class="eyebrow">Acceso protegido</p>
+        <h1>No tienes acceso a esta sección.</h1>
+        <p class="auth-copy">Tu rol actual no cuenta con el permiso necesario. Si consideras que se trata de un error, comunícate con el administrador del sistema.</p>
+        <div class="action-row">
+            <a href="@(Url.Action("Index", "Home") ?? "/")" class="context-back-link">← Volver al inicio</a>
+            @if (User.IsInRole(SistemiPos.Application.Security.SecurityRoleNames.PointOfSale) &&
+                !User.IsInRole(SistemiPos.Application.Security.SecurityRoleNames.SuperAdministrator) &&
+                !User.IsInRole(SistemiPos.Application.Security.SecurityRoleNames.Administrator) &&
+                !User.IsInRole(SistemiPos.Application.Security.SecurityRoleNames.Manager))
+            {
+                <a href="/pos" class="button-primary link-button">Ir al punto de venta</a>
+            }
+        </div>
+    </div>
+</section>

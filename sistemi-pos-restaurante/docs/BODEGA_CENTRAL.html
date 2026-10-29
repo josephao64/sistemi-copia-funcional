@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMI POS — Bodega Central y Traslados</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.8cm 1.5cm 1.8cm 1.5cm;
+            @bottom-right {
+                content: counter(page);
+            }
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.55;
+            color: #1e293b;
+            background: #ffffff;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .header-card {
+            border-bottom: 2px solid #0284c7;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: #f0f9ff;
+            color: #0369a1;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #bae6fd;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 11pt;
+            color: #64748b;
+            margin: 0 0 16px 0;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 9pt;
+        }
+
+        .meta-item strong {
+            display: block;
+            color: #475569;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            font-size: 7.5pt;
+            letter-spacing: 0.04em;
+        }
+
+        .meta-item span {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #1e293b;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin: 24px 0 12px 0;
+        }
+
+        h3 {
+            font-size: 10.5pt;
+            font-weight: 600;
+            color: #334155;
+            margin: 16px 0 8px 0;
+        }
+
+        p {
+            margin: 0 0 10px 0;
+        }
+
+        .checklist-card {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .check-item {
+            margin-bottom: 16px;
+            padding-bottom: 14px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .check-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .check-title {
+            font-size: 10.5pt;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            font-size: 8pt;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            border: 1px solid #86efac;
+        }
+
+        .progress-bar-container {
+            background: #e2e8f0;
+            border-radius: 4px;
+            height: 8px;
+            width: 100%;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            background: #22c55e;
+            height: 100%;
+            width: 100%;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 8.5pt;
+            background: #f1f5f9;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #0f172a;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 8pt;
+            overflow-x: auto;
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 9pt;
+        }
+
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        ul {
+            margin: 0 0 10px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <div class="header-badge">Inventario y Distribución • Logística Matriz</div>
+        <h1>SISTEMI POS Restaurante</h1>
+        <div class="subtitle">Documentación Técnica y Funcional: Módulo de Bodega Central y Traslados</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <strong>Módulo</strong>
+                <span>Bodega Central (INV-05)</span>
+            </div>
+            <div class="meta-item">
+                <strong>Ramas Git</strong>
+                <span>development-joseph / Dev</span>
+            </div>
+            <div class="meta-item">
+                <strong>Estado</strong>
+                <span class="badge-pill">100% Implementado</span>
+            </div>
+            <div class="meta-item">
+                <strong>Migración EF</strong>
+                <span>20261007044946_AddInventoryTransfers...</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>1. Resumen Ejecutivo</h2>
+    <p>
+        El módulo de <strong>Bodega Central</strong> permite recibir compras al por mayor en una ubicación independiente y distribuir los insumos y productos hacia una o varias sucursales mediante traslados formales. Garantiza trazabilidad completa de cantidades despachadas vs. recibidas, diferenciación entre costo de compra original y costo asignado de distribución, y mantiene la autonomía operativa para que las sucursales sigan realizando compras locales directas.
+    </p>
+
+    <h2>2. Verificación de Criterios de Aceptación (Checklist)</h2>
+    <div class="progress-bar-container">
+        <div class="progress-bar-fill"></div>
+    </div>
+
+    <div class="checklist-card">
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">✓ Verificado</span>
+                1. La Bodega Central mantiene existencias independientes de las existencias de cada sucursal.
+            </div>
+            <p>
+                <strong>Implementación:</strong> El modelo de dominio <code>InventoryStock</code> aísla el saldo por cada par único <code>(ProductId, WarehouseId)</code>. No existe bolsa global ni interferencia entre bodegas.
+            </p>
+            <ul>
+                <li>Índice único en base de datos: <code>IX_InventoryStocks_ProductId_WarehouseId</code>.</li>
+                <li>Consultas de saldos filtradas estrictamente por bodega física seleccionada.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">✓ Verificado</span>
+                2. Las compras pueden ingresar directamente a la Bodega Central.
+            </div>
+            <p>
+                <strong>Implementación:</strong> Los agregados <code>Purchase</code>, <code>PurchaseOrder</code> y <code>PurchaseReceipt</code> almacenan <code>BranchId</code> y <code>WarehouseId</code>.
+            </p>
+            <ul>
+                <li>Al recibir mercancía al por mayor en Bodega Central, se incrementa el saldo de dicha bodega mediante movimientos <code>PurchaseEntry</code>.</li>
+                <li>Los lotes con fecha de vencimiento (<code>InventoryExpiryLot</code>) se registran vinculados a Bodega Central.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">✓ Verificado</span>
+                3. La Bodega Central puede distribuir existencias a una o varias sucursales mediante traslados.
+            </div>
+            <p>
+                <strong>Implementación:</strong> Se implementó el agregado <code>InventoryTransfer</code>.
+            </p>
+            <ul>
+                <li><strong>Arquitectura limpia:</strong> Se genera 1 documento formal de traslado por cada bodega de sucursal destino, permitiendo despachos y recepciones independientes sin bloqueos entre sucursales.</li>
+                <li><strong>Ciclo de estados:</strong> <code>Draft</code> (Borrador) &rarr; <code>Dispatched</code> (Despachado / en tránsito) &rarr; <code>Received</code> (Confirmado y recibido en destino).</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">✓ Verificado</span>
+                4. Todo traslado debe registrar cantidad enviada, sucursal destino y costo asignado.
+            </div>
+            <p>
+                <strong>Implementación:</strong> La entidad <code>InventoryTransferItem</code> registra de forma inmutable:
+            </p>
+            <ul>
+                <li><code>QuantitySent</code>: Unidades despachadas desde el almacén central.</li>
+                <li><code>QuantityReceived</code>: Unidades verificadas físicamente por la sucursal receptora.</li>
+                <li><code>UnitCostOrigin</code>: Costo de adquisición registrado en bodega origen.</li>
+                <li><code>AssignedUnitCost</code>: Costo unitario con el que la sucursal receptora ingresa el producto.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">✓ Verificado</span>
+                5. El costo con el que la Bodega Central distribuye un producto puede ser diferente del costo original de compra.
+            </div>
+            <p>
+                <strong>Implementación:</strong> El servicio <code>InventoryTransferService</code> permite fijar un <code>AssignedUnitCost</code> personalizado al momento del traslado.
+            </p>
+            <ul>
+                <li>Al recibir el traslado en la sucursal destino, el movimiento <code>TransferEntry</code> y los lotes creados toman el costo asignado como costo base de inventario.</li>
+                <li>Esto desacopla la contabilidad y margen local de la sucursal respecto al costo de compra al por mayor de la matriz.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">✓ Verificado</span>
+                6. Las sucursales pueden continuar realizando compras directas; no todo abastecimiento debe provenir de la Bodega Central.
+            </div>
+            <p>
+                <strong>Implementación:</strong> El módulo de compras directas (<code>/Purchases/CreateDirect</code>) opera con total autonomía por sucursal.
+            </p>
+            <ul>
+                <li>Las compras directas locales y los traslados desde bodega central conviven de forma transparente en el kardex de la sucursal bajo la rotación FIFO / FEFO correspondiente.</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <h2>3. Estructura de Entidades y Estados</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Estado</th>
+                <th>Efecto en Bodega Origen</th>
+                <th>Efecto en Bodega Destino</th>
+                <th>Acción Permitida</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Draft (Borrador)</strong></td>
+                <td>Ninguno (no reserva ni rebaja stock).</td>
+                <td>Ninguno.</td>
+                <td>Editar ítems, anular o despachar.</td>
+            </tr>
+            <tr>
+                <td><strong>Dispatched (Despachado)</strong></td>
+                <td>Rebaja existencias (<code>TransferExit</code>).</td>
+                <td>En tránsito (no suma hasta confirmar).</td>
+                <td>Confirmar recepción por sucursal destino.</td>
+            </tr>
+            <tr>
+                <td><strong>Received (Recibido)</strong></td>
+                <td>Completado y cerrado.</td>
+                <td>Incrementa existencias (<code>TransferEntry</code> con costo asignado).</td>
+                <td>Solo lectura / Auditoría.</td>
+            </tr>
+            <tr>
+                <td><strong>Cancelled (Cancelado)</strong></td>
+                <td>Sin afectación de saldo.</td>
+                <td>Sin afectación de saldo.</td>
+                <td>Solo lectura.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>4. Permisos de Seguridad (RBAC)</h2>
+    <ul>
+        <li><code>inventory.transfers.view</code> — Consultar catálogo y detalle de traslados.</li>
+        <li><code>inventory.transfers.create</code> — Registrar nuevos borradores de traslado.</li>
+        <li><code>inventory.transfers.dispatch</code> — Autorizar y registrar salida física desde origen.</li>
+        <li><code>inventory.transfers.receive</code> — Confirmar ingreso físico y asignación de costos en destino.</li>
+    </ul>
+
+</body>
+</html>

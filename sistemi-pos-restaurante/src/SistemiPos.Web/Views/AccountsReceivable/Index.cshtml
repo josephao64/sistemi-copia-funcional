@@ -1,0 +1,41 @@
+@model SistemiPos.Web.Models.Finance.ReceivableListViewModel
+@using SistemiPos.Application.Finance
+@using SistemiPos.Domain.Finance
+@{
+    ViewData["Title"] = Model.Title;
+    string Money(decimal amount) => $"{Model.CurrencySymbol} {amount.ToString($"N{Model.CurrencyDecimals}")}";
+    string StatusLabel(AccountStatus status) => status switch { AccountStatus.Pending => "Pendiente", AccountStatus.PartiallyPaid => "Parcialmente abonada", AccountStatus.Paid => "Pagada", AccountStatus.Overdue => "En período de gracia", AccountStatus.Delinquent => "En mora", AccountStatus.Cancelled => "Anulada", _ => status.ToString() };
+    string StatusClass(AccountStatus status) => status switch { AccountStatus.Paid => "status-success", AccountStatus.Overdue => "status-warning", AccountStatus.Delinquent => "status-danger", AccountStatus.PartiallyPaid => "status-info", _ => "status-neutral" };
+    var currentUrl = Context.Request.Path + Context.Request.QueryString;
+}
+@if (Model.Section == ReceivableSection.General)
+{
+    <section class="receivable-summary-strip" aria-label="Resumen de cuentas por cobrar">
+        <div><span>Total pendiente</span><strong>@Money(Model.Summary.TotalPending)</strong></div><div><span>Cuentas pendientes</span><strong>@Model.Summary.PendingCount</strong></div>
+        <div><span>Sin abonos</span><strong>@Model.Summary.WithoutPaymentsCount</strong></div><div><span>Parcialmente abonadas</span><strong>@Model.Summary.PartiallyPaidCount</strong></div>
+        <div><span>En período de gracia</span><strong>@Model.Summary.OverdueCount</strong></div><div><span>Monto vencido</span><strong>@Money(Model.Summary.OverdueAmount)</strong></div>
+        <div><span>En mora</span><strong>@Model.Summary.DelinquentCount</strong></div><div><span>Total en mora</span><strong>@Money(Model.Summary.DelinquentAmount)</strong></div>
+    </section>
+}
+<div class="table-card receivable-list-card" data-filter-table>
+    <form method="get" asp-action="@Model.Action" class="form-grid compact-form-grid receivable-filters @(Model.Section == ReceivableSection.General ? "receivable-filters-with-status" : "")" data-auto-filter-form>
+        @if (Model.Section == ReceivableSection.General) { <div class="field"><label>Estado</label><select name="status" class="input"><option value="">Todos</option><option value="@AccountStatus.Pending" selected="@(Model.Status==AccountStatus.Pending)">Pendiente</option><option value="@AccountStatus.PartiallyPaid" selected="@(Model.Status==AccountStatus.PartiallyPaid)">Parcialmente abonada</option><option value="@AccountStatus.Overdue" selected="@(Model.Status==AccountStatus.Overdue)">En período de gracia</option><option value="@AccountStatus.Delinquent" selected="@(Model.Status==AccountStatus.Delinquent)">En mora</option><option value="@AccountStatus.Paid" selected="@(Model.Status==AccountStatus.Paid)">Pagada</option></select></div> }
+        <div class="field"><label>Cliente / Empresa</label><input name="customerId" type="hidden" value="@Model.CustomerId" data-customer-filter-id/><input class="input" value="@Model.CustomerName" list="receivable-customers" autocomplete="off" placeholder="Buscar cliente..." data-customer-filter-search/></div>
+        <datalist id="receivable-customers">@foreach(var customer in Model.Customers){<option value="@customer.Text" data-id="@customer.Value"></option>}</datalist>
+        <div class="field"><label>Vence desde</label><input name="from" value="@Model.From?.ToString("yyyy-MM-dd")" type="date" class="input"/></div>
+        <div class="field"><label>Vence hasta</label><input name="to" value="@Model.To?.ToString("yyyy-MM-dd")" type="date" class="input"/></div>
+        <div class="action-row"><a asp-action="@Model.Action" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="table-responsive"><table class="data-table receivable-table"><thead><tr><th>Cliente / Empresa</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Vence</th><th>Estado</th><th class="action-column">Acción</th></tr></thead><tbody>
+    @foreach (var account in Model.Accounts)
+    {
+        <tr><td><strong>@account.CustomerName</strong><small>@account.SaleNumber</small></td><td>@Money(account.Total)</td><td>@Money(account.Paid)</td><td><strong>@Money(account.Balance)</strong></td><td>@account.DueDateUtc.ToLocalTime().ToString("dd/MM/yyyy")</td><td><span class="status-badge @StatusClass(account.Status)">@StatusLabel(account.Status)</span></td><td class="action-column"><div class="table-actions">@if(account.Balance > 0){<button type="button" class="table-action-button" data-open-receivable-payment data-account-id="@account.Id" data-account-label="@account.SaleNumber · @account.CustomerName" data-account-balance="@account.Balance.ToString(System.Globalization.CultureInfo.InvariantCulture)">+ Agregar abono</button>}<a asp-action="Details" asp-route-id="@account.Id">Ver detalle</a></div></td></tr>
+    }
+    @if (Model.Accounts.Count == 0) { <tr><td colspan="7">No se encontraron cuentas para esta vista.</td></tr> }
+    </tbody></table></div>
+</div>
+<dialog class="receivable-payment-dialog" data-receivable-payment-dialog aria-labelledby="receivable-payment-title">
+    <div class="dialog-header"><div><h2 id="receivable-payment-title">Agregar abono</h2><p class="helper-text" data-receivable-account-label></p></div><button type="button" class="icon-button" data-close-receivable-payment aria-label="Cerrar">×</button></div>
+    <form asp-action="Collect" method="post" class="form-grid" data-submission-lock>@Html.AntiForgeryToken()<input type="hidden" name="id" data-receivable-account-id/><input type="hidden" name="returnUrl" value="@currentUrl"/><div class="field"><label for="receivable-payment-amount">Monto</label><input id="receivable-payment-amount" name="amount" type="number" min="0.01" step="0.01" class="input" required data-receivable-payment-amount/></div><div class="field"><label for="receivable-payment-method">Forma de pago</label><select id="receivable-payment-method" name="paymentMethod" class="input"><option value="@FinancialPaymentMethod.Cash">Efectivo</option><option value="@FinancialPaymentMethod.Transfer">Transferencia</option></select></div><div class="field"><label for="receivable-payment-reference">Referencia</label><input id="receivable-payment-reference" name="reference" class="input"/></div><div class="action-row"><button type="button" class="button-secondary" data-close-receivable-payment>Cancelar</button><button type="submit" class="button-primary">Registrar abono</button></div></form>
+</dialog>
+@section Scripts { <script src="~/js/accounts-receivable.js" asp-append-version="true"></script> }

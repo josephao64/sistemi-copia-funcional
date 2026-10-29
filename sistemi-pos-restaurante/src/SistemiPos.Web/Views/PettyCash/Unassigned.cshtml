@@ -1,0 +1,3 @@
+@model string
+@{ ViewData["Title"] = "Caja chica"; }
+<section class="page-header"><div><p class="eyebrow">Control</p><h1>Caja chica</h1><p class="lead">@Model</p></div>@if (User.IsInRole(SistemiPos.Application.Security.SecurityRoleNames.SuperAdministrator)) { <a asp-action="Manage" class="button-primary link-button">Administrar asignaciones</a> }</section>

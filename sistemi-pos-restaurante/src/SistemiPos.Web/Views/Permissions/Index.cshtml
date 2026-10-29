@@ -1,0 +1,25 @@
+@model IReadOnlyList<SistemiPos.Web.Models.Security.RoleListItemViewModel>
+@{
+    ViewData["Title"] = "Permisos";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad</p>
+        <h1>Permisos por rol</h1>
+        <p class="lead">Los roles se administran internamente desde aquí. Selecciona uno para definir qué módulos y acciones puede utilizar.</p>
+    </div>
+    <a asp-controller="Roles" asp-action="Create" class="button-primary link-button" data-crud-modal>+ Nuevo rol</a>
+</section>
+
+<div class="role-grid">
+@foreach (var role in Model)
+{
+    <article class="role-card @(role.IsProtected ? "is-protected" : null)">
+        <div class="role-card-heading"><div><p class="eyebrow">Rol</p><h2>@role.Name</h2></div><span class="status-badge @(role.IsProtected ? "status-success" : "status-neutral")">@role.PermissionCount permisos</span></div>
+        <p>@role.Description</p>
+        <div class="role-metrics"><span><strong>@role.UserCount</strong> usuarios asignados</span></div>
+        <a asp-controller="Roles" asp-action="ConfigurePermissions" asp-route-id="@role.Id" class="button-primary link-button" data-crud-modal>Configurar permisos</a>
+    </article>
+}
+</div>

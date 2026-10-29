@@ -1,0 +1,81 @@
+@model SistemiPos.Web.Models.Account.ProfileViewModel
+@{
+    ViewData["Title"] = "Mi perfil";
+}
+
+<div class="page-header">
+    <div>
+        <span class="badge">Cuenta</span>
+        <h1>Mi perfil de usuario</h1>
+        <p class="lead">Consulta tu información de acceso y actualiza tu contraseña de seguridad.</p>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success" style="padding: 1rem; border-radius: 0.5rem; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; margin-bottom: 1.5rem;">
+        <strong>¡Éxito!</strong> @successMsg
+    </div>
+}
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+    <section class="card" style="padding: 1.5rem; background: #ffffff; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Datos de usuario</h2>
+        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem; font-size: 0.875rem;">
+            <dt style="font-weight: 600; color: #64748b;">Usuario:</dt>
+            <dd style="color: #0f172a;">@Model.UserName</dd>
+
+            <dt style="font-weight: 600; color: #64748b;">Nombre completo:</dt>
+            <dd style="color: #0f172a;">@Model.FullName</dd>
+
+            <dt style="font-weight: 600; color: #64748b;">Correo electrónico:</dt>
+            <dd style="color: #0f172a;">@Model.Email</dd>
+
+            <dt style="font-weight: 600; color: #64748b;">Roles asignados:</dt>
+            <dd style="color: #0f172a;"><span class="badge" style="background: #e0e7ff; color: #3730a3; padding: 0.2rem 0.5rem; border-radius: 0.25rem;">@Model.Roles</span></dd>
+
+            <dt style="font-weight: 600; color: #64748b;">Último acceso:</dt>
+            <dd style="color: #0f172a;">@(Model.LastLoginAtUtc.HasValue ? Model.LastLoginAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") : "Primer inicio de sesión")</dd>
+        </dl>
+    </section>
+
+    <section class="card" style="padding: 1.5rem; background: #ffffff; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Cambiar contraseña</h2>
+        <form asp-action="Profile" method="post" class="form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="UserName" />
+            <input type="hidden" asp-for="FullName" />
+            <input type="hidden" asp-for="Email" />
+            <input type="hidden" asp-for="Roles" />
+
+            <div class="field">
+                <label asp-for="CurrentPassword" style="font-weight: 500; font-size: 0.875rem; color: #334155;"></label>
+                <input asp-for="CurrentPassword" class="input" placeholder="Tu contraseña actual" />
+                <span asp-validation-for="CurrentPassword" class="validation" style="color: #ef4444; font-size: 0.75rem;"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="NewPassword" style="font-weight: 500; font-size: 0.875rem; color: #334155;"></label>
+                <input asp-for="NewPassword" class="input" placeholder="Mínimo 8 caracteres (letras y números)" />
+                <span asp-validation-for="NewPassword" class="validation" style="color: #ef4444; font-size: 0.75rem;"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="ConfirmNewPassword" style="font-weight: 500; font-size: 0.875rem; color: #334155;"></label>
+                <input asp-for="ConfirmNewPassword" class="input" placeholder="Repite la nueva contraseña" />
+                <span asp-validation-for="ConfirmNewPassword" class="validation" style="color: #ef4444; font-size: 0.75rem;"></span>
+            </div>
+
+            <div asp-validation-summary="ModelOnly" class="validation" style="color: #ef4444; font-size: 0.875rem;"></div>
+
+            <div>
+                <button type="submit" class="button-primary">Actualizar mi contraseña</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+

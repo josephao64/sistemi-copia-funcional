@@ -1,0 +1,25 @@
+@model SistemiPos.Application.Restaurant.RestaurantWorkspace
+@using SistemiPos.Domain.Restaurant
+@using SistemiPos.Web.Models.Restaurant
+@{ ViewData["Title"] = "Mesas"; var tables = Model.Configuration.Tables.Where(x => x.Active).ToList(); var occupied = tables.Count(t => Model.Turns.Any(x => x.TableId == t.Id && !x.ClosedAtUtc.HasValue)); }
+<partial name="_Navigation" /><div class="restaurant-workspace">
+<header class="restaurant-page-header"><div><p class="restaurant-eyebrow">@Model.BranchName · Salones y turnos</p><h1>Mesas</h1><p>Identifica las mesas disponibles y consulta los pedidos de cada turno.</p></div><span class="restaurant-badge" data-state="Ready">@(tables.Count - occupied) disponibles</span></header>
+<div class="restaurant-metrics restaurant-metrics-three"><article><span>Mesas habilitadas</span><strong>@tables.Count</strong></article><article class="tone-green"><span>Disponibles</span><strong>@(tables.Count - occupied)</strong></article><article class="tone-amber"><span>Ocupadas</span><strong>@occupied</strong></article></div>
+<div class="restaurant-notice">La ocupación representa el turno de atención. Entregar un pedido o liberar la mesa no confirma su pago.</div>
+@foreach(var area in tables.OrderBy(x => x.Area).ThenBy(x => x.Name).GroupBy(x => x.Area)) {
+<section class="restaurant-area"><div class="restaurant-panel-heading"><h2>@area.Key</h2><span class="restaurant-muted">@area.Count() mesas</span></div><div class="restaurant-tables-grid">
+@foreach(var table in area) {
+var turn = Model.Turns.FirstOrDefault(x => x.TableId == table.Id && !x.ClosedAtUtc.HasValue);
+var orders = turn is null ? new List<RestaurantOrder>() : Model.Orders.Where(x => x.TableTurnId == turn.Id).ToList();
+<article class="restaurant-table-card @(turn is null ? "is-free" : "is-occupied")"><div class="restaurant-panel-heading"><h3>@table.Name</h3><span class="restaurant-badge" data-state="@(turn is null ? "Ready" : "Preparing")">@(turn is null ? "Disponible" : "Ocupada")</span></div>
+@if(turn is null) { <p class="restaurant-muted">Sin turno abierto.</p> }
+else { <p class="restaurant-muted">Abierta desde @turn.OpenedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM HH:mm")</p>
+@foreach(var order in orders) { <a class="restaurant-table-order" href="/restaurante/@order.Id"><span><strong>@order.Number</strong><small>@RestaurantLabels.Order(order.Status)</small></span><span data-money="@order.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">@order.Total.ToString("N2")</span></a> }
+@if(orders.Count == 0) { <p>Sin pedidos asociados.</p> }
+}</article>
+}
+</div></section>
+}
+@if(tables.Count == 0) { <div class="restaurant-empty restaurant-panel"><strong>Todavía no hay mesas habilitadas</strong><p>Agrega áreas y mesas en la configuración del restaurante.</p></div> }
+</div>
+

@@ -1,0 +1,53 @@
+@model SistemiPos.Web.Models.Purchases.PurchaseCapturePartialViewModel
+@{
+    var postAction = Model.IsDirectPurchase ? "DirectPurchase" : "ReceiveOrder";
+    var submitText = Model.IsDirectPurchase ? "Registrar compra" : "Confirmar recepción";
+}
+
+<div class="form-card purchase-capture-form-card">
+<form asp-action="@postAction" method="post" class="form-grid purchase-capture-form direct-purchase-form @(Model.IsDirectPurchase ? string.Empty : "purchase-receipt-form")" data-purchase-capture-form data-direct="@Model.IsDirectPurchase.ToString().ToLowerInvariant()" data-supplier-id="@(Model.IsDirectPurchase ? string.Empty : Model.SupplierId.ToString())" data-currency-symbol="@Model.CurrencySymbol" data-currency-decimals="@Model.CurrencyDecimals" data-tax-percent="@Model.TaxPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-supplier-product-url="@Url.Action("SupplierProductInfo")" data-supplier-invoice-url="@Url.Action("SupplierInvoiceExists")" data-submission-lock novalidate>
+    @Html.AntiForgeryToken()
+    @if (!Model.IsDirectPurchase)
+    {
+        <input name="OrderId" value="@Model.OrderId" type="hidden" />
+    }
+    <partial name="_PurchaseCapture" model="Model" />
+    @if (!Model.IsDirectPurchase)
+    {
+        <div class="alert-warning"><strong>Confirmación:</strong> se actualizará inventario, Kardex, historial de precios y, si es crédito, cuentas por pagar por esta recepción.</div>
+    }
+    <div class="action-row purchase-submit-actions">
+        @if (Model.IsDirectPurchase)
+        {
+            <a asp-action="Receipts" class="button-secondary link-button">Cancelar</a>
+        }
+        else
+        {
+            <a asp-action="OrderDetails" asp-route-id="@Model.OrderId" class="button-secondary link-button">Cancelar</a>
+        }
+        <button type="button" class="button-primary" data-open-purchase-confirm>@submitText</button>
+    </div>
+    <dialog class="quick-create-modal" data-purchase-confirm-dialog>
+        <div class="quick-create-panel">
+            <div class="modal-header"><h2>@(Model.IsDirectPurchase ? "Confirmar compra directa" : "Confirmar recepción")</h2></div>
+            @if (Model.IsDirectPurchase)
+            {
+                <p>Se registrará la factura y la entrada de inventario.</p>
+            }
+            else
+            {
+                <p><strong>Proveedor:</strong> @Model.SupplierName</p>
+                <p><strong>Documento:</strong> <span data-purchase-confirm-document></span></p>
+                <p><strong>Condición:</strong> <span data-purchase-confirm-terms></span></p>
+            }
+            <p><strong>Total final:</strong> <span data-purchase-confirm-total></span></p>
+            <div class="action-row">
+                <button type="button" class="button-secondary" data-close-purchase-confirm>Volver a revisar</button>
+                <button type="button" class="button-primary" data-save-purchase>@(Model.IsDirectPurchase ? "Sí, registrar compra" : "Sí, confirmar recepción")</button>
+            </div>
+        </div>
+    </dialog>
+</form>
+</div>
+
+<partial name="_PurchasePresentationModal" />

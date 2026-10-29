@@ -1,0 +1,30 @@
+@model SistemiPos.Web.Models.Settings.BankAccountFormViewModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Nueva cuenta bancaria" : "Editar cuenta bancaria";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Configuración</p>
+        <h1>@ViewData["Title"]</h1>
+    </div>
+</section>
+
+<div class="form-card">
+    <form method="post" class="form-grid two-column-grid">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="validation full-span"></div>
+        <div class="field"><label asp-for="Bank"></label><input asp-for="Bank" class="input" /><span asp-validation-for="Bank" class="validation"></span></div>
+        <div class="field"><label asp-for="AccountName"></label><input asp-for="AccountName" class="input" /><span asp-validation-for="AccountName" class="validation"></span></div>
+        <div class="field full-span"><label asp-for="AccountNumber"></label><input asp-for="AccountNumber" class="input" /><span asp-validation-for="AccountNumber" class="validation"></span></div>
+        <label class="checkbox"><input asp-for="IsActive" /><span>Activa</span></label>
+        <div class="action-row full-span">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

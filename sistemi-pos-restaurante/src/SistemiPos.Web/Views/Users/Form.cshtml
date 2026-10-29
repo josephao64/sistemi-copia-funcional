@@ -1,0 +1,157 @@
+@model SistemiPos.Web.Models.Security.UserFormViewModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Nuevo usuario" : "Editar usuario";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad</p>
+        <h1>@ViewData["Title"]</h1>
+        <p class="lead">Configura los datos personales, accesos y rol del usuario.</p>
+    </div>
+</section>
+
+<div class="form-card">
+    <form method="post" class="form-grid">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+        <div class="field">
+            <label asp-for="UserName"></label>
+            <input asp-for="UserName" class="input" placeholder="Ej. juan.perez" />
+            <span asp-validation-for="UserName" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="FullName"></label>
+            <input asp-for="FullName" class="input" placeholder="Ej. Juan Pérez" />
+            <span asp-validation-for="FullName" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" class="input" placeholder="correo@restaurante.com" />
+            <span asp-validation-for="Email" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Password">@(Model.Id is null ? "Contraseña" : "Nueva contraseña")</label>
+            <input asp-for="Password" class="input" autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
+            @if (Model.Id is not null)
+            {
+                <small style="color: #64748b;">Déjala vacía para conservar la contraseña actual.</small>
+            }
+            <span asp-validation-for="Password" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="ConfirmPassword"></label>
+            <input asp-for="ConfirmPassword" class="input" autocomplete="new-password" placeholder="Repite la contraseña" />
+            <span asp-validation-for="ConfirmPassword" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="RoleName"></label>
+            <select asp-for="RoleName" asp-items="Model.AvailableRoles" class="input" required>
+                <option value="">Selecciona un rol</option>
+            </select>
+            <span asp-validation-for="RoleName" class="validation"></span>
+        </div>
+
+        <div style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--color-border, #e2e8f0); padding-top: 1rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;">Alcance Organizacional y Sucursales Permitidas</h3>
+            <p style="font-size: 0.85rem; color: var(--color-muted, #64748b); margin-bottom: 1rem;">Define a qué ubicaciones y niveles de datos tiene acceso este usuario.</p>
+            
+            <div class="field" style="margin-bottom: 1rem;">
+                <label asp-for="ScopeLevel">Nivel de asignación</label>
+                <select asp-for="ScopeLevel" class="input" id="scope-level-select">
+                    <option value="@((int)SistemiPos.Domain.Organizations.UserScopeLevel.Branch)">Sucursales específicas seleccionadas</option>
+                    <option value="@((int)SistemiPos.Domain.Organizations.UserScopeLevel.Company)">Toda una Empresa (todas sus sucursales)</option>
+                    <option value="@((int)SistemiPos.Domain.Organizations.UserScopeLevel.BusinessGroup)">Todo un Grupo Empresarial</option>
+                    <option value="@((int)SistemiPos.Domain.Organizations.UserScopeLevel.Global)">Global (Acceso total a todas las empresas y sucursales)</option>
+                </select>
+            </div>
+
+            <div id="scope-branch-container" style="margin-bottom: 1rem;">
+                <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Seleccionar sucursales autorizadas:</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.5rem; max-height: 180px; overflow-y: auto; padding: 0.5rem; background: var(--color-surface, #f8fafc); border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px;">
+                    @foreach (var branch in Model.AvailableBranches)
+                    {
+                        var isChecked = Model.SelectedBranchIds.Contains(Guid.Parse(branch.Value));
+                        <label class="checkbox" style="margin: 0;">
+                            <input type="checkbox" name="SelectedBranchIds" value="@branch.Value" @(isChecked ? "checked" : "") />
+                            <span>@branch.Text</span>
+                        </label>
+                    }
+                    @if (Model.AvailableBranches.Count == 0)
+                    {
+                        <p class="muted" style="margin: 0; font-size: 0.85rem;">No hay sucursales registradas aún.</p>
+                    }
+                </div>
+
+                <div class="field" style="margin-top: 0.75rem;">
+                    <label asp-for="DefaultBranchId">Sucursal predeterminada de entrada</label>
+                    <select asp-for="DefaultBranchId" class="input">
+                        <option value="">-- Primera sucursal autorizada --</option>
+                        @foreach (var branch in Model.AvailableBranches)
+                        {
+                            <option value="@branch.Value" selected="@(Model.DefaultBranchId?.ToString() == branch.Value)">@branch.Text</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div id="scope-company-container" class="field" style="display: none; margin-bottom: 1rem;">
+                <label asp-for="SelectedCompanyId">Empresa autorizada</label>
+                <select asp-for="SelectedCompanyId" asp-items="Model.AvailableCompanies" class="input">
+                    <option value="">-- Seleccionar empresa --</option>
+                </select>
+            </div>
+
+            <div id="scope-group-container" class="field" style="display: none; margin-bottom: 1rem;">
+                <label asp-for="SelectedBusinessGroupId">Grupo empresarial autorizado</label>
+                <select asp-for="SelectedBusinessGroupId" asp-items="Model.AvailableBusinessGroups" class="input">
+                    <option value="">-- Seleccionar grupo empresarial --</option>
+                </select>
+            </div>
+        </div>
+
+        <label class="checkbox">
+            <input asp-for="IsActive" />
+            <span>Usuario activo (permite iniciar sesión en el sistema)</span>
+        </label>
+
+        <div class="action-row" style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <button type="submit" class="button-primary">Guardar usuario</button>
+            <a asp-action="Index" class="button-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function() {
+            var select = document.getElementById('scope-level-select');
+            var branchContainer = document.getElementById('scope-branch-container');
+            var companyContainer = document.getElementById('scope-company-container');
+            var groupContainer = document.getElementById('scope-group-container');
+
+            function updateVisibility() {
+                if (!select) return;
+                var val = parseInt(select.value);
+                // 1 = Global, 2 = BusinessGroup, 3 = Company, 4 = Branch
+                if (branchContainer) branchContainer.style.display = (val === 4) ? 'block' : 'none';
+                if (companyContainer) companyContainer.style.display = (val === 3) ? 'block' : 'none';
+                if (groupContainer) groupContainer.style.display = (val === 2) ? 'block' : 'none';
+            }
+
+            if (select) {
+                select.addEventListener('change', updateVisibility);
+                updateVisibility();
+            }
+        })();
+    </script>
+}

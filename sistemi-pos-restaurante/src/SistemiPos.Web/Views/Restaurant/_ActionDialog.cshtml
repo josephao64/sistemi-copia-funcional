@@ -1,0 +1,9 @@
+<dialog id="restaurant-action-dialog" class="restaurant-dialog" aria-labelledby="restaurant-dialog-title" aria-describedby="restaurant-dialog-description">
+<form method="dialog" id="restaurant-dialog-form">
+<div class="restaurant-panel-heading"><h2 id="restaurant-dialog-title">Confirmar acción</h2><button type="button" data-dialog-cancel class="button-secondary" aria-label="Cerrar diálogo">×</button></div>
+<p id="restaurant-dialog-description"></p>
+<label id="restaurant-dialog-quantity-field">Cantidad<input id="restaurant-dialog-quantity" class="input" type="number" min="0.000001" step="any" /></label>
+<label id="restaurant-dialog-reason-field">Motivo<textarea id="restaurant-dialog-reason" class="input" maxlength="1000" rows="3"></textarea></label>
+<div class="restaurant-dialog-footer"><button type="button" data-dialog-cancel class="button-secondary">Volver</button><button type="submit" id="restaurant-dialog-confirm" class="button-primary">Confirmar</button></div>
+</form></dialog>
+

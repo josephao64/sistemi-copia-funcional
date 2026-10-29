@@ -1,0 +1,9 @@
+@model SistemiPos.Web.Models.Purchases.PurchaseHistoryViewModel
+@using SistemiPos.Domain.Common
+@using SistemiPos.Domain.Purchases
+<div class="table-responsive"><table class="data-table purchase-history-table"><thead><tr><th>Fecha</th><th>Número</th><th>Proveedor</th><th>Factura</th><th>Condición</th><th>Origen</th><th>Total</th><th>Estado</th><th class="action-column">Acción</th></tr></thead><tbody>
+@foreach (var item in Model.Purchases)
+{
+    <tr><td>@item.PurchaseDateUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy")</td><td>@item.Number</td><td>@item.SupplierName</td><td>@(string.IsNullOrWhiteSpace(item.InvoiceNumber) ? "Sin documento" : item.InvoiceNumber)</td><td>@(item.Terms == PurchaseTermsType.Credit ? "Crédito" : "Contado")</td><td>@(item.PurchaseOrderNumber ?? "Compra directa")</td><td>@Model.CurrencySymbol @item.Total.ToString($"N{Model.CurrencyDecimals}")</td><td>@(item.Status == DocumentStatus.Confirmed ? "Confirmada" : "Anulada")</td><td class="action-column"><div class="table-actions"><a asp-action="Details" asp-route-id="@item.Id">Ver</a></div></td></tr>
+}
+<tr data-filter-empty hidden><td colspan="9">No se encontraron compras.</td></tr></tbody></table></div>

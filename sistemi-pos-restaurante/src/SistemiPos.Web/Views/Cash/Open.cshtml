@@ -1,0 +1,97 @@
+@model SistemiPos.Web.Models.Cash.OpenCashSessionViewModel
+@using SistemiPos.Domain.Configuration
+@inject SistemiPos.Application.Abstractions.IOperationContextAccessor CashContext
+@{
+    ViewData["Title"] = "Abrir caja";
+    var symbol = ViewBag.CurrencySymbol as string ?? "Q";
+    var denominations = ViewBag.Denominations as IReadOnlyList<CashDenomination> ?? [];
+    var enteredQuantities = ViewBag.OpeningQuantities as IReadOnlyDictionary<Guid, int> ?? new Dictionary<Guid, int>();
+    var posDevices = ViewBag.PosDevices as IReadOnlyList<SistemiPos.Domain.Configuration.PosDevice> ?? [];
+    var posPaymentsEnabled = ViewBag.PosPaymentsEnabled is true;
+    var hasActivePosDevices = ViewBag.HasActivePosDevices is true;
+}
+
+<section class="page-header cashier-page-heading">
+    <div>
+        <p class="eyebrow">Punto de venta / Inicio de turno</p>
+        <h1>Abrir caja</h1>
+        <p class="lead">Cuenta el fondo inicial y prepara tu caja para comenzar a vender.</p>
+    </div>
+    <a href="/pos#caja" class="button-secondary link-button">← Volver al punto de venta</a>
+</section>
+
+<div class="cashier-workspace">
+    <ol class="cashier-flow" aria-label="Flujo del turno">
+        <li class="is-current" aria-current="step"><span>01</span><div><strong>Apertura</strong><small>Cuenta tu fondo inicial</small></div></li>
+        <li><span>02</span><div><strong>Ventas</strong><small>Opera desde el punto de venta</small></div></li>
+        <li><span>03</span><div><strong>Arqueo y cierre</strong><small>Declara tu efectivo al finalizar</small></div></li>
+    </ol>
+    <form method="post" class="cash-count-form cashier-opening-form" data-cash-count data-currency-symbol="@symbol" data-submission-lock>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+        <input asp-for="ReturnToSales" type="hidden" />
+        <input asp-for="OpeningAmount" type="hidden" data-cash-count-value />
+        <span asp-validation-for="OpeningAmount" class="validation"></span>
+        <div class="cashier-workbench">
+        <div class="cashier-main">
+        <section class="cashier-card cashier-setup">
+            <div class="cashier-section-heading"><span class="cashier-section-number">1</span><div><h2>Prepara tu caja</h2><p>Identifica la caja física y los dispositivos que utilizarás.</p></div></div>
+            <div class="cashier-setup-fields">
+                <div class="field"><label asp-for="RegisterCode">Código de caja física <small>(opcional)</small></label><input asp-for="RegisterCode" maxlength="50" class="input" placeholder="Ej. CAJA-01" /><small>Si lo dejas vacío, se utiliza la caja de tu usuario.</small><span asp-validation-for="RegisterCode" class="validation"></span></div>
+                <div class="cashier-session-identity"><small>Sucursal de trabajo</small><strong>@CashContext.CurrentBranchName</strong><span>Cajero: @User.Identity?.Name</span></div>
+            </div>
+        @if (posPaymentsEnabled) {
+        <section class="cash-pos-assignment" data-cash-pos-assignment>
+            <div><h2>POS bancarios</h2><p class="helper-text">Active esta opción si cobrará con tarjeta durante esta caja.</p></div>
+            <label class="checkbox cash-pos-opt-out"><input asp-for="UsePosDevices" type="checkbox" data-cash-pos-use/><span>Usaré POS en esta caja</span></label>
+            <div class="cash-pos-options" data-cash-pos-options hidden>
+                @foreach (var pos in posDevices)
+                {
+                    <label class="checkbox"><input type="checkbox" name="PosDeviceIds" value="@pos.Id" checked="@(Model.PosDeviceIds.Contains(pos.Id) ? "checked" : null)"/><span>@pos.Name@if (!string.IsNullOrWhiteSpace(pos.Provider)) { <small> · @pos.Provider</small> }</span></label>
+                }
+                @if (posDevices.Count > 0)
+                {
+                    <p class="helper-text">Seleccione el POS que utilizará. Solo se muestran dispositivos libres.</p>
+                }
+                else if (hasActivePosDevices)
+                {
+                    <p class="validation">No hay POS disponibles. Los dispositivos activos ya están asignados a otras cajas abiertas.</p>
+                }
+                else
+                {
+                    <p class="validation">No existen POS activos. Configúrelos en Administración &gt; Configuración &gt; Caja y pagos.</p>
+                }
+            </div>
+            <span asp-validation-for="PosDeviceIds" class="validation"></span>
+        </section>
+        }
+        </section>
+        <section class="cashier-count-section">
+            <div class="cashier-section-heading"><span class="cashier-section-number">2</span><div><h2>Cuenta el efectivo inicial</h2><p>Usa los botones + y − o escribe la cantidad directamente.</p></div><span class="cashier-piece-badge"><output data-cash-piece-count>0</output> piezas</span></div>
+            <partial name="_DenominationCount" model="@(new SistemiPos.Web.Models.Cash.CashDenominationCountViewModel("opening", symbol, denominations, enteredQuantities))" />
+        </section>
+        <div class="cashier-card field cashier-observation"><label asp-for="Observation">Observación <small>(opcional)</small></label><textarea asp-for="Observation" class="input" rows="2" placeholder="Anota cualquier detalle sobre la apertura"></textarea><span asp-validation-for="Observation" class="validation"></span></div>
+        </div>
+        <aside class="cashier-summary" aria-label="Resumen de apertura">
+            <p class="eyebrow">Resumen de apertura</p>
+            <h2>Fondo inicial</h2>
+            <p>El efectivo con el que comienzas este turno.</p>
+            <div class="cashier-grand-total"><span>Total contado</span><strong data-cash-count-total aria-live="polite" aria-atomic="true">@symbol @Model.OpeningAmount.ToString("N2")</strong></div>
+            <dl class="cashier-summary-breakdown">
+                <div><dt>Billetes</dt><dd data-cash-summary-kind="banknotes">@symbol 0.00</dd></div>
+                <div><dt>Monedas</dt><dd data-cash-summary-kind="coins">@symbol 0.00</dd></div>
+                <div><dt>Piezas contadas</dt><dd data-cash-piece-count>0</dd></div>
+            </dl>
+            <p class="cashier-summary-note">Revisa el conteo antes de confirmar. La apertura se registrará con tu usuario.</p>
+            <div class="cashier-summary-actions">
+                <button type="submit" class="button-primary">Abrir caja <span aria-hidden="true">→</span></button>
+                @if (Model.ReturnToSales) { <small>Al confirmar, volverás al punto de venta.</small> }
+            </div>
+        </aside>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

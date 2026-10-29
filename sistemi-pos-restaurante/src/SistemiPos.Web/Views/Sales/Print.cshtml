@@ -1,0 +1,121 @@
+@model SistemiPos.Web.Models.Sales.PrintableReceiptViewModel
+@using SistemiPos.Domain.Configuration
+@using SistemiPos.Domain.Sales
+@{
+    Layout = null;
+    var sale = Model.Sale;
+    var settings = Model.Settings;
+    var currencyBefore = sale.CurrencySymbolPosition == "Before";
+    string Money(decimal value)
+    {
+        var format = new System.Globalization.NumberFormatInfo { NumberDecimalSeparator = sale.DecimalSeparator, NumberGroupSeparator = sale.ThousandsSeparator };
+        var number = value.ToString($"N{sale.CurrencyDecimals}", format);
+        return currencyBefore ? $"{sale.CurrencySymbol} {number}" : $"{number} {sale.CurrencySymbol}";
+    }
+    var payments = sale.Payments is { Count: > 0 } ? sale.Payments : new[] { sale.Payment };
+    string PaymentMethod(SistemiPos.Application.Sales.SalePaymentDto payment) => payment.PaymentMethod switch
+    {
+        PaymentMethodType.Cash => "Efectivo",
+        PaymentMethodType.Transfer => "Transferencia",
+        PaymentMethodType.Pos => "Tarjeta / POS",
+        PaymentMethodType.Mixed => "Pagos mixtos",
+        PaymentMethodType.Credit => "Crédito",
+        PaymentMethodType.Other => payment.DefinitionName ?? "Otro medio",
+        _ => "Otro medio"
+    };
+    var configuredLogoUrl = settings.BusinessLogoUrl?.Trim().Replace('\\', '/');
+    string? logoUrl = null;
+    if (!string.IsNullOrWhiteSpace(configuredLogoUrl))
+    {
+        logoUrl = (configuredLogoUrl.Length > 1 && configuredLogoUrl[1] == ':') || configuredLogoUrl.StartsWith("//")
+            ? Url.Action("BusinessLogo", "Sales")
+            : configuredLogoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || configuredLogoUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                ? configuredLogoUrl
+                : Url.Content(configuredLogoUrl.StartsWith('/') || configuredLogoUrl.StartsWith("~/") ? configuredLogoUrl : "~/" + configuredLogoUrl);
+    }
+    var issuerName = string.IsNullOrWhiteSpace(settings.BusinessLegalName)
+        ? settings.BusinessName
+        : settings.BusinessLegalName;
+    var showTradeName = !string.IsNullOrWhiteSpace(settings.BusinessLegalName)
+        && !string.Equals(settings.BusinessLegalName, settings.BusinessName, StringComparison.OrdinalIgnoreCase);
+    var statusLabel = sale.Status switch
+    {
+        SaleStatus.Confirmed => "Venta confirmada",
+        SaleStatus.Cancelled => "Venta anulada",
+        SaleStatus.PartiallyReturned => "Devolución parcial",
+        SaleStatus.Returned => "Venta devuelta",
+        _ => "Comprobante de venta"
+    };
+    var businessInitial = string.IsNullOrWhiteSpace(issuerName) ? "V" : issuerName.Trim()[..1].ToUpperInvariant();
+    var autoPrint = bool.TryParse(Context.Request.Query["autoPrint"], out var parsedAutoPrint) && parsedAutoPrint;
+}
+<!DOCTYPE html>
+<html lang="es-GT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comprobante @sale.Number</title>
+    <link rel="stylesheet" href="~/css/sale-receipt.css" asp-append-version="true" />
+    <script src="~/js/sale-receipt.js" asp-append-version="true" defer></script>
+</head>
+<body data-auto-print="@(autoPrint ? "true" : "false")" data-return-url="@Url.Action("Details", "Sales", new { id = sale.Id })">
+    <nav class="receipt-actions" aria-label="Opciones del comprobante">
+        <div class="receipt-preview-caption"><span class="receipt-preview-icon" aria-hidden="true">▤</span><div><strong>Tu comprobante está listo</strong><span>Revisa los datos antes de imprimir · A4</span></div></div>
+        <div class="receipt-action-buttons"><button type="button" class="receipt-button receipt-button-primary" data-print-receipt>Imprimir</button><button type="button" class="receipt-button" data-close-receipt>Cerrar</button></div>
+    </nav>
+    <main class="receipt-page">
+        <header class="receipt-header">
+            <div class="receipt-brand">
+                <div class="receipt-logo" data-receipt-logo>
+                    <span class="receipt-logo-fallback" data-logo-fallback aria-hidden="true">@businessInitial</span>
+                    @if (logoUrl is not null) { <img src="@logoUrl" alt="Logo del negocio" data-business-logo hidden /> }
+                </div>
+                <div class="receipt-business-copy"><h1>@issuerName</h1>@if (showTradeName) { <p class="receipt-trade-name">@settings.BusinessName</p> }<p>NIT: @(settings.BusinessNit ?? "No configurado")</p>@if (!string.IsNullOrWhiteSpace(settings.BusinessAddress)) { <p>@settings.BusinessAddress</p> }@if (!string.IsNullOrWhiteSpace(settings.BusinessPhone)) { <p>Tel. @settings.BusinessPhone</p> }@if (!string.IsNullOrWhiteSpace(settings.BusinessEmail)) { <p>@settings.BusinessEmail</p> }</div>
+            </div>
+            <div class="receipt-document"><p class="receipt-eyebrow">Documento de venta</p><h2>Comprobante</h2><strong class="receipt-number">@sale.Number</strong></div>
+        </header>
+        <section class="receipt-highlight" aria-label="Importe y estado de la venta">
+            <div><span>Total de la venta</span><strong>@Money(sale.Total)</strong><small>@sale.CurrencyName · @sale.CurrencyCode</small></div>
+            <div class="receipt-highlight-status"><span class="receipt-status @(sale.Status == SaleStatus.Confirmed ? "is-confirmed" : "is-modified")"><span aria-hidden="true">@(sale.Status == SaleStatus.Confirmed ? "✓" : "!")</span> @statusLabel</span><span>Conserva este comprobante</span></div>
+        </section>
+        <dl class="receipt-sale-facts">
+            <div><dt>Fecha de venta</dt><dd>@sale.SoldAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+            <div><dt>Atendido por</dt><dd>@sale.CashierUserName</dd></div>
+            @if (!string.IsNullOrWhiteSpace(sale.TerminalCode)) { <div><dt>Terminal</dt><dd>@sale.TerminalCode</dd></div> }
+        </dl>
+        <section class="receipt-customer" aria-label="Datos del cliente"><div><span class="receipt-label">Emitido a</span><strong>@sale.CustomerName</strong></div><div><span class="receipt-label">NIT / Identificación</span><strong>@Model.CustomerNit</strong></div></section>
+
+        <section class="receipt-items" aria-labelledby="receipt-items-title">
+            <div class="receipt-section-heading"><h2 id="receipt-items-title">Tu compra</h2><span>@sale.Items.Count @(sale.Items.Count == 1 ? "producto en el detalle" : "productos en el detalle")</span></div>
+            <div class="receipt-table-scroll"><table class="receipt-table"><thead><tr><th scope="col" class="quantity">Cant.</th><th scope="col">Descripción</th><th scope="col" class="number">P. unitario</th><th scope="col" class="number">Descuento</th><th scope="col" class="number">Importe</th></tr></thead><tbody>
+            @foreach (var item in sale.Items) { <tr><td class="quantity">@DisplayFormats.Quantity(item.Quantity)</td><td class="description">@item.ProductName</td><td class="number">@Money(item.UnitPrice)</td><td class="number">@(item.DiscountAmount > 0 ? "−" + Money(item.DiscountAmount) : "—")</td><td class="number line-total">@Money(item.Subtotal)</td></tr> }
+            </tbody></table></div>
+        </section>
+
+        <div class="receipt-settlement">
+            <section class="receipt-payment" aria-labelledby="receipt-payment-title"><h2 id="receipt-payment-title">@(payments.Count > 1 ? "Pagos mixtos" : "Forma de pago")</h2>
+            @foreach (var payment in payments)
+            {
+                var reference = payment.TransferReference ?? payment.CardVoucherReference ?? payment.OtherReference;
+                <div class="receipt-payment-group">
+                    <div class="receipt-payment-title"><strong>@PaymentMethod(payment) @(payment.AccountPartNumber.HasValue ? $"· Cuenta {payment.AccountPartNumber}" : "")</strong><strong>@Money(payment.TotalAmount)</strong></div>
+                    @if (payment.PaymentMethod == PaymentMethodType.Cash) { <div><span>Recibido</span><span>@Money(payment.ReceivedAmount ?? 0)</span></div><div><span>Cambio</span><strong>@Money(payment.ChangeAmount ?? 0)</strong></div> }
+                    @if (!string.IsNullOrWhiteSpace(payment.CardLast4)) { <p>Tarjeta terminada en @payment.CardLast4</p> }
+                    @if (!string.IsNullOrWhiteSpace(reference)) { <p>Referencia: @reference</p> }
+                </div>
+            }
+            </section>
+            <section class="receipt-total" aria-label="Resumen de importes">
+                <div><span>Subtotal</span><strong>@Money(sale.Subtotal)</strong></div>
+                @if (sale.DiscountTotal > 0) { <div><span>Descuento</span><strong>−@Money(sale.DiscountTotal)</strong></div> }
+                @if (settings.ShowTaxOnReceipt) { <div class="receipt-tax"><span>Base imponible</span><strong>@Money(sale.TaxableBaseTotal)</strong></div><div class="receipt-tax"><span>Impuesto incluido</span><strong>@Money(sale.TaxTotal)</strong></div> }
+                <div class="grand-total"><span>Total de la venta</span><strong>@Money(sale.Total)</strong></div>
+                <p class="receipt-currency-note">Importes en @sale.CurrencyCode</p>
+            </section>
+        </div>
+        <footer class="receipt-footer"><strong>¡Gracias por su compra!</strong>@if (!string.IsNullOrWhiteSpace(settings.ReceiptFooter)) { <p class="receipt-configured-footer">@settings.ReceiptFooter</p> }<p>Este comprobante no sustituye una factura FEL. La factura electrónica debe emitirse mediante el proceso certificado correspondiente.</p></footer>
+    </main>
+    <p class="receipt-print-help">Para imprimir, usa papel A4 y desactiva los encabezados y pies automáticos del navegador.</p>
+</body>
+
+</html>

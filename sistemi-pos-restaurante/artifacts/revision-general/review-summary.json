@@ -1,0 +1,627 @@
+{
+  "date": "2026-10-21",
+  "timezone": "America/Guatemala",
+  "findings": [
+    {
+      "id": "R01",
+      "priority": "P1",
+      "title": "El pedido del mesero y cocina no se puede cobrar por el flujo integrado"
+    },
+    {
+      "id": "R02",
+      "priority": "P1",
+      "title": "Inventario y Kardex permiten consultar otras ubicaciones"
+    },
+    {
+      "id": "R03",
+      "priority": "P1",
+      "title": "Compras no aplica alcance en documentos existentes"
+    },
+    {
+      "id": "R04",
+      "priority": "P1",
+      "title": "Cuentas por pagar y cobrar operan sin ubicación autorizada"
+    },
+    {
+      "id": "R05",
+      "priority": "P1",
+      "title": "La administración organizacional no limita los recursos por alcance"
+    },
+    {
+      "id": "R06",
+      "priority": "P1",
+      "title": "Control de caja omite restricciones por acción y sucursal"
+    },
+    {
+      "id": "R07",
+      "priority": "P1",
+      "title": "Cualquier usuario autenticado puede consultar el historial global de caja chica"
+    },
+    {
+      "id": "R08",
+      "priority": "P1",
+      "title": "La configuración empresarial no se usa en caja y venta"
+    },
+    {
+      "id": "R09",
+      "priority": "P1",
+      "title": "Las sesiones no comprueban la marca de seguridad al validar la cookie"
+    },
+    {
+      "id": "R10",
+      "priority": "P1",
+      "title": "Los permisos personalizados de los roles iniciales se pierden al reiniciar"
+    },
+    {
+      "id": "R11",
+      "priority": "P1",
+      "title": "La sincronización offline en segundo plano no cumple el contrato del servidor"
+    },
+    {
+      "id": "R12",
+      "priority": "P1",
+      "title": "La caché de páginas POS no distingue usuario y sucursal"
+    },
+    {
+      "id": "R13",
+      "priority": "P1",
+      "title": "Existen permisos de control financiero que no se hacen efectivos"
+    },
+    {
+      "id": "R14",
+      "priority": "P2",
+      "title": "El gerente ve el cambio de sucursal pero la ruta lo bloquea"
+    },
+    {
+      "id": "R15",
+      "priority": "P2",
+      "title": "Bodega no puede realizar el conteo físico con sus permisos iniciales"
+    },
+    {
+      "id": "R16",
+      "priority": "P2",
+      "title": "La matriz inicial no completa las tareas de operadores y supervisores"
+    },
+    {
+      "id": "R17",
+      "priority": "P2",
+      "title": "El catálogo del POS muestra una moneda fija"
+    },
+    {
+      "id": "R18",
+      "priority": "P2",
+      "title": "El KDS conserva datos de demostración y altera la prioridad real"
+    },
+    {
+      "id": "R19",
+      "priority": "P2",
+      "title": "Las acciones y actualización del KDS no corresponden del todo a su presentación"
+    },
+    {
+      "id": "R20",
+      "priority": "P2",
+      "title": "Notificar al mesero solo muestra una confirmación local"
+    },
+    {
+      "id": "R21",
+      "priority": "P2",
+      "title": "Copiar menú entre sucursales rompe las referencias a estaciones y secciones"
+    },
+    {
+      "id": "R22",
+      "priority": "P1",
+      "title": "Los reportes comerciales anteriores no cuadran con pagos mixtos y costo de consumo"
+    },
+    {
+      "id": "R23",
+      "priority": "P2",
+      "title": "Las exportaciones anteriores omiten el nuevo permiso de exportar"
+    },
+    {
+      "id": "R24",
+      "priority": "P2",
+      "title": "Compras y órdenes conservan correlativos no atómicos"
+    }
+  ],
+  "tests": [
+    {
+      "file": "review-unit-validated.trx",
+      "outcome": "Completed",
+      "counters": {
+        "total": "92",
+        "executed": "92",
+        "passed": "92",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      }
+    },
+    {
+      "file": "review-components-validated.trx",
+      "outcome": "Completed",
+      "counters": {
+        "total": "24",
+        "executed": "24",
+        "passed": "24",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      }
+    }
+  ],
+  "passed": 116,
+  "scope": {
+    "databaseAcceptanceExecuted": false,
+    "liveRoleNavigationExecuted": false,
+    "productionCodeModified": false,
+    "buildErrors": 0,
+    "buildWarnings": 0
+  },
+  "checkedSourceReferences": [
+    {
+      "path": "src/SistemiPos.Infrastructure/Security/SecurityBootstrapper.cs",
+      "line": 19,
+      "needle": "public async Task SeedAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/AccountController.cs",
+      "line": 235,
+      "needle": "private async Task<IActionResult> RedirectToDefaultModuleAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Shared/_Layout.cshtml",
+      "line": 28,
+      "needle": "var isPosTerminal"
+    },
+    {
+      "path": "src/SistemiPos.Application/Security/LoginAuthorizationContext.cs",
+      "line": 11,
+      "needle": "Roles.Count == 1"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Restaurant/RestaurantRepository.cs",
+      "line": 27,
+      "needle": "private IQueryable<RestaurantOrder> Orders()"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Persistence/Configurations/RestaurantOrderConfiguration.cs",
+      "line": 28,
+      "needle": "b.ToTable(\"PosOrders\")"
+    },
+    {
+      "path": "src/SistemiPos.Application/Restaurant/RestaurantService.cs",
+      "line": 345,
+      "needle": "public async Task<OrderCheckoutSnapshot> CheckoutAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/CheckoutController.cs",
+      "line": 23,
+      "needle": "var order = await orders.GetOrderAsync"
+    },
+    {
+      "path": "docs/FASE_7_POS_IMPLEMENTACION.md",
+      "line": 17,
+      "needle": "Quedan pendientes la unificación"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/InventoryController.cs",
+      "line": 147,
+      "needle": "public async Task<IActionResult> Kardex"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/InventoryController.cs",
+      "line": 182,
+      "needle": "public async Task<IActionResult> Export"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Inventory/InventoryRepository.cs",
+      "line": 82,
+      "needle": "private IQueryable<InventoryMovement> BuildMovementQuery"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Inventory/InventoryRepository.cs",
+      "line": 33,
+      "needle": "if (warehouseId.HasValue)"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Purchases/PurchaseRepository.cs",
+      "line": 14,
+      "needle": "public Task<List<Purchase>> GetPurchasesAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Purchases/PurchaseRepository.cs",
+      "line": 37,
+      "needle": "public Task<Purchase?> GetPurchaseAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Purchases/PurchaseRepository.cs",
+      "line": 132,
+      "needle": "public Task<PurchaseOrder?> GetPurchaseOrderAsync"
+    },
+    {
+      "path": "src/SistemiPos.Application/Purchases/PurchaseService.cs",
+      "line": 210,
+      "needle": "public async Task ConfirmPurchaseAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Finance/FinancialService.cs",
+      "line": 14,
+      "needle": "public sealed class FinancialService"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Finance/FinancialService.cs",
+      "line": 42,
+      "needle": "public async Task PayPayableAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Finance/FinancialService.cs",
+      "line": 131,
+      "needle": "public async Task CollectReceivableAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Finance/FinancialService.cs",
+      "line": 207,
+      "needle": "private async Task<CashSession> CurrentSessionAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/OrganizationController.cs",
+      "line": 17,
+      "needle": "public async Task<IActionResult> Index"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Organizations/OrganizationService.cs",
+      "line": 9,
+      "needle": "public sealed class OrganizationService"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Organizations/OrganizationRepository.cs",
+      "line": 36,
+      "needle": "public Task<List<Company>> GetCompaniesAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/CashControlController.cs",
+      "line": 14,
+      "needle": "public sealed class CashControlController"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/CashControlController.cs",
+      "line": 60,
+      "needle": "public async Task<IActionResult> Details"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/CashControlController.cs",
+      "line": 85,
+      "needle": "public async Task<IActionResult> Movements"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/CashControlController.cs",
+      "line": 92,
+      "needle": "public async Task<IActionResult> Audit"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/CashControl/Details.cshtml",
+      "line": 25,
+      "needle": "Cuadre de efectivo"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/PettyCashController.cs",
+      "line": 43,
+      "needle": "public async Task<IActionResult> History"
+    },
+    {
+      "path": "src/SistemiPos.Application/Organizations/EnterpriseSettingsResolver.cs",
+      "line": 8,
+      "needle": "public sealed class EnterpriseSettingsResolver"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Sales/SaleRepository.cs",
+      "line": 145,
+      "needle": "public async Task<SystemSetting> GetSystemSettingAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Cash/CashRepository.cs",
+      "line": 12,
+      "needle": "public Task<SystemSetting?> GetSystemSettingAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/SalesController.cs",
+      "line": 391,
+      "needle": "Settings = settings"
+    },
+    {
+      "path": "src/SistemiPos.Web/Program.cs",
+      "line": 54,
+      "needle": "options.Events.OnValidatePrincipal"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Security/UserAccountService.cs",
+      "line": 61,
+      "needle": "result = await userManager.UpdateSecurityStampAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/UsersController.cs",
+      "line": 359,
+      "needle": "await userManager.UpdateSecurityStampAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Security/SecurityBootstrapper.cs",
+      "line": 271,
+      "needle": "dbContext.RolePermissions.RemoveRange"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/RolesController.cs",
+      "line": 62,
+      "needle": "public async Task<IActionResult> ConfigurePermissions"
+    },
+    {
+      "path": "src/SistemiPos.Web/Program.cs",
+      "line": 120,
+      "needle": "await bootstrapper.SeedAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/wwwroot/service-worker.js",
+      "line": 106,
+      "needle": "async function syncPendingSalesInBackground"
+    },
+    {
+      "path": "src/SistemiPos.Web/wwwroot/service-worker.js",
+      "line": 154,
+      "needle": "function toSyncRequest"
+    },
+    {
+      "path": "src/SistemiPos.Web/wwwroot/js/pos-sync.js",
+      "line": 389,
+      "needle": "offlineTicket: sale.offlineTicket"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/Api/OfflinePosController.cs",
+      "line": 77,
+      "needle": "[HttpPost(\"sync\"), ValidateAntiForgeryToken]"
+    },
+    {
+      "path": "src/SistemiPos.Web/wwwroot/service-worker.js",
+      "line": 73,
+      "needle": "async function handleNavigation"
+    },
+    {
+      "path": "src/SistemiPos.Application/Security/PermissionCodes.cs",
+      "line": 50,
+      "needle": "public const string CashOpenRequirePassword"
+    },
+    {
+      "path": "src/SistemiPos.Application/Cash/CashService.cs",
+      "line": 58,
+      "needle": "public async Task<Guid> OpenSessionAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Finance/FinancialService.cs",
+      "line": 163,
+      "needle": "public async Task AddPettyCashMovementAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Finance/FinancialService.cs",
+      "line": 187,
+      "needle": "public async Task CancelPettyCashMovementAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/CashController.cs",
+      "line": 193,
+      "needle": "public async Task<IActionResult> AddMovement"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Security/SecurityBootstrapper.cs",
+      "line": 90,
+      "needle": "SecurityRoleNames.Manager"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/OrganizationController.cs",
+      "line": 12,
+      "needle": "[Authorize(Policy = PermissionCodes.OrganizationsView)]"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/OrganizationController.cs",
+      "line": 35,
+      "needle": "public async Task<IActionResult> SelectBranch"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/InventoryController.cs",
+      "line": 90,
+      "needle": "public async Task<IActionResult> PhysicalCount"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Security/SecurityBootstrapper.cs",
+      "line": 153,
+      "needle": "SecurityRoleNames.Warehouse"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Security/SecurityBootstrapper.cs",
+      "line": 107,
+      "needle": "SecurityRoleNames.PointOfSale"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/OrdersController.cs",
+      "line": 47,
+      "needle": "Abre tu caja antes de crear un pedido"
+    },
+    {
+      "path": "src/SistemiPos.Application/Orders/OrderService.cs",
+      "line": 140,
+      "needle": "OrderEventType.Dispatch => PermissionCodes.OrdersDispatch"
+    },
+    {
+      "path": "src/SistemiPos.Application/Cash/CashService.cs",
+      "line": 49,
+      "needle": "PermissionCodes.CashCountHideExpected"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Sales/Form.cshtml",
+      "line": 58,
+      "needle": "class=\"product-list-price\""
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Restaurant/Kitchen.cshtml",
+      "line": 110,
+      "needle": "waiterName = \"Somaline\""
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Restaurant/Kitchen.cshtml",
+      "line": 138,
+      "needle": "tickets = tickets.OrderBy"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Restaurant/Kitchen.cshtml",
+      "line": 318,
+      "needle": "var firstQueued"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Restaurant/Kitchen.cshtml",
+      "line": 325,
+      "needle": "var firstPrep"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Restaurant/Kitchen.cshtml",
+      "line": 9,
+      "needle": "var canManageStatus"
+    },
+    {
+      "path": "src/SistemiPos.Web/wwwroot/js/restaurant.js",
+      "line": 269,
+      "needle": ".kds-card button:disabled:not(.is-done)"
+    },
+    {
+      "path": "src/SistemiPos.Web/wwwroot/js/restaurant.js",
+      "line": 197,
+      "needle": "const msg = `🔔 Notificación enviada"
+    },
+    {
+      "path": "src/SistemiPos.Application/Restaurant/RestaurantService.cs",
+      "line": 79,
+      "needle": "public async Task<RestaurantDefinition> CopyBranchMenuAsync"
+    },
+    {
+      "path": "src/SistemiPos.Domain/Restaurant/RestaurantSetup.cs",
+      "line": 61,
+      "needle": "Cada producto del menú requiere una estación"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Reports/ReportRepository.cs",
+      "line": 200,
+      "needle": "x.Items.Sum(i => i.CostAtSale * i.Quantity)"
+    },
+    {
+      "path": "src/SistemiPos.Application/Reports/ReportModels.cs",
+      "line": 93,
+      "needle": "completedSales.Where(x => x.PaymentMethod == PaymentMethodType.Cash)"
+    },
+    {
+      "path": "src/SistemiPos.Domain/Sales/Sale.cs",
+      "line": 68,
+      "needle": "public SalePayment Payment =>"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Reports/ControlReportService.cs",
+      "line": 184,
+      "needle": "ConsumedUnitCostAtSale"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/ControlReportsController.cs",
+      "line": 28,
+      "needle": "public async Task<IActionResult> Excel"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/InventoryController.cs",
+      "line": 182,
+      "needle": "public async Task<IActionResult> Export"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/HomeController.cs",
+      "line": 76,
+      "needle": "public async Task<IActionResult> Export"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Purchases/PurchaseRepository.cs",
+      "line": 99,
+      "needle": "public async Task<string> GeneratePurchaseNumberAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Purchases/PurchaseRepository.cs",
+      "line": 112,
+      "needle": "nextSequence = parsed + 1"
+    },
+    {
+      "path": "src/SistemiPos.Web/Views/Cash/Details.cshtml",
+      "line": 29,
+      "needle": "Debes realizar un arqueo antes de cerrar la caja"
+    },
+    {
+      "path": "src/SistemiPos.Application/Cash/CashService.cs",
+      "line": 137,
+      "needle": "LastOrDefault()?.CountedCash ?? request.CountedCash"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Customers/CustomerRepository.cs",
+      "line": 28,
+      "needle": "public Task<List<CustomerHistoryDto>> GetCustomerHistoryAsync"
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/HomeController.cs",
+      "line": 36,
+      "needle": "var expiryLots ="
+    },
+    {
+      "path": "src/SistemiPos.Web/Controllers/ProductsController.cs",
+      "line": 39,
+      "needle": "var lots = await inventoryQueryService.GetExpiryLotsAsync"
+    },
+    {
+      "path": "src/SistemiPos.Infrastructure/Sales/FiscalService.cs",
+      "line": 12,
+      "needle": "public sealed class UnconfiguredFiscalProvider"
+    },
+    {
+      "path": "docs/FASE_8_CONTROL_REPORTES_Y_RESPALDOS.md",
+      "line": 22,
+      "needle": "CTL-10"
+    },
+    {
+      "path": "artifacts/revision-general/review-unit-validated.trx",
+      "line": 570,
+      "needle": "<Counters"
+    },
+    {
+      "path": "artifacts/revision-general/review-components-validated.trx",
+      "line": 162,
+      "needle": "<Counters"
+    },
+    {
+      "path": "artifacts/revision-general/coherence-evidence.json",
+      "line": 340,
+      "needle": "\"checks\""
+    },
+    {
+      "path": "artifacts/revision-general/verify-coherence.mjs",
+      "line": 6,
+      "needle": "// Read-only review"
+    }
+  ]
+}

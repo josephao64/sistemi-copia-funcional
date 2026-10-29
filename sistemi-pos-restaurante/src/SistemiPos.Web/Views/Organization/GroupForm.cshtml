@@ -1,0 +1,59 @@
+@model SistemiPos.Web.Models.Organizations.BusinessGroupFormViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Editar grupo empresarial" : "Nuevo grupo empresarial";
+}
+
+<div class="modal-form-content">
+    <h2>@ViewData["Title"]</h2>
+    <form asp-action="@(Model.Id.HasValue ? "EditGroup" : "CreateGroup")" method="post" class="form-grid">
+        @Html.AntiForgeryToken()
+        @if (Model.Id.HasValue)
+        {
+            <input asp-for="Id" type="hidden" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+        <div class="field">
+            <label asp-for="Code"></label>
+            <input asp-for="Code" class="input" placeholder="Ej. GRP-01" required />
+            <span asp-validation-for="Code" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Name"></label>
+            <input asp-for="Name" class="input" placeholder="Ej. Grupo Empresarial Principal" required />
+            <span asp-validation-for="Name" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="LegalName"></label>
+            <input asp-for="LegalName" class="input" placeholder="Ej. Corporación de Alimentos S.A." />
+            <span asp-validation-for="LegalName" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="TaxNumber"></label>
+            <input asp-for="TaxNumber" class="input" placeholder="Ej. 101085257" />
+            <span asp-validation-for="TaxNumber" class="validation"></span>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+            <label asp-for="Description"></label>
+            <textarea asp-for="Description" class="input" rows="2" placeholder="Observaciones o notas"></textarea>
+            <span asp-validation-for="Description" class="validation"></span>
+        </div>
+
+        @if (Model.Id.HasValue)
+        {
+            <label class="checkbox">
+                <input asp-for="IsActive" />
+                <span>Activo</span>
+            </label>
+        }
+
+        <div class="action-row" style="grid-column: 1 / -1;">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+</div>

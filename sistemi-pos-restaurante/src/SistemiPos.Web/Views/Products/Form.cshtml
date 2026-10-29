@@ -1,0 +1,230 @@
+@model SistemiPos.Web.Models.Catalog.ProductFormViewModel
+@using SistemiPos.Domain.Catalog
+@using System.Text.Json
+@{
+    ViewData["Title"] = Model.Id is null ? "Nuevo producto" : "Editar producto";
+    var editing = Model.Id is not null;
+    var variantCatalogJson = JsonSerializer.Serialize(Model.VariantCatalog);
+    var decimals = Math.Clamp(Model.CurrencyDecimals, 0, 6);
+    var moneyStep = decimals == 0 ? "1" : $"0.{new string('0', decimals - 1)}1";
+    var existingImageName = string.IsNullOrWhiteSpace(Model.ImageUrl) ? "Ninguna imagen seleccionada" : Model.ImageUrl.Replace('\\', '/').Split('/').Last();
+    var returnProduct = Context.Request.Query["returnProduct"].ToString();
+}
+
+<section class="page-header product-form-header">
+    <div><p class="eyebrow">Catálogo</p><h1>@ViewData["Title"]</h1></div>
+    <label class="checkbox product-active-toggle"><input asp-for="IsActive" form="product-form" /><span>Producto activo</span></label>
+</section>
+
+<div class="form-card product-form-card" data-product-editor data-currency-symbol="@Model.CurrencySymbol" data-currency-decimals="@decimals" data-generate-url="@Url.Action("GenerateCode")" data-create-attribute-url="@Url.Action("CreateAttributeInline")" data-create-value-url="@Url.Action("CreateAttributeValueInline")">
+<form asp-action="@(editing ? "Edit" : "Create")" asp-route-returnProduct="@(!editing && !string.IsNullOrWhiteSpace(returnProduct) ? returnProduct : null)" method="post" enctype="multipart/form-data" id="product-form" class="form-grid product-form-grid" novalidate>
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="PreviousCost" type="hidden" />
+    <input asp-for="UnitOfMeasure" type="hidden" />
+    <input asp-for="ImageUrl" type="hidden" />
+    <div asp-validation-summary="All" class="alert-error full-span"></div>
+
+    <div class="field product-name-field"><label asp-for="Name"></label><input asp-for="Name" class="input" required /></div>
+    <input asp-for="SupplierInvoiceName" type="hidden" />
+
+    <div class="field"><label asp-for="ArticleType">Tipo de artículo</label><select asp-for="ArticleType" asp-items="Model.AvailableArticleTypes" class="input"></select></div>
+    <div class="field"><label asp-for="BaseUnitId">Unidad base</label><select asp-for="BaseUnitId" asp-items="Model.AvailableUnitsOfMeasure" class="input" required><option value="">Seleccione unidad base...</option></select></div>
+
+    <div class="field"><label asp-for="CategoryId"></label><input asp-for="CategoryId" type="hidden" data-category-id /><div class="catalog-picker"><input asp-for="CategoryName" class="input" list="product-categories" autocomplete="off" placeholder="Buscar categoría..." readonly="@(editing ? "readonly" : null)" data-category-search /><datalist id="product-categories">@foreach (var option in Model.Categories) { <option value="@option.Text" data-id="@option.Value"></option> }</datalist>@if (!editing) { <button type="button" class="button-secondary" data-quick-create-open="product-category-modal">+ Crear categoría</button> }</div></div>
+    <div class="field"><label asp-for="Brand"></label><div class="catalog-picker"><input asp-for="Brand" class="input" list="product-brands" autocomplete="off" placeholder="Buscar marca..." readonly="@(editing ? "readonly" : null)" /><datalist id="product-brands">@foreach (var brand in Model.Brands) { <option value="@brand"></option> }</datalist>@if (!editing) { <button type="button" class="button-secondary" data-quick-create-open="product-brand-modal">+ Crear marca</button> }</div></div>
+
+    <div class="field product-code-field"><label asp-for="InternalCode"></label><div class="product-code-action"><input asp-for="InternalCode" class="input" readonly="@(editing ? "readonly" : null)" required />@if (!editing) { <button type="button" class="button-secondary" data-generate-code>Generar código</button> }</div>@if (editing) { <span class="helper-text">Identificador permanente.</span> }</div>
+    <div class="field"><label asp-for="MinimumStock">Stock mínimo (unidad base)</label><input asp-for="MinimumStock" class="input" type="number" min="0" step="0.01" /></div>
+    <input asp-for="LastCost" type="hidden" />
+
+    <div class="field" data-product-sale-price><label asp-for="SalePrice">Precio de venta general</label><div class="money-input"><span>@Model.CurrencySymbol</span><input asp-for="SalePrice" class="input" type="number" min="0" step="@moneyStep" /></div></div>
+
+    <div class="field"><label asp-for="NoMovementDaysOverride"></label><input asp-for="NoMovementDaysOverride" class="input" type="number" min="1" max="3650" step="1" required data-integer /><span class="helper-text">Días propios del producto; no utiliza Configuración General.</span><span asp-validation-for="NoMovementDaysOverride" class="validation"></span></div>
+
+    <div class="field product-description-field"><label asp-for="Description"></label><textarea asp-for="Description" class="input textarea product-description" rows="3"></textarea></div>
+
+    <section class="full-span product-options product-general-options" aria-label="Configuraciones generales del producto">
+        <span class="product-option-with-help"><label class="checkbox"><input asp-for="ManagesLots" data-manages-lots /><span>Control por lote</span></label><button type="button" class="product-option-help" data-tooltip="Identifica las entradas y salidas por lote. Es obligatorio cuando el producto maneja caducidad; con historial o existencias esta configuración queda protegida." aria-label="Ayuda: Control por lote">ⓘ</button></span>
+        <span class="product-option-with-help"><label class="checkbox"><input asp-for="ManagesExpiry" data-manages-expiry /><span>Maneja caducidad</span></label><button type="button" class="product-option-help" data-tooltip="Indica que este producto controla fecha de vencimiento. Al activarlo se habilita la configuración de alerta antes de caducar." aria-label="Ayuda: Maneja caducidad">ⓘ</button></span>
+        <div class="field product-expiry-alert compact-option-field" data-expiry-alert-field hidden="@(!Model.ManagesExpiry ? "hidden" : null)"><label asp-for="ExpiryAlertDays">Alertar antes de caducar</label><div class="expiry-days-input"><input asp-for="ExpiryAlertDays" class="input" type="number" min="1" step="1" inputmode="numeric" disabled="@(!Model.ManagesExpiry ? "disabled" : null)" data-integer /><span>días</span></div><span asp-validation-for="ExpiryAlertDays" class="validation"></span></div>
+        <span class="product-option-with-help"><label class="checkbox"><input asp-for="AppliesTax" /><span>Aplica impuesto</span></label><button type="button" class="product-option-help" data-tooltip="Aplica a este producto el impuesto configurado actualmente en el sistema." aria-label="Ayuda: Aplica impuesto">ⓘ</button></span>
+
+    </section>
+
+    <details class="full-span"><summary>Configuración adicional y presentaciones de compra</summary>
+    <!-- Configuración Comercial por Sucursal (CAT-05) -->
+    @if (Model.BranchSettings.Count > 0)
+    {
+        <section class="form-card full-span" style="margin-top: 1rem;">
+            <h2>Configuración Comercial por Sucursal</h2>
+            <p class="helper-text">Define habilitación, visibilidad, precio y stock mínimo por sucursal. Deja precio o mínimo vacíos para usar el valor general del producto.</p>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Sucursal</th>
+                            <th style="text-align: center;">Habilitado</th>
+                            <th style="text-align: center;">Visible en Menú/POS</th>
+                            <th class="money">Precio Local (@Model.CurrencySymbol)</th>
+                            <th>Stock mínimo (unidad base)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.BranchSettings.Count; i++)
+                    {
+                        <tr>
+                            <td>
+                                <input type="hidden" asp-for="BranchSettings[i].BranchId" />
+                                <strong>@Model.BranchSettings[i].BranchName</strong>
+                            </td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" asp-for="BranchSettings[i].IsEnabled" />
+                            </td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" asp-for="BranchSettings[i].IsVisible" />
+                            </td>
+                            <td class="money">
+                                <input type="number" step="@moneyStep" min="0" class="input compact-money-input" asp-for="BranchSettings[i].SalePrice" placeholder="Hereda: @Model.SalePrice.ToString("N2")" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" class="input compact-number-input" asp-for="BranchSettings[i].MinimumStock" placeholder="Hereda: @Model.MinimumStock.ToString("N2")" />
+                                <span asp-validation-for="BranchSettings[i].MinimumStock" class="validation"></span>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+
+    <!-- Presentaciones de Compra por Producto (CAT-04) -->
+    <section class="form-card full-span" style="margin-top: 1rem;">
+        <h2>Presentaciones de Compra</h2>
+        <p class="helper-text">Permite comprar en empaques o paquetes y almacenarlos en la unidad base (ej: comprar bolsas de 2500 g).</p>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre de Presentación</th>
+                        <th>Cantidad en Unidad Base</th>
+                        <th style="text-align: center;">Activo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < Model.PurchasePresentations.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <input type="hidden" asp-for="PurchasePresentations[i].Id" />
+                            <input class="input" asp-for="PurchasePresentations[i].Name" placeholder="Ej: Bolsa 2.5 kg, Caja x 24..." />
+                        </td>
+                        <td>
+                            <input type="number" step="0.0001" min="0.0001" class="input" asp-for="PurchasePresentations[i].BaseQuantityPerPackage" placeholder="Cantidad en unidad base" />
+                        </td>
+                        <td style="text-align: center;">
+                            <input type="checkbox" asp-for="PurchasePresentations[i].IsActive" />
+                        </td>
+                    </tr>
+                }
+                @for (var i = Model.PurchasePresentations.Count; i < Model.PurchasePresentations.Count + 2; i++)
+                {
+                    <tr>
+                        <td>
+                            <input class="input" name="PurchasePresentations[@i].Name" placeholder="Nueva presentación (opcional)..." />
+                        </td>
+                        <td>
+                            <input type="number" step="0.0001" min="0.0001" class="input" name="PurchasePresentations[@i].BaseQuantityPerPackage" placeholder="Cantidad base" />
+                        </td>
+                        <td style="text-align: center;">
+                            <input type="checkbox" name="PurchasePresentations[@i].IsActive" value="true" checked />
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Atributos y Variantes (CAT-06) -->
+    <section class="form-card full-span variant-editor" data-variant-editor data-compact-variants="true" style="margin-top: 1rem;">
+        <div class="compact-variant-heading"><h2>Atributos y variantes</h2><div class="compact-radio-row"><label class="checkbox"><input asp-for="ManagesVariants" type="radio" value="false" disabled="@(editing ? "disabled" : null)" data-variant-mode /><span>Producto sin variantes</span></label><label class="checkbox"><input asp-for="ManagesVariants" type="radio" value="true" disabled="@(editing ? "disabled" : null)" data-variant-mode /><span>Producto con variantes</span></label>@if (editing) { <input asp-for="ManagesVariants" type="hidden" /> }</div></div>
+        <div data-without-variants class="single-product-data">
+            <div class="field compact-medium"><label asp-for="Barcode">Código de barras</label><input asp-for="Barcode" class="input" /></div>
+            <div class="field product-image-field"><label asp-for="ImageFile"></label><div class="product-image-editor" data-product-image-control>
+                <div class="product-image-preview">@if (!string.IsNullOrWhiteSpace(Model.ImageUrl)){<img src="@Model.ImageUrl" alt="Imagen actual de @Model.Name" data-product-image-preview />}else{<span data-product-image-placeholder>Sin imagen</span><img alt="Vista previa de la imagen" data-product-image-preview hidden />}</div>
+                <div class="product-image-picker"><input asp-for="ImageFile" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" data-product-image-input /><button type="button" class="button-secondary" data-product-image-trigger>Elegir imagen</button><span data-product-image-name>@existingImageName</span></div>
+            </div><p class="helper-text">JPG, PNG o WEBP. Máximo 5 MB.</p></div>
+        </div>
+        <div data-with-variants>
+            <script type="application/json" data-attribute-catalog-json>@Html.Raw(variantCatalogJson)</script>
+            <datalist id="variant-types">@foreach (var type in Model.VariantCatalog) { <option value="@type.Name"></option> }</datalist>
+            <div class="variant-group" data-variant-capture>
+                <div class="field"><label>Atributo</label><div class="catalog-picker"><input class="input" list="variant-types" autocomplete="off" placeholder="Buscar atributo..." data-group-type /><button type="button" class="button-secondary" data-create-attribute>+ Crear atributo</button></div></div>
+                <div class="field"><label>Valor</label><div class="catalog-picker"><input class="input" list="variant-capture-values" autocomplete="off" placeholder="Buscar valor..." data-group-value-search /><datalist id="variant-capture-values" data-group-value-options></datalist><button type="button" class="button-secondary" data-create-value>+ Crear valor</button><button type="button" class="button-primary" data-add-group-value>+ Agregar atributo</button></div></div>
+            </div>
+            <div class="compact-configured-attributes" data-configured-attributes hidden><h3>Atributos configurados</h3><div data-configured-attribute-rows></div><button type="button" class="button-primary compact-add-variant" data-add-configured-variant>+ Agregar</button></div>
+            <div class="variant-groups variant-value-storage" data-variant-groups>
+            @for (var i = 0; i < Model.VariantGroups.Count; i++)
+            {
+                var group = Model.VariantGroups[i];
+                <div data-variant-group><input name="VariantGroups[@i].TypeName" value="@group.TypeName" type="hidden" data-group-type /><div data-group-values>@foreach (var value in group.Values) { <span data-group-value="@value"><span>@value</span></span> }</div></div>
+            }
+            </div>
+            <h3 class="compact-variant-title">Variantes generadas</h3>
+            <div class="table-wrapper variant-combinations compact-variant-list"><table class="data-table"><thead><tr><th>Variante</th><th>Código de barras</th><th>Imagen</th><th class="action-column">Acción</th></tr></thead><tbody data-combination-rows>
+            @for (var i = 0; i < Model.Combinations.Count; i++) { var combination = Model.Combinations[i]; var combinationImageName = string.IsNullOrWhiteSpace(combination.ImageUrl) ? "Sin imagen" : combination.ImageUrl.Split('/').Last(); <tr data-combination-row data-key="@combination.Key"><td><input asp-for="Combinations[i].Id" type="hidden" /><input asp-for="Combinations[i].Key" type="hidden" data-combination-key /><input asp-for="Combinations[i].InternalCode" type="hidden" /><input asp-for="Combinations[i].MinimumStock" type="hidden" /><input asp-for="Combinations[i].LastCost" type="hidden" /><input asp-for="Combinations[i].SalePrice" type="hidden" /><input asp-for="Combinations[i].IsActive" type="hidden" /><input asp-for="Combinations[i].ImageUrl" type="hidden" /><strong data-combination-label>@combination.Label</strong></td><td><input asp-for="Combinations[i].Barcode" class="input" /></td><td><div class="variant-image-editor" data-product-image-control><div class="variant-image-preview">@if (!string.IsNullOrWhiteSpace(combination.ImageUrl)){<img src="@combination.ImageUrl" alt="Imagen de @combination.Label" data-product-image-preview />}else{<span data-product-image-placeholder>Sin imagen</span><img alt="Vista previa" data-product-image-preview hidden />}</div><div class="variant-image-picker"><input asp-for="Combinations[i].ImageFile" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" data-product-image-input /><button type="button" class="button-secondary" data-product-image-trigger>Elegir</button><span data-product-image-name>@combinationImageName</span></div></div></td><td class="action-column"><button type="button" class="icon-button" data-delete-combination aria-label="Eliminar variante">×</button></td></tr> }
+            </tbody></table></div>
+            <template data-combination-template><tr data-combination-row><td><input name="Combinations[__index__].Id" type="hidden" /><input name="Combinations[__index__].Key" type="hidden" data-combination-key /><input name="Combinations[__index__].InternalCode" type="hidden" /><input name="Combinations[__index__].MinimumStock" type="hidden" value="@Model.MinimumStock" /><input name="Combinations[__index__].LastCost" type="hidden" value="@Model.LastCost" /><input name="Combinations[__index__].SalePrice" type="hidden" value="@Model.SalePrice" /><input name="Combinations[__index__].IsActive" type="hidden" value="true" /><input name="Combinations[__index__].ImageUrl" type="hidden" /><strong data-combination-label></strong></td><td><input name="Combinations[__index__].Barcode" class="input" /></td><td><div class="variant-image-editor" data-product-image-control><div class="variant-image-preview"><span data-product-image-placeholder>Sin imagen</span><img alt="Vista previa" data-product-image-preview hidden /></div><div class="variant-image-picker"><input name="Combinations[__index__].ImageFile" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" data-product-image-input /><button type="button" class="button-secondary" data-product-image-trigger>Elegir</button><span data-product-image-name>Sin imagen</span></div></div></td><td class="action-column"><button type="button" class="icon-button" data-delete-combination aria-label="Eliminar variante">×</button></td></tr></template>
+        </div>
+    </section>
+
+    </details>
+    <!-- Historial de Auditoría (CAT-07) -->
+    @if (editing && Model.ChangeLogs.Count > 0)
+    {
+        <section class="form-card full-span" style="margin-top: 1rem;">
+            <h2>Historial de Modificaciones (Auditoría)</h2>
+            <p class="helper-text">Registro inmutable de modificaciones de precios, unidades, tipo y estados.</p>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha y Hora (UTC)</th>
+                            <th>Campo</th>
+                            <th>Valor Anterior</th>
+                            <th>Valor Nuevo</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var log in Model.ChangeLogs.Take(15))
+                    {
+                        <tr>
+                            <td>@log.TimestampUtc.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                            <td><strong>@log.Field</strong></td>
+                            <td class="money">@(log.OldValue ?? "-")</td>
+                            <td class="money">@(log.NewValue ?? "-")</td>
+                            <td><span class="status-badge status-neutral">@log.Actor</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+
+    <div class="action-row full-span"><button type="submit" class="button-primary">@(editing ? "Guardar cambios" : "Crear producto")</button></div>
+</form></div>
+
+@if (!editing) {
+<dialog id="product-category-modal" class="quick-create-modal" data-quick-create data-endpoint="@Url.Action("CreateCategoryInline")" data-target="CategoryId"><form method="dialog" class="quick-create-panel" data-quick-create-form>@Html.AntiForgeryToken()<div class="modal-header"><h2>Nueva categoría</h2><button type="button" class="icon-button" data-quick-create-cancel>×</button></div><div class="field"><label>Nombre</label><input name="name" class="input" required /></div><div class="field"><label>Descripción</label><textarea name="description" class="input textarea"></textarea></div><p class="validation" data-quick-create-error></p><div class="action-row"><button type="button" class="button-secondary" data-quick-create-cancel>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div></form></dialog>
+<dialog id="product-brand-modal" class="quick-create-modal" data-quick-create data-endpoint="@Url.Action("CreateBrandInline")" data-target="Brand"><form method="dialog" class="quick-create-panel" data-quick-create-form>@Html.AntiForgeryToken()<div class="modal-header"><h2>Nueva marca</h2><button type="button" class="icon-button" data-quick-create-cancel>×</button></div><div class="field"><label>Nombre</label><input name="name" class="input" required /></div><p class="validation" data-quick-create-error></p><div class="action-row"><button type="button" class="button-secondary" data-quick-create-cancel>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div></form></dialog>
+}
+<dialog id="product-attribute-modal" class="quick-create-modal"><form method="dialog" class="quick-create-panel" data-attribute-create-form>@Html.AntiForgeryToken()<div class="modal-header"><h2>Nuevo atributo</h2><button type="button" class="icon-button" data-close-attribute-dialog>×</button></div><div class="field"><label>Nombre</label><input name="name" class="input" required data-attribute-name /></div><p class="validation" data-attribute-create-error hidden></p><div class="action-row"><button type="button" class="button-secondary" data-close-attribute-dialog>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div></form></dialog>
+<dialog id="product-value-modal" class="quick-create-modal"><form method="dialog" class="quick-create-panel" data-value-create-form>@Html.AntiForgeryToken()<input type="hidden" name="attributeName" data-value-attribute-name /><div class="modal-header"><h2>Nuevo valor</h2><button type="button" class="icon-button" data-close-value-dialog>×</button></div><div class="field"><label>Valor</label><input name="value" class="input" required data-value-name /></div><div class="action-row"><button type="button" class="button-secondary" data-close-value-dialog>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div></form></dialog>
+@section Scripts {
+    <script src="~/js/product-form.js" asp-append-version="true"></script>
+    <partial name="_ValidationScriptsPartial" />
+}

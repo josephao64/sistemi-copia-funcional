@@ -1,0 +1,166 @@
+@model SistemiPos.Web.Models.Purchases.PurchaseCapturePartialViewModel
+@using SistemiPos.Domain.Purchases
+@using System.Text.Json
+@{
+    var items = Model.Items.Count == 0
+        ? new[] { new SistemiPos.Web.Models.Purchases.PurchaseCaptureLineViewModel() }
+        : Model.Items;
+}
+
+<h2 class="purchase-section-title">Datos de compra</h2>
+@if (!Model.IsDirectPurchase && !string.IsNullOrWhiteSpace(Model.OrderNumber))
+{
+    <p class="helper-text">Origen: <strong>Orden de compra @Model.OrderNumber</strong></p>
+}
+<div class="form-grid receipt-header-fields purchase-capture-header">
+    <div class="field full-span">
+        <label>Proveedor</label>
+        <input name="SupplierId" value="@Model.SupplierId" type="hidden" data-purchase-supplier-id />
+        @if (Model.IsDirectPurchase)
+        {
+            <div class="purchase-order-picker">
+                <input class="input autocomplete-clean" value="@Model.SupplierName" list="purchase-suppliers" autocomplete="off" placeholder="Buscar proveedor..." required data-purchase-supplier-search />
+                <a asp-controller="Suppliers" asp-action="Create" asp-route-returnSupplier="true" class="button-secondary link-button" data-crud-modal data-crud-created-event="purchase-capture:supplier-created">+ Crear proveedor</a>
+            </div>
+        }
+        else
+        {
+            <input class="input" value="@Model.SupplierName" readonly />
+        }
+    </div>
+    <div class="field"><label>Fecha de factura</label><input name="SupplierDocumentDateLocal" value="@Model.SupplierDocumentDateLocal.ToString("yyyy-MM-dd")" class="input" type="date" required data-purchase-document-date /></div>
+    <div class="field"><label>Número de factura proveedor</label><input name="SupplierDocumentNumber" value="@Model.SupplierDocumentNumber" class="input" maxlength="100" required /></div>
+    <div class="field"><label>NIT</label><input name="SupplierNit" value="@Model.SupplierNit" class="input" maxlength="50" required data-purchase-supplier-nit /></div>
+    <div class="field"><label>Condición</label><select name="Terms" class="input" data-purchase-terms><option value="1" selected="@(Model.Terms == PurchaseTermsType.Cash ? "selected" : null)">Contado</option><option value="2" selected="@(Model.Terms == PurchaseTermsType.Credit ? "selected" : null)">Crédito</option></select></div>
+    <div class="field" data-purchase-credit-days hidden><label>Días de crédito</label><input name="CreditDays" value="@Model.CreditDays" class="input" type="number" min="1" step="1" data-purchase-credit-days-input /></div>
+    <div class="field" data-purchase-due-field hidden><label>Fecha de vencimiento</label><input class="input" type="date" readonly tabindex="-1" data-purchase-due-date /></div>
+</div>
+<div class="form-grid receipt-header-fields purchase-capture-header">
+    @if (Model.IsDirectPurchase)
+    {
+        <div class="field"><label>Sucursal de destino</label><select name="BranchId" class="input" required data-purchase-branch><option value="">Seleccione</option>@foreach (var branch in Model.Branches){<option value="@branch.Value" selected="@(branch.Value == Model.BranchId.ToString() ? "selected" : null)">@branch.Text</option>}</select></div>
+        <div class="field"><label>Bodega de destino</label><select name="WarehouseId" class="input" required data-purchase-warehouse><option value="">Seleccione</option>@foreach (var warehouse in Model.Warehouses){<option value="@warehouse.Id" data-branch-id="@warehouse.BranchId" selected="@(warehouse.Id == Model.WarehouseId ? "selected" : null)">@warehouse.Name</option>}</select></div>
+    }
+    else
+    {
+        <div class="field"><label>Sucursal de destino</label><input class="input" value="@Model.BranchName" readonly /></div>
+        <div class="field"><label>Bodega de destino</label><input class="input" value="@Model.WarehouseName" readonly /></div>
+    }
+</div>
+
+<section class="table-card purchase-capture-products">
+    <div class="table-toolbar"><div><h2>Productos recibidos</h2><p class="helper-text">Las presentaciones se convierten automáticamente a unidades de inventario.</p></div></div>
+    <div class="table-responsive">
+        <table class="data-table purchase-capture-table">
+            <thead><tr><th>Nombre</th><th>Presentación</th><th>Cantidad</th><th>Cantidad base</th><th>Precio compra</th><th>Precio venta</th><th>Descuento</th><th>Total</th><th class="action-column">Acción</th></tr></thead>
+            <tbody data-purchase-items>
+            @for (var index = 0; index < items.Count; index++)
+            {
+                var item = items[index];
+                <tr data-purchase-row data-fixed-row="@(!Model.IsDirectPurchase && !item.IsAdditional ? "true" : "false")">
+                    <td class="purchase-product-cell" data-label="Nombre">
+                        <input name="Items[@index].ItemId" value="@item.ItemId" type="hidden" />
+                        <input name="Items[@index].ProductId" value="@item.ProductId" type="hidden" data-purchase-product-id />
+                        <input name="Items[@index].IsAdditional" value="@item.IsAdditional.ToString().ToLowerInvariant()" type="hidden" />
+                        <input name="Items[@index].RequestedQuantity" value="@item.RequestedQuantity" type="hidden" />
+                        @if (!Model.IsDirectPurchase && !item.IsAdditional)
+                        {
+                            <strong>@item.ProductName</strong>
+                        }
+                        else
+                        {
+                            <input class="input" value="@item.ProductName" list="purchase-products" autocomplete="off" placeholder="Buscar por nombre..." required data-purchase-product-search />
+                            <a asp-controller="Products" asp-action="Create" asp-route-returnProduct="true" class="inline-field-link" data-crud-modal data-crud-created-event="purchase-capture:product-created" data-purchase-product-create>+ Crear producto</a>
+                        }
+                        <input name="Items[@index].SupplierProductName" value="@item.SupplierProductName" type="hidden" data-purchase-supplier-product-name />
+                        <input name="Items[@index].SupplierProductCode" value="@item.SupplierProductCode" type="hidden" data-purchase-supplier-product-code />
+                        <input name="Items[@index].ManagesLots" value="@item.ManagesLots.ToString().ToLowerInvariant()" type="hidden" data-purchase-manages-lots />
+                        <div class="purchase-line-expiry" data-purchase-lot-field hidden="@(!item.ManagesLots ? "hidden" : null)"><label>Lote (opcional)</label><input name="Items[@index].LotNumber" value="@item.LotNumber" class="input" maxlength="100" placeholder="Se genera si se deja vacío" disabled="@(!item.ManagesLots ? "disabled" : null)" data-purchase-lot-number /></div>
+                        <input name="Items[@index].ManagesExpiry" value="@item.ManagesExpiry.ToString().ToLowerInvariant()" type="hidden" data-purchase-manages-expiry />
+                        <div class="purchase-line-expiry" data-purchase-expiry-field hidden="@(!item.ManagesExpiry)"><label>Fecha de caducidad</label><input name="Items[@index].ExpiryDate" value="@item.ExpiryDate?.ToString("yyyy-MM-dd")" class="input" type="date" required="@item.ManagesExpiry" data-purchase-expiry /></div>
+                    </td>
+                    <td data-label="Presentación"><div class="purchase-presentation-picker inline-field-action" data-presentation-field><select name="Items[@index].PresentationId" class="input" required data-purchase-presentation data-presentation-catalog-select><option value="">Seleccione</option>@foreach (var presentation in Model.Presentations){<option value="@presentation.Id" data-units="@presentation.Units" data-factor="@((presentation.BaseFactor ?? presentation.Units).ToString(System.Globalization.CultureInfo.InvariantCulture))" data-product-id="@presentation.ProductId" selected="@(presentation.Id == item.PresentationId ? "selected" : null)">@presentation.Name (@(presentation.BaseFactor ?? presentation.Units) @presentation.BaseUnit)</option>}</select><button type="button" class="inline-field-link" data-open-presentation-modal>+ Nueva presentación</button><input name="Items[@index].PackageType" value="@((int)item.PackageType)" type="hidden" /><input name="Items[@index].UnitsPerPackage" value="@item.UnitsPerPackage" type="hidden" data-purchase-units-per-package /></div></td>
+                    <td data-label="Cantidad"><input name="Items[@index].PackageQuantity" value="@(item.PackageQuantity == 0 ? null : item.PackageQuantity)" class="input compact-number-input" type="number" min="@(item.IsAdditional || Model.IsDirectPurchase ? 1 : 0)" step="1" required data-purchase-package-quantity /></td>
+                    <td class="number-column" data-label="Unidades" data-purchase-unit-quantity>0</td>
+                    <td class="purchase-cost-cell" data-label="Precio compra">
+                        <input name="Items[@index].PackageCost" value="@(item.PackageCost == 0 ? null : item.PackageCost)" class="input compact-money-input" type="number" min="0" step="0.01" required data-purchase-package-cost />
+                        <small class="purchase-last-cost" data-purchase-last-cost>@(item.LastPurchaseCost.HasValue ? $"Último costo: {Model.CurrencySymbol} {item.LastPurchaseCost.Value.ToString($"N{Model.CurrencyDecimals}")}" : "Sin historial")</small>
+                    </td>
+                    <td class="purchase-sale-price-cell" data-label="Precio venta">
+                        <div class="money-input"><span>@Model.CurrencySymbol</span><input name="Items[@index].SalePrice" value="@item.SalePrice" class="input compact-money-input" type="number" min="0" step="0.01" required data-purchase-sale-price /></div>
+                        <div class="purchase-price-actions"><button type="button" class="inline-field-link" data-open-purchase-calculator>Calculadora</button><button type="button" class="inline-field-link" data-open-purchase-multiprice>Multiprecios <span data-purchase-multiprice-count></span></button></div>
+                        <input name="Items[@index].AppliesTax" value="@item.AppliesTax.ToString().ToLowerInvariant()" type="hidden" data-purchase-applies-tax />
+                        <input name="Items[@index].PricingInitialized" value="@item.PricingInitialized.ToString().ToLowerInvariant()" type="hidden" data-purchase-pricing-initialized />
+                        <input name="Items[@index].MultiPriceEnabled" value="@item.MultiPriceEnabled.ToString().ToLowerInvariant()" type="hidden" data-purchase-multiprice-enabled />
+                        <input name="Items[@index].MultiPriceRulesJson" value="@item.MultiPriceRulesJson" type="hidden" data-purchase-multiprice-rules />
+                    </td>
+                    <td data-label="Descuento"><div class="purchase-discount-cell"><select name="Items[@index].DiscountType" class="input" data-purchase-discount-type><option value="0" selected="@(item.DiscountType == PurchaseDiscountType.None ? "selected" : null)">Sin descuento</option><option value="1" selected="@(item.DiscountType == PurchaseDiscountType.Percentage ? "selected" : null)">%</option><option value="2" selected="@(item.DiscountType == PurchaseDiscountType.Amount ? "selected" : null)">Monto</option></select><input name="Items[@index].DiscountValue" value="@(item.DiscountValue == 0 ? null : item.DiscountValue)" class="input" type="number" min="0" step="0.01" data-purchase-discount-value hidden="@(item.DiscountType == PurchaseDiscountType.None)" /></div></td>
+                    <td class="money" data-label="Total" data-purchase-line-total>@Model.CurrencySymbol 0</td>
+                    <td class="action-column" data-label="Acción"><button type="button" class="button-ghost" data-remove-purchase-item>Quitar</button></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="purchase-capture-actions">
+        <button type="button" class="button-secondary" data-add-purchase-item>+ Agregar producto</button>
+    </div>
+</section>
+
+<div class="purchase-capture-footer">
+    <div class="field purchase-order-comment"><label>Comentario</label><textarea name="Observations" class="input" rows="2" maxlength="1000">@Model.Observations</textarea></div>
+    <div class="purchase-totals">
+        <div><span>Subtotal bruto</span><strong data-purchase-gross-total></strong></div>
+        <div><span>Descuentos por línea</span><strong data-purchase-line-discounts></strong></div>
+        <div><span>Subtotal después de descuentos</span><strong data-purchase-net-subtotal></strong></div>
+        <div class="purchase-global-discount"><span>Descuento global</span><select name="GlobalDiscountType" class="input" data-purchase-global-discount-type><option value="0" selected="@(Model.GlobalDiscountType == PurchaseDiscountType.None ? "selected" : null)">Sin descuento</option><option value="1" selected="@(Model.GlobalDiscountType == PurchaseDiscountType.Percentage ? "selected" : null)">Porcentaje</option><option value="2" selected="@(Model.GlobalDiscountType == PurchaseDiscountType.Amount ? "selected" : null)">Monto</option></select><input name="GlobalDiscountValue" value="@(Model.GlobalDiscountValue == 0 ? null : Model.GlobalDiscountValue)" class="input compact-money-input" type="number" min="0" step="0.01" data-purchase-global-discount-value hidden="@(Model.GlobalDiscountType == PurchaseDiscountType.None)" /></div>
+        <div class="purchase-final-total"><span>Total final</span><strong data-purchase-final-total></strong></div>
+    </div>
+</div>
+
+<datalist id="purchase-products">@foreach (var product in Model.Products){<option value="@product.SystemName" label="@product.SuggestionLabel" data-id="@product.Id" data-expiry="@product.ManagesExpiry.ToString().ToLowerInvariant()" data-lots="@product.ManagesLots.ToString().ToLowerInvariant()" data-sale-price="@product.SalePrice.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-applies-tax="@product.AppliesTax.ToString().ToLowerInvariant()" data-multiprice-enabled="@product.MultiPriceEnabled.ToString().ToLowerInvariant()" data-price-rules="@JsonSerializer.Serialize(product.PriceRules ?? [])"></option>}</datalist>
+@if (Model.IsDirectPurchase)
+{
+    <datalist id="purchase-suppliers">@foreach (var supplier in Model.Suppliers){<option value="@supplier.DisplayName" data-id="@supplier.Id" data-nit="@supplier.Nit" data-credit-days="@supplier.DefaultCreditDays" data-default-terms="@((int)supplier.DefaultTerms)"></option>}</datalist>
+}
+
+<template data-purchase-item-template>
+    <tr data-purchase-row data-fixed-row="false"><td class="purchase-product-cell" data-label="Nombre"><input name="Items[__index__].ItemId" type="hidden"/><input name="Items[__index__].ProductId" type="hidden" data-purchase-product-id/><input name="Items[__index__].IsAdditional" value="true" type="hidden"/><input name="Items[__index__].RequestedQuantity" value="0" type="hidden"/><input class="input" list="purchase-products" autocomplete="off" placeholder="Buscar por nombre..." required data-purchase-product-search/><a href="@Url.Action("Create", "Products", new { returnProduct = true })" class="inline-field-link" data-crud-modal data-crud-created-event="purchase-capture:product-created" data-purchase-product-create>+ Crear producto</a><input name="Items[__index__].SupplierProductName" type="hidden" data-purchase-supplier-product-name/><input name="Items[__index__].SupplierProductCode" type="hidden" data-purchase-supplier-product-code/><input name="Items[__index__].ManagesLots" value="false" type="hidden" data-purchase-manages-lots/><div class="purchase-line-expiry" data-purchase-lot-field hidden><label>Lote (opcional)</label><input name="Items[__index__].LotNumber" class="input" maxlength="100" placeholder="Se genera si se deja vac?o" disabled data-purchase-lot-number/></div><input name="Items[__index__].ManagesExpiry" value="false" type="hidden" data-purchase-manages-expiry/><div class="purchase-line-expiry" data-purchase-expiry-field hidden><label>Fecha de caducidad</label><input name="Items[__index__].ExpiryDate" class="input" type="date" data-purchase-expiry/></div></td><td data-label="Presentación"><div class="purchase-presentation-picker inline-field-action" data-presentation-field><select name="Items[__index__].PresentationId" class="input" required data-purchase-presentation data-presentation-catalog-select><option value="">Seleccione</option>@foreach(var presentation in Model.Presentations){<option value="@presentation.Id" data-units="@presentation.Units" data-factor="@((presentation.BaseFactor ?? presentation.Units).ToString(System.Globalization.CultureInfo.InvariantCulture))" data-product-id="@presentation.ProductId">@presentation.Name (@(presentation.BaseFactor ?? presentation.Units) @presentation.BaseUnit)</option>}</select><button type="button" class="inline-field-link" data-open-presentation-modal>+ Nueva presentación</button><input name="Items[__index__].PackageType" value="6" type="hidden"/><input name="Items[__index__].UnitsPerPackage" value="1" type="hidden" data-purchase-units-per-package/></div></td><td data-label="Cantidad"><input name="Items[__index__].PackageQuantity" class="input compact-number-input" type="number" min="1" step="1" required data-purchase-package-quantity/></td><td class="number-column" data-label="Unidades" data-purchase-unit-quantity>0</td><td class="purchase-cost-cell" data-label="Precio compra"><input name="Items[__index__].PackageCost" class="input compact-money-input" type="number" min="0" step="0.01" required data-purchase-package-cost/><small class="purchase-last-cost" data-purchase-last-cost>Sin historial</small></td><td class="purchase-sale-price-cell" data-label="Precio venta"><div class="money-input"><span>@Model.CurrencySymbol</span><input name="Items[__index__].SalePrice" class="input compact-money-input" type="number" min="0" step="0.01" required data-purchase-sale-price/></div><div class="purchase-price-actions"><button type="button" class="inline-field-link" data-open-purchase-calculator>Calculadora</button><button type="button" class="inline-field-link" data-open-purchase-multiprice>Multiprecios <span data-purchase-multiprice-count></span></button></div><input name="Items[__index__].AppliesTax" value="true" type="hidden" data-purchase-applies-tax/><input name="Items[__index__].PricingInitialized" value="false" type="hidden" data-purchase-pricing-initialized/><input name="Items[__index__].MultiPriceEnabled" value="false" type="hidden" data-purchase-multiprice-enabled/><input name="Items[__index__].MultiPriceRulesJson" value="[]" type="hidden" data-purchase-multiprice-rules/></td><td data-label="Descuento"><div class="purchase-discount-cell"><select name="Items[__index__].DiscountType" class="input" data-purchase-discount-type><option value="0">Sin descuento</option><option value="1">%</option><option value="2">Monto</option></select><input name="Items[__index__].DiscountValue" class="input" type="number" min="0" step="0.01" data-purchase-discount-value hidden/></div></td><td class="money" data-label="Total" data-purchase-line-total>@Model.CurrencySymbol 0</td><td class="action-column" data-label="Acción"><button type="button" class="button-ghost" data-remove-purchase-item>Quitar</button></td></tr>
+</template>
+
+<dialog class="quick-create-modal" data-purchase-calculator-dialog>
+    <div class="quick-create-panel purchase-pricing-modal">
+        <div class="modal-header"><div><h2>Calculadora de precio de venta</h2><p class="helper-text" data-pricing-product-name></p></div><button type="button" class="icon-button" data-close-purchase-calculator aria-label="Cerrar">×</button></div>
+        <div class="purchase-cost-breakdown">
+            <div><span>Costo unitario antes de descuentos</span><strong data-calculator-gross-unit></strong></div>
+            <div><span>Descuento por línea unitario</span><strong data-calculator-line-discount></strong></div>
+            <div><span>Descuento global unitario</span><strong data-calculator-global-discount></strong></div>
+            <div class="purchase-cost-highlight"><span>Costo real unitario</span><strong data-calculator-real-cost></strong></div>
+        </div>
+        <div class="form-grid two-column-grid purchase-calculator-fields">
+            <div class="field"><label>Método para calcular ganancia</label><select class="input" data-calculator-method><option value="markup">Porcentaje sobre costo</option><option value="margin">Margen de ganancia</option></select></div>
+            <div class="field"><label>Porcentaje</label><div class="suffix-input"><input class="input" type="number" min="0" step="0.01" value="30" data-calculator-percent /><span>%</span></div></div>
+        </div>
+        <div class="purchase-suggestion-summary">
+            <div><span>Precio antes de impuesto</span><strong data-calculator-before-tax></strong></div>
+            <div><span data-calculator-tax-label>Impuesto/IVA considerado</span><strong data-calculator-tax></strong></div>
+            <div class="purchase-cost-highlight"><span>Precio sugerido de venta</span><strong data-calculator-suggested></strong></div>
+        </div>
+        <p class="helper-text" data-calculator-formula></p>
+        <div class="action-row"><button type="button" class="button-secondary" data-close-purchase-calculator>Cerrar</button><button type="button" class="button-primary" data-use-suggested-price>Usar precio sugerido</button></div>
+    </div>
+</dialog>
+
+<dialog class="quick-create-modal" data-purchase-multiprice-dialog>
+    <div class="quick-create-panel purchase-pricing-modal">
+        <div class="modal-header"><div><h2>Multiprecios</h2><p class="helper-text" data-multiprice-product-name></p></div><button type="button" class="icon-button" data-close-purchase-multiprice aria-label="Cerrar">×</button></div>
+        <label class="checkbox"><input type="checkbox" data-multiprice-dialog-enabled /><span>Configurar precios por cantidad</span></label>
+        <div data-multiprice-dialog-settings>
+            <p class="helper-text">El precio se aplicará desde la cantidad mínima indicada.</p>
+            <div class="table-wrapper"><table class="data-table compact-multiprice-table"><thead><tr><th>Desde</th><th>Precio unitario</th><th class="action-column">Acción</th></tr></thead><tbody data-multiprice-dialog-rows></tbody></table></div>
+            <button type="button" class="button-secondary" data-add-multiprice-rule>+ Agregar precio</button>
+        </div>
+        <div class="action-row"><button type="button" class="button-secondary" data-close-purchase-multiprice>Cancelar</button><button type="button" class="button-primary" data-save-purchase-multiprice>Guardar multiprecios</button></div>
+    </div>
+</dialog>
+<template data-multiprice-rule-template><tr data-multiprice-rule-row><td><input class="input" type="number" min="1" step="1" data-multiprice-quantity /></td><td><div class="money-input"><span>@Model.CurrencySymbol</span><input class="input" type="number" min="0" step="0.01" data-multiprice-price /></div></td><td class="action-column"><button type="button" class="icon-button" data-remove-multiprice-rule aria-label="Eliminar">×</button></td></tr></template>

@@ -1,0 +1,92 @@
+@model IReadOnlyList<SistemiPos.Application.Catalog.ProductDto>
+@using SistemiPos.Domain.Catalog
+@inject SistemiPos.Application.Abstractions.IOperationContextAccessor OperationContext
+@{
+    ViewData["Title"] = "Productos";
+    var currentArticleType = ViewData["ArticleType"] as ArticleType?;
+}
+
+<section class="page-header compact-page-header">
+    <div>
+        <h1>Catálogo de Productos</h1>
+        @if (OperationContext.CurrentBranchName is not null)
+        {
+            <small class="badge-branch-context">Sucursal activa: <strong>@OperationContext.CurrentBranchName</strong></small>
+        }
+    </div>
+    <a asp-action="Create" class="button-primary link-button" data-crud-modal>+ Nuevo producto</a>
+</section>
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <input type="search" value="@ViewData["Query"]" class="input" style="flex: 1; min-width: 250px;" data-table-search autocomplete="off" placeholder="Buscar por código, nombre, marca o categoría..." aria-label="Buscar productos" />
+        
+        <form method="get" class="filter-group" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="hidden" name="query" value="@ViewData["Query"]" />
+            <select name="articleType" class="input" onchange="this.form.submit()">
+                <option value="">Todos los tipos</option>
+                @foreach (var type in Enum.GetValues<ArticleType>())
+                {
+                    <option value="@type" selected="@(currentArticleType == type)">@type.Label()</option>
+                }
+            </select>
+        </form>
+    </div>
+
+    <table class="data-table product-catalog-table">
+        <thead>
+            <tr>
+                <th class="product-code-column">Código</th>
+                <th class="product-name-column">Nombre</th>
+                <th>Tipo</th>
+                <th>Unidad</th>
+                <th>Categoría</th>
+                <th>Stock mínimo</th>
+                <th>Días sin movimiento</th>
+                <th class="money">Último costo</th>
+                <th class="money">Precio venta</th>
+                <th class="number-column">Existencia</th>
+                <th class="product-status-column">Estado</th>
+                <th class="product-action-column">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            var typeBadgeClass = item.ArticleType switch
+            {
+                ArticleType.Insumo => "status-info",
+                ArticleType.Preparado => "status-success",
+                ArticleType.Reventa => "status-warning",
+                ArticleType.Subreceta => "status-neutral",
+                ArticleType.Empaque => "status-secondary",
+                _ => "status-neutral"
+            };
+            <tr>
+                <td class="product-code-column"><strong>@item.InternalCode</strong></td>
+                <td class="product-name-column"><strong>@(item.DisplayName ?? item.Name)</strong></td>
+                <td><span class="status-badge @typeBadgeClass">@item.ArticleType.Label()</span></td>
+                <td><strong>@(item.BaseUnitCode ?? item.UnitOfMeasure)</strong></td>
+                <td>@item.CategoryName</td>
+                <td>@DisplayFormats.Quantity(item.MinimumStock) @(item.BaseUnitCode ?? item.UnitOfMeasure)</td>
+                <td>@(item.NoMovementDaysOverride?.ToString() ?? "Sin configurar")</td>
+                <td class="money">Q @item.LastCost.ToString("N2")</td>
+                <td class="money">Q @item.SalePrice.ToString("N2")</td>
+                <td class="number-column">@DisplayFormats.Quantity(item.CurrentStock)</td>
+                <td class="product-status-column"><span class="status-badge @(item.IsActive ? "status-success" : "status-neutral")">@(item.IsActive ? "Activo" : "Inactivo")</span></td>
+                <td class="product-action-column"><a asp-action="Edit" asp-route-id="@(item.ParentProductId ?? item.Id)" data-crud-modal>Editar</a>
+                    <form asp-action="Delete" method="post" data-confirm="¿Eliminar este producto? Solo se permite si no tiene historial ni registros relacionados.">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <button type="submit" class="button-secondary">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="12">No se encontraron productos.</td></tr>
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="~/js/product-form.js" asp-append-version="true"></script>
+}

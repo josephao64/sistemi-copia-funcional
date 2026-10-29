@@ -1,0 +1,28 @@
+@model SistemiPos.Web.Models.Purchases.PurchasesIndexViewModel
+@using SistemiPos.Domain.Purchases
+@{
+    ViewData["Title"] = Model.Title;
+    var action = Model.Section switch { "drafts" => "Drafts", "requested" => "Requested", "receipts" => "Receipts", _ => "Index" };
+}
+<div class="table-card" data-filter-table>
+    @if (Model.Section == "receipts")
+    {
+        <div class="purchase-receipt-top-actions"><a asp-action="DirectPurchase" class="button-primary link-button">Registrar compra directa</a></div>
+    }
+    <form method="get" asp-action="@action" class="form-grid compact-form-grid purchase-filters" data-auto-filter-form>
+        @if (Model.Section == "orders") { <div class="field"><label>Estado</label><select name="status" class="input"><option value="">Todos</option><option value="@PurchaseOrderStatus.Draft" selected="@(Model.Status==PurchaseOrderStatus.Draft)">Borrador</option><option value="@PurchaseOrderStatus.Requested" selected="@(Model.Status==PurchaseOrderStatus.Requested)">Solicitada</option><option value="@PurchaseOrderStatus.PartiallyReceived" selected="@(Model.Status==PurchaseOrderStatus.PartiallyReceived)">Recibida parcialmente</option></select></div> }
+        <div class="field"><label>Proveedor</label><input name="supplierId" type="hidden" value="@Model.SupplierId" data-supplier-filter-id/><input class="input" value="@Model.SupplierName" list="purchase-order-suppliers" autocomplete="off" placeholder="Buscar proveedor..." data-supplier-filter-search/></div>
+        <datalist id="purchase-order-suppliers">@foreach(var supplier in Model.Suppliers){<option value="@supplier.Text" data-id="@supplier.Value"></option>}</datalist>
+        <div class="field"><label>Desde</label><input name="from" value="@Model.From?.ToString("yyyy-MM-dd")" type="date" class="input"/></div>
+        <div class="field"><label>Hasta</label><input name="to" value="@Model.To?.ToString("yyyy-MM-dd")" type="date" class="input"/></div>
+        <div class="action-row"><a asp-action="@action" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar orden por número, proveedor, fecha o estado" aria-label="Buscar órdenes de compra" /></div>
+    <div class="table-responsive"><table class="data-table purchase-orders-table"><thead><tr><th>Número</th><th>Proveedor</th><th>Fecha</th><th>Días</th><th>Estado</th><th class="action-column">Acción</th></tr></thead><tbody>
+    @foreach (var order in Model.Orders)
+    {
+        var status = order.Status switch { PurchaseOrderStatus.Draft => "Borrador", PurchaseOrderStatus.PartiallyReceived => "Recibida parcialmente", _ => "Solicitada" };
+        <tr><td>@order.Number</td><td>@order.SupplierName</td><td>@order.RequestedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy")</td><td>@order.ElapsedDays</td><td>@status</td><td class="action-column"><div class="table-actions">@if (Model.Section == "receipts") { <a asp-action="ReceiveOrder" asp-route-id="@order.Id">Registrar recepción</a> } else if (order.Status == PurchaseOrderStatus.Draft) { <a asp-action="EditOrder" asp-route-id="@order.Id">Continuar</a> } else { <a asp-action="OrderDetails" asp-route-id="@order.Id">Ver detalle</a> @if (Model.Section == "requested") { <a asp-action="OrderPdf" asp-route-id="@order.Id" target="_blank">Imprimir orden</a> } }</div></td></tr>
+    }
+    <tr data-filter-empty hidden><td colspan="6">No se encontraron órdenes.</td></tr></tbody></table></div>
+</div>

@@ -1,0 +1,31 @@
+@model SistemiPos.Web.Models.Orders.TerminalListViewModel
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Terminales";
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var warehouses = Model.Warehouses.ToDictionary(x => x.Id);
+    var canEdit = permissions.Contains(PermissionCodes.PosTerminalsManage);
+}
+<section class="page-header compact-page-header">
+    <div><h1>Terminales</h1><p class="lead">Puestos de venta activos de @Model.BranchName.</p></div>
+    <div class="action-row">
+        <a asp-action="Index" class="button-secondary link-button">Volver a pedidos</a>
+        @if (permissions.Contains(PermissionCodes.SalesManage)) { <a href="/pos" class="button-secondary link-button">Ir a ventas</a> }
+        @if (permissions.Contains(PermissionCodes.PosTerminalsManage)) { <a asp-action="Terminal" class="button-primary link-button" data-crud-modal>Nueva terminal</a> }
+    </div>
+</section>
+<p>Para usar un puesto, entra a Ventas con un cajero de esta misma sucursal y selecciónalo en <strong>Puesto de venta (terminal)</strong>. Si ya tiene una caja abierta, solo verá el puesto compatible con ese turno.</p>
+<div class="table-card" data-filter-table>
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar terminal, caja o bodega" aria-label="Buscar terminales" /></div>
+    <div class="table-responsive"><table class="data-table">
+        <thead><tr><th>Terminal</th><th>Caja física</th><th>Bodega de consumo</th><th>Configuración</th>@if (canEdit) { <th class="action-column">Acción</th> }</tr></thead>
+        <tbody>
+        @foreach (var terminal in Model.Terminals)
+        {
+            var warehouse = warehouses.GetValueOrDefault(terminal.WarehouseId);
+            <tr><td><strong>@terminal.Code</strong></td><td>@terminal.RegisterCode</td><td>@(warehouse?.Name ?? "Bodega no disponible")</td><td>@(warehouse?.IsActive == true ? "Activa" : "Revisar bodega")</td>@if (canEdit) { <td class="action-column"><a asp-action="EditTerminal" asp-route-id="@terminal.Id" class="button-secondary link-button" data-crud-modal aria-label="Editar @terminal.Code">Editar</a></td> }</tr>
+        }
+        @if (Model.Terminals.Count == 0) { <tr><td colspan="@(canEdit ? 5 : 4)">No hay terminales activas en esta sucursal. Revisa la sucursal seleccionada o registra un puesto nuevo.</td></tr> }
+        </tbody>
+    </table></div>
+</div>

@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SistemiPos.Application/SistemiPos.Application.csproj" />
+    <Project Path="src/SistemiPos.Domain/SistemiPos.Domain.csproj" />
+    <Project Path="src/SistemiPos.Infrastructure/SistemiPos.Infrastructure.csproj" />
+    <Project Path="src/SistemiPos.Web/SistemiPos.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SistemiPos.FunctionalTests/SistemiPos.FunctionalTests.csproj" />
+    <Project Path="tests/SistemiPos.IntegrationTests/SistemiPos.IntegrationTests.csproj" />
+    <Project Path="tests/SistemiPos.UnitTests/SistemiPos.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/SistemiPos.PerformanceSeeder/SistemiPos.PerformanceSeeder.csproj" />
+  </Folder>
+</Solution>

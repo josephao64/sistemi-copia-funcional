@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "POS offline";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Punto de venta</p>
+        <h1>Sincronización offline</h1>
+        <p class="lead">Las ventas se guardan automáticamente en este dispositivo cuando no hay conexión y se envían al regresar Internet.</p>
+    </div>
+    <a asp-controller="Sales" asp-action="Index" class="button-secondary link-button">Ir a Ventas</a>
+</section>
+
+<div class="grid">
+    <article class="form-card">
+        <h2>Estado</h2>
+        <p id="offline-connection-state" class="lead">Verificando conexión...</p>
+        <p id="offline-last-sync" class="helper-text">Sin sincronización previa.</p>
+        <p id="offline-pending-count" class="helper-text">0 operaciones pendientes.</p>
+        <div class="action-row">
+            <button id="offline-refresh-data" type="button" class="button-secondary">Actualizar datos</button>
+            <button id="offline-sync-now" type="button" class="button-primary">Sincronizar ahora</button>
+        </div>
+        <p id="offline-action-message" class="helper-text" role="status"></p>
+    </article>
+
+    <article class="form-card">
+        <h2>Último comprobante provisional</h2>
+        <pre id="offline-receipt-preview" class="helper-text">Aún no hay comprobante provisional.</pre>
+    </article>
+</div>
+
+<div class="table-card">
+    <h2>Ventas guardadas en este dispositivo</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Operación local</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th>Venta definitiva</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody id="offline-pending-sales-body"></tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="~/js/product-pricing.js" asp-append-version="true"></script>
+    <script src="~/js/pos-sync.js" asp-append-version="true"></script>
+    <script src="~/js/pos-offline.js" asp-append-version="true"></script>
+}

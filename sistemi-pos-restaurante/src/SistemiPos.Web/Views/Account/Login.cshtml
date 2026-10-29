@@ -1,0 +1,61 @@
+@model SistemiPos.Web.Models.Account.LoginViewModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<section class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <img src="~/images/brand/sistemi-logo.png" alt="Logo de SISTEMI" />
+            <span class="auth-brand-copy">
+                <strong>SISTEMI <span>POS</span> Restaurante</strong>
+                <small>Punto de venta, inventario y administración</small>
+            </span>
+        </div>
+
+        <p class="eyebrow">Bienvenido de nuevo</p>
+        <h1>Iniciar sesión</h1>
+        <p class="lead">Accede a tu espacio de trabajo para continuar con la operación.</p>
+
+        @if (!string.IsNullOrWhiteSpace(Model.SessionExpiredMessage))
+        {
+            <div class="system-banner banner-warning" role="alert" data-session-expired>
+                <span aria-hidden="true">!</span>
+                <div>
+                    <strong>Sesión expirada</strong>
+                    <p>@Model.SessionExpiredMessage</p>
+                </div>
+            </div>
+        }
+
+        <form method="post" class="form-grid">
+            @Html.AntiForgeryToken()
+            <input asp-for="ReturnUrl" type="hidden" />
+
+            <div class="field">
+                <label asp-for="UserName"></label>
+                <input asp-for="UserName" class="input" autocomplete="username" placeholder="Ingresa tu usuario o correo" autofocus />
+                <span asp-validation-for="UserName" class="validation"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" class="input" autocomplete="current-password" placeholder="Ingresa tu contraseña" />
+                <span asp-validation-for="Password" class="validation"></span>
+            </div>
+
+            <label class="checkbox">
+                <input asp-for="RememberMe" />
+                <span>Recordarme</span>
+            </label>
+
+            <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+            <button type="submit" class="button-primary">Ingresar a SISTEMI POS Restaurante</button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

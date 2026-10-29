@@ -1,0 +1,20 @@
+name: sistemi-receipts
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: sistemi-receipts-rabbitmq
+    env_file:
+      - .local/receipt-queue.env
+    ports:
+      - "127.0.0.1:5678:5672"
+      - "127.0.0.1:15678:15672"
+    volumes:
+      - receipt-rabbit-data:/var/lib/rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+volumes:
+  receipt-rabbit-data:

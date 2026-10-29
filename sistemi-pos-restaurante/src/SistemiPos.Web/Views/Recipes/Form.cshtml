@@ -1,0 +1,91 @@
+@model SistemiPos.Web.Models.Recipes.RecipeFormViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Editar receta" : "Nueva receta";
+}
+<section class="page-header compact-page-header"><div><h1>@ViewData["Title"]</h1></div></section>
+<div class="form-card">
+<form asp-action="@(Model.Id.HasValue ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" class="form-grid" data-recipe-form>
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" /><input asp-for="Version" type="hidden" />
+    <div asp-validation-summary="All" class="validation"></div>
+    <div class="field">
+        <label for="recipe-product">Producto elaborado</label><input asp-for="ProductId" type="hidden" data-recipe-output-id />
+        @if (Model.Id.HasValue){<input id="recipe-product" asp-for="ProductName" class="input" readonly />}
+        else{<select id="recipe-product" asp-for="ProductName" class="input" required data-recipe-output><option value="">Seleccionar producto elaborado</option>@foreach(var product in Model.Options.Outputs){<option value="@product.Code · @product.Name">@product.Code · @product.Name</option>}</select>}
+        <span class="helper-text">Selecciona un producto concreto del catálogo; cada variante puede tener su propia receta.</span>
+    </div>
+    <div class="field"><label asp-for="YieldQuantity">Rendimiento por elaboración</label><input asp-for="YieldQuantity" class="input" type="number" min="0.000001" max="999999999999.999999" step="0.000001" required /><span class="helper-text">Cantidad obtenida en <strong data-recipe-yield-unit>@(Model.YieldUnitCode ?? "la unidad base del producto")</strong>.</span><input asp-for="YieldUnitCode" type="hidden" /></div>
+    <div class="field"><label asp-for="ConsumptionMode">Cómo se descuenta el inventario</label>
+        <select asp-for="ConsumptionMode" class="input"><option value="">Según el tipo de producto</option><option value="1">Elaborar al vender: descontar componentes</option><option value="2">Producir primero: vender existencias elaboradas</option></select>
+        <span class="helper-text">Las subrecetas se producen antes de usarse. Cada componente se selecciona del catálogo de productos inventariables.</span></div>
+    <label class="checkbox"><input asp-for="IsActive" /><span>Receta activa</span></label>
+    <section class="table-card full-span">
+        <div class="table-toolbar"><h2>Ingredientes y subrecetas</h2><button type="button" class="button-secondary" data-add-recipe-ingredient>+ Agregar componente</button></div>
+        <p class="helper-text">Las cantidades corresponden a una elaboración completa. Las unidades se convierten a la unidad base al guardar.</p>
+        <div class="table-responsive"><table class="data-table"><thead><tr><th>Ingrediente o subreceta</th><th>Cantidad</th><th>Unidad</th><th class="action-column">Acción</th></tr></thead><tbody data-recipe-ingredients>
+        @for (var i = 0; i < Model.Ingredients.Count; i++)
+        {
+            <tr data-recipe-row><td><input asp-for="Ingredients[i].ProductId" type="hidden" data-recipe-ingredient-id /><select asp-for="Ingredients[i].ProductName" class="input" required data-recipe-ingredient><option value="">Seleccionar producto del inventario</option>@foreach(var product in Model.Options.Ingredients){<option value="@product.Code · @product.Name">@product.Code · @product.Name (@product.BaseUnitCode)</option>}</select></td><td><input asp-for="Ingredients[i].Quantity" class="input" type="number" min="0.000001" max="999999999999.999999" step="0.000001" required /></td><td><select asp-for="Ingredients[i].UnitId" class="input" required data-recipe-unit><option value="">Seleccione</option>@foreach(var unit in Model.Options.Units){<option value="@unit.Id">@unit.Name (@unit.Code)</option>}</select></td><td class="action-column"><button type="button" class="button-ghost" data-remove-recipe-ingredient>Quitar</button></td></tr>
+        }
+        </tbody></table></div>
+    </section>
+    <div class="field full-span"><label asp-for="Instructions">Instrucciones de preparación</label><textarea asp-for="Instructions" class="input" rows="3" maxlength="4000"></textarea></div>
+    <div class="action-row"><button type="submit" class="button-primary">Guardar receta</button></div>
+    <datalist id="recipe-outputs">@foreach(var product in Model.Options.Outputs){<option value="@product.Code · @product.Name" data-id="@product.Id" data-base-unit="@product.BaseUnitCode"></option>}</datalist>
+    <datalist id="recipe-ingredient-options">@foreach(var product in Model.Options.Ingredients){<option value="@product.Code · @product.Name" data-id="@product.Id" data-unit-id="@product.BaseUnitId"></option>}</datalist>
+    <template data-recipe-row-template><tr data-recipe-row><td><input name="Ingredients[__index__].ProductId" type="hidden" data-recipe-ingredient-id /><select name="Ingredients[__index__].ProductName" class="input" required data-recipe-ingredient><option value="">Seleccionar producto del inventario</option>@foreach(var product in Model.Options.Ingredients){<option value="@product.Code · @product.Name">@product.Code · @product.Name (@product.BaseUnitCode)</option>}</select></td><td><input name="Ingredients[__index__].Quantity" class="input" type="number" min="0.000001" max="999999999999.999999" step="0.000001" required /></td><td><select name="Ingredients[__index__].UnitId" class="input" required data-recipe-unit><option value="">Seleccione</option>@foreach(var unit in Model.Options.Units){<option value="@unit.Id">@unit.Name (@unit.Code)</option>}</select></td><td class="action-column"><button type="button" class="button-ghost" data-remove-recipe-ingredient>Quitar</button></td></tr></template>
+</form>
+</div>
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+(() => {
+    document.querySelectorAll('[data-recipe-form]').forEach(form => {
+        if (form.dataset.initialized) return;
+        form.dataset.initialized = 'true';
+        const body = form.querySelector('[data-recipe-ingredients]');
+        const normalize = value => value.trim().toLocaleLowerCase('es');
+        const find = (list, value) => [...list.options].find(x => normalize(x.value) === normalize(value));
+        const output = form.querySelector('[data-recipe-output]');
+        const syncOutput = () => {
+            if (!output) return;
+            const option = find(form.querySelector('#recipe-outputs'), output.value);
+            form.querySelector('[data-recipe-output-id]').value = option?.dataset.id || '';
+            form.querySelector('[data-recipe-yield-unit]').textContent = option?.dataset.baseUnit || 'la unidad base del producto';
+        };
+        output?.addEventListener('input', syncOutput);
+        form.addEventListener('input', event => {
+            if (!event.target.matches('[data-recipe-ingredient]')) return;
+            const row = event.target.closest('[data-recipe-row]');
+            const option = find(form.querySelector('#recipe-ingredient-options'), event.target.value);
+            row.querySelector('[data-recipe-ingredient-id]').value = option?.dataset.id || '';
+            if (option) row.querySelector('[data-recipe-unit]').value = option.dataset.unitId;
+        });
+        const renumber = () => body.querySelectorAll('[data-recipe-row]').forEach((row, index) => {
+            row.querySelectorAll('[name]').forEach(input => input.name = input.name.replace(/Ingredients\[\d+\]/, `Ingredients[${index}]`));
+        });
+        form.querySelector('[data-add-recipe-ingredient]').addEventListener('click', () => {
+            const fragment = form.querySelector('[data-recipe-row-template]').content.cloneNode(true);
+            fragment.querySelectorAll('[name]').forEach(input => input.name = input.name.replace('__index__', body.children.length));
+            body.appendChild(fragment);
+            body.lastElementChild.querySelector('[data-recipe-ingredient]').focus();
+        });
+        body.addEventListener('click', event => {
+            const remove = event.target.closest('[data-remove-recipe-ingredient]');
+            if (!remove) return;
+            remove.closest('[data-recipe-row]').remove();
+            renumber();
+        });
+        form.addEventListener('submit', event => {
+            syncOutput();
+            const ids = [...body.querySelectorAll('[data-recipe-ingredient-id]')].map(x => x.value);
+            if (!form.querySelector('[data-recipe-output-id]').value || !ids.length || ids.some(x => !x) || new Set(ids).size !== ids.length) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                window.showSystemToast?.('warning', 'Selecciona el producto y agrega componentes válidos sin repetirlos.');
+            }
+        });
+    });
+})();
+</script>
+}

@@ -1,0 +1,15 @@
+@model SistemiPos.Web.Models.Sales.SalePdfRequestViewModel
+@{ ViewData["Title"] = "Preparar PDF de venta"; }
+<section class="page-header"><div><p class="eyebrow">Comprobante de venta</p><h1>PDF de @Model.SaleNumber</h1><p class="lead">El documento se prepara en segundo plano. Puedes seguir utilizando el punto de venta.</p></div><a asp-action="Details" asp-route-id="@Model.SaleId" class="button-secondary link-button">← Volver a la venta</a></section>
+<section class="form-card" data-sale-pdf-job aria-labelledby="pdf-job-title">
+    <h2 id="pdf-job-title">Preparar documento</h2>
+    <p data-pdf-status role="status" aria-live="polite">Solicitando el PDF…</p>
+    <form asp-action="RequestPdf" method="post" data-pdf-request>
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.SaleId" />
+        <input type="hidden" name="requestKey" value="@Model.RequestKey" />
+        <div class="action-row"><button type="submit" class="button-primary" data-pdf-retry>Preparar PDF</button><a class="button-primary link-button" data-pdf-download hidden>Descargar PDF</a><a asp-action="Ticket" asp-route-id="@Model.SaleId" class="button-secondary link-button">Abrir ticket inmediato</a></div>
+    </form>
+    <noscript>Activa JavaScript para solicitar y consultar la preparación del PDF. Puedes imprimir el ticket de esta venta.</noscript>
+</section>
+@section Scripts { <script src="~/js/sale-pdf-job.js" asp-append-version="true"></script> }

@@ -1,0 +1,11 @@
+{
+  "Backups": {
+    "Enabled": false,
+    "Directory": "D:\\SistemiPrivate\\Backups",
+    "PgDumpPath": "C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe",
+    "IntervalHours": 24,
+    "RetentionDays": 7,
+    "RpoMinutes": null,
+    "RtoMinutes": null
+  }
+}

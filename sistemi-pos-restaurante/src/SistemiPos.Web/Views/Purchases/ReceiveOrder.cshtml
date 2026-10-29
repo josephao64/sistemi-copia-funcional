@@ -1,0 +1,40 @@
+@model SistemiPos.Web.Models.Purchases.ReceivePurchaseOrderViewModel
+@{
+    ViewData["Title"] = "Recepción de compra";
+    var currencySymbol = ViewBag.CurrencySymbol as string ?? "Q";
+    var currencyDecimals = ViewBag.CurrencyDecimals is int value ? value : 2;
+    var taxPercent = ViewBag.TaxPercent is decimal tax ? tax : 0;
+    var capture = new SistemiPos.Web.Models.Purchases.PurchaseCapturePartialViewModel
+    {
+        OrderId = Model.OrderId, OrderNumber = Model.Number,
+        SupplierId = ViewBag.SupplierId is Guid supplierId ? supplierId : Guid.Empty,
+        SupplierName = Model.SupplierName, SupplierNit = Model.SupplierNit,
+        BranchId = Model.BranchId, BranchName = Model.BranchName,
+        WarehouseId = Model.WarehouseId, WarehouseName = Model.WarehouseName,
+        SupplierDocumentDateLocal = Model.SupplierDocumentDateLocal, SupplierDocumentNumber = Model.SupplierDocumentNumber,
+        Terms = Model.Terms, CreditDays = Model.CreditDays, GlobalDiscountType = Model.GlobalDiscountType,
+        GlobalDiscountValue = Model.GlobalDiscountValue, Observations = Model.Observations,
+        Products = Model.Products, Presentations = Model.Presentations,
+        CurrencySymbol = currencySymbol, CurrencyDecimals = currencyDecimals, TaxPercent = taxPercent,
+        Items = Model.Items.Select(x => new SistemiPos.Web.Models.Purchases.PurchaseCaptureLineViewModel
+        {
+            ItemId = x.ItemId, ProductId = x.ProductId, ProductName = x.ProductName,
+            RequestedQuantity = x.RequestedQuantity, IsAdditional = x.IsAdditional,
+            ManagesExpiry = x.ManagesExpiry, ExpiryDate = x.ExpiryDate, PresentationId = x.PresentationId,
+            ManagesLots = x.ManagesLots, LotNumber = x.LotNumber,
+            PackageType = x.PackageType, PackageQuantity = x.PackageQuantity, UnitsPerPackage = x.UnitsPerPackage,
+            PresentationName = x.PresentationName,
+            PackageCost = x.PackageCost, LastPurchaseCost = x.LastPurchaseCost,
+            DiscountType = x.DiscountType, DiscountValue = x.DiscountValue,
+            SupplierProductName = x.SupplierProductName, SupplierProductCode = x.SupplierProductCode,
+            SalePrice = x.SalePrice, AppliesTax = x.AppliesTax, MultiPriceEnabled = x.MultiPriceEnabled,
+            MultiPriceRulesJson = x.MultiPriceRulesJson, PricingInitialized = x.PricingInitialized
+        }).ToList()
+    };
+}
+
+<partial name="_PurchaseCaptureForm" model="capture" />
+
+@section Scripts {
+    <partial name="_PurchaseCaptureScripts" />
+}

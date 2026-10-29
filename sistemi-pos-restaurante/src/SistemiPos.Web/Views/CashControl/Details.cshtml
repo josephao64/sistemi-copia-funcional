@@ -1,0 +1,68 @@
+@model SistemiPos.Application.Cash.CashSessionDto
+@using SistemiPos.Domain.Cash
+@using SistemiPos.Application.Security
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Detalle de caja";
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var canReconcile = permissions.Contains(PermissionCodes.CashManage);
+    var symbol = ViewBag.CurrencySymbol as string ?? "Q";
+    var finalCount = Model.Counts?.LastOrDefault();
+    var difference = Model.Difference ?? 0m;
+    var differenceLabel = difference > 0m ? "Sobrante" : difference < 0m ? "Faltante" : "Caja cuadrada";
+    var differenceClass = difference > 0m ? "is-surplus" : difference < 0m ? "is-shortage" : "is-balanced";
+}
+
+<div class="cash-session-detail-meta">
+    <span><strong>@Model.CashierUserName</strong></span><span>@Model.Id · @(Model.Status == CashSessionStatus.Active ? "Abierta" : "Cerrada")</span>
+    @if (Model.Status == CashSessionStatus.Closed) { <button class="button-secondary cash-report-print-button" onclick="window.print()">Imprimir reporte</button> }
+</div>
+
+<section class="cash-close-report cash-control-report">
+    <header class="cash-report-header"><div><p class="eyebrow">Detalle de la sesión</p><h2>Resumen para cuadre</h2><p>Apertura @Model.OpenedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · Cierre @(Model.ClosedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "En curso")</p></div></header>
+    <div class="cash-report-columns">
+        <section class="cash-report-ledger">
+            <h3>Cuadre de efectivo</h3>
+            <div class="cash-report-line"><span>Fondo inicial</span><strong>@symbol @Model.OpeningAmount.ToString("N2")</strong></div>
+            <div class="cash-report-line"><span>+ Ventas en efectivo</span><strong>@symbol @((Model.TotalCashSales ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line"><span>+ Otras entradas</span><strong>@symbol @((Model.OtherIncomeTotal ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line"><span>− Salidas de efectivo</span><strong>@symbol @((Model.ExpenseTotal ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line is-total"><span>Efectivo esperado</span><strong>@symbol @((Model.ExpectedCash ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line"><span>Efectivo contado (arqueo final)</span><strong>@(Model.CountedCash is null ? "—" : $"{symbol} {Model.CountedCash:N2}")</strong></div>
+            @if (Model.Status == CashSessionStatus.Closed) { <div class="cash-report-line cash-report-difference @differenceClass"><span>@differenceLabel</span><strong>@symbol @Math.Abs(difference).ToString("N2")</strong></div> }
+        </section>
+        <section class="cash-report-ledger">
+            <h3>Ventas por forma de pago</h3>
+            <div class="cash-report-line"><span>Ventas en efectivo</span><strong>@symbol @((Model.TotalCashSales ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line"><span>Ventas por transferencia</span><strong>@symbol @((Model.TotalTransferSales ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line"><span>Ventas en POS</span><strong>@symbol @((Model.TotalPosSales ?? 0).ToString("N2"))</strong></div>
+            <div class="cash-report-line is-total"><span>Total de ventas</span><strong>@symbol @((Model.TotalSold ?? 0).ToString("N2"))</strong></div>
+        </section>
+    </div>
+    @if (finalCount?.Lines.Count > 0) {
+        <section class="cash-report-section cash-final-count">
+            <div class="cash-report-section-heading"><div><h3>Arqueo final entregado</h3><p>Detalle del efectivo contado para recepción de caja.</p></div><strong>@symbol @finalCount.CountedCash.ToString("N2")</strong></div>
+            <div class="table-scroll"><table class="data-table cash-report-table"><thead><tr><th>Denominación</th><th>Cantidad</th><th>Subtotal</th></tr></thead><tbody>
+            @foreach (var line in finalCount.Lines.Where(x => x.Quantity > 0).OrderByDescending(x => x.Value)) { <tr><td>@symbol @line.Value.ToString("N2")</td><td>@line.Quantity</td><td>@symbol @line.Subtotal.ToString("N2")</td></tr> }
+            </tbody><tfoot><tr><th colspan="2">Total entregado</th><th>@symbol @finalCount.CountedCash.ToString("N2")</th></tr></tfoot></table></div>
+        </section>
+    }
+    @if (Model.PosClosings?.Count > 0) {
+        <section class="cash-report-section"><h3>Cierres POS</h3><div class="table-scroll"><table class="data-table cash-report-table"><thead><tr><th>POS</th><th>SISTEMI</th><th>Físico</th><th>Diferencia</th><th>Código de cierre</th></tr></thead><tbody>
+        @foreach (var item in Model.PosClosings) { <tr><td>@item.PosDeviceName</td><td>@symbol @item.SystemTotal.ToString("N2")</td><td>@symbol @item.PhysicalTotal.ToString("N2")</td><td>@symbol @item.Difference.ToString("N2")</td><td>@(item.BatchReference ?? "—")</td></tr> }
+        </tbody></table></div></section>
+    }
+    @if (Model.Status == CashSessionStatus.Closed) { <section class="cash-report-comment"><h3>Comentario de cierre</h3><p>@(string.IsNullOrWhiteSpace(Model.ClosingObservation) ? "Sin comentario." : Model.ClosingObservation)</p></section> }
+</section>
+
+@if (Model.Status == CashSessionStatus.Closed && Model.Difference != 0) {
+    <div class="table-card cash-reconciliation-panel"><h2>Revisión de diferencia</h2>
+    @if (Model.ReconciledAtUtc is not null) { <p><strong>Cuadrada</strong> por @Model.ReconciledByUserName el @Model.ReconciledAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm").</p>@if (!string.IsNullOrWhiteSpace(Model.ReconciliationObservation)) { <p class="helper-text">@Model.ReconciliationObservation</p> } }
+    else if (canReconcile) { <form asp-action="Reconcile" method="post" class="form-grid">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id"/><div class="field"><label>Observación de entrega o ajuste</label><textarea name="observation" class="input textarea" maxlength="500"></textarea></div><div class="action-row"><button class="button-primary">Marcar como cuadrada</button></div></form> }
+    else { <p class="helper-text">La diferencia está pendiente de revisión.</p> }
+    </div>
+}
+
+<div class="table-card cash-session-movements"><h2>Movimientos de la sesión</h2><div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Concepto</th><th>Origen</th></tr></thead><tbody>
+@foreach (var item in Model.Movements.OrderByDescending(x => x.OccurredAtUtc)) { <tr><td>@item.OccurredAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@item.Type</td><td>@symbol @item.Amount.ToString("N2")</td><td>@item.Reason</td><td>@(item.SourceDocument ?? "Manual")</td></tr> }
+</tbody></table></div></div>

@@ -1,0 +1,46 @@
+@model IReadOnlyList<SistemiPos.Application.Cash.CashSessionDto>
+@using SistemiPos.Domain.Cash
+@{
+    ViewData["Title"] = "Cerrar caja";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Caja</p>
+        <h1>Cerrar caja</h1>
+        <p class="lead">Abre, consulta y administra la sesión de caja asociada al usuario actual.</p>
+    </div>
+    <a asp-action="Open" class="button-primary link-button">Abrir caja</a>
+</section>
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por caja, cajero, fecha o estado" aria-label="Buscar sesiones de caja" /></div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Punto de caja</th>
+                <th>Cajero</th>
+                <th>Apertura</th>
+                <th>Estado</th>
+                <th>Monto inicial</th>
+                <th>Diferencia</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.RegisterCode</td>
+                <td>@item.CashierUserName</td>
+                <td>@item.OpenedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                <td><span class="status-badge @(item.Status == CashSessionStatus.Active ? "status-success" : "status-neutral")">@(item.Status == CashSessionStatus.Active ? "Abierta" : "Cerrada")</span></td>
+                <td>Q @item.OpeningAmount.ToString("N2")</td>
+                <td class="@(item.Difference < 0 ? "amount-negative" : null)">@(item.Difference is null ? "-" : item.Difference < 0 ? $"- Q {Math.Abs(item.Difference.Value):N2}" : $"Q {item.Difference.Value:N2}")</td>
+                <td><a asp-action="Details" asp-route-id="@item.Id">Ver detalle</a></td>
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="7">No se encontraron sesiones de caja.</td></tr>
+        </tbody>
+    </table>
+</div>

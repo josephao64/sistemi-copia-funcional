@@ -1,0 +1,351 @@
+@model SistemiPos.Web.Models.Inventory.CreateInventoryTransferViewModel
+@{
+    ViewData["Title"] = "Nuevo traslado de inventario";
+}
+
+<div class="card" style="max-width: 1000px; margin: 0 auto; padding: 1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin:0; font-size:1.5rem;">Nuevo traslado entre bodegas</h2>
+            <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.875rem;">
+                Crea un borrador de traslado. El inventario se descontará al despachar y se sumará al recibir en la sucursal de destino.
+            </p>
+        </div>
+        <a asp-action="Index" class="button-ghost link-button">← Volver al listado</a>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger" style="margin-bottom:1.5rem; padding:0.75rem 1rem; border-radius:6px; background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#991b1b;">
+            <div asp-validation-summary="All"></div>
+        </div>
+    }
+
+    <form method="post" asp-action="Create" id="transfer-form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="field">
+                <label for="OriginWarehouseId"><strong>Bodega de origen (Despacho) *</strong></label>
+                <select asp-for="OriginWarehouseId" id="OriginWarehouseId" class="input" required>
+                    <option value="">-- Seleccionar bodega origen --</option>
+                    @foreach (var wh in Model.Warehouses)
+                    {
+                        <option value="@wh.Value" selected="@(Model.OriginWarehouseId?.ToString() == wh.Value)">@wh.Text</option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="DestinationWarehouseId"><strong>Bodega de destino (Recepción) *</strong></label>
+                <select asp-for="DestinationWarehouseId" id="DestinationWarehouseId" class="input" required>
+                    <option value="">-- Seleccionar bodega destino --</option>
+                    @foreach (var wh in Model.Warehouses)
+                    {
+                        <option value="@wh.Value" selected="@(Model.DestinationWarehouseId?.ToString() == wh.Value)">@wh.Text</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="field" style="margin-bottom: 1.5rem;">
+            <label for="Observations">Observaciones / Motivo de traslado</label>
+            <textarea asp-for="Observations" id="Observations" class="input" rows="2" placeholder="Ej. Abastecimiento semanal de insumos a sucursal..."></textarea>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color, #e5e7eb); padding-top: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h3 style="margin:0; font-size:1.125rem;">Productos a trasladar</h3>
+            </div>
+
+            <div style="background:var(--bg-muted, #f9fafb); padding:1rem; border-radius:8px; border:1px solid var(--border-color, #e5e7eb); margin-bottom:1rem;">
+                <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label style="display:block; margin-bottom:0.25rem; font-size:0.875rem;"><strong>Buscar producto para agregar:</strong></label>
+                        <div style="display:flex; gap:0.5rem;">
+                            <input type="text" id="product-search-input" class="input" placeholder="Buscar por código, nombre o haga clic aquí..." autocomplete="off" style="flex:1;" />
+                            <button type="button" id="btn-browse-inventory" class="button-secondary" style="white-space:nowrap; padding:0.5rem 1rem;">Ver inventario disponible</button>
+                        </div>
+                        <div id="origin-warehouse-notice" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem;">
+                            Seleccione la bodega de origen para cargar el inventario disponible.
+                        </div>
+                        <div id="product-search-results" style="position:relative;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="items-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th style="width:120px;">Stock origen</th>
+                            <th style="width:140px;">Cantidad a enviar *</th>
+                            <th style="width:140px;">Costo origen</th>
+                            <th style="width:160px;">Costo asignado destino (Q) *</th>
+                            <th style="width:80px; text-align:center;">Quitar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-body">
+                        <tr id="empty-items-row">
+                            <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">
+                                No se han agregado productos. Busque arriba un producto para agregarlo al traslado.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="action-row" style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem;">
+            <a asp-action="Index" class="button-ghost link-button">Cancelar</a>
+            <button type="submit" class="button-primary" id="btn-submit">Guardar borrador de traslado</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const originSelect = document.getElementById('OriginWarehouseId');
+    const destSelect = document.getElementById('DestinationWarehouseId');
+    const searchInput = document.getElementById('product-search-input');
+    const searchResults = document.getElementById('product-search-results');
+    const itemsBody = document.getElementById('items-body');
+    const emptyRow = document.getElementById('empty-items-row');
+    const form = document.getElementById('transfer-form');
+    const noticeEl = document.getElementById('origin-warehouse-notice');
+    const browseBtn = document.getElementById('btn-browse-inventory');
+
+    let addedProductIds = new Set();
+    let currentResultsMap = new Map();
+    let itemIndex = 0;
+    let debounceTimer;
+
+    // Regla: Origen y Destino NO pueden ser iguales
+    function syncWarehouseDropdowns() {
+        const originVal = originSelect.value;
+        const destVal = destSelect.value;
+
+        // Deshabilitar la bodega de origen en el selector de destino
+        Array.from(destSelect.options).forEach(opt => {
+            if (opt.value && opt.value === originVal) {
+                opt.disabled = true;
+                opt.hidden = true;
+            } else {
+                opt.disabled = false;
+                opt.hidden = false;
+            }
+        });
+
+        // Deshabilitar la bodega de destino en el selector de origen
+        Array.from(originSelect.options).forEach(opt => {
+            if (opt.value && opt.value === destVal) {
+                opt.disabled = true;
+                opt.hidden = true;
+            } else {
+                opt.disabled = false;
+                opt.hidden = false;
+            }
+        });
+
+        // Si destino es igual a origen, reiniciar destino
+        if (destSelect.value && destSelect.value === originVal) {
+            destSelect.value = '';
+        }
+
+        updateNotice();
+    }
+
+    function updateNotice() {
+        if (!originSelect.value) {
+            noticeEl.innerHTML = '<span style="color:#b91c1c;">Seleccione primero la bodega de origen para cargar las existencias disponibles.</span>';
+        } else {
+            const originText = originSelect.options[originSelect.selectedIndex]?.text || '';
+            noticeEl.innerHTML = `<span style="color:#047857;">Mostrando productos e inventario de <strong>${originText}</strong></span>`;
+        }
+    }
+
+    originSelect.addEventListener('change', function () {
+        syncWarehouseDropdowns();
+        if (originSelect.value) {
+            fetchProducts(searchInput.value.trim());
+        } else {
+            searchResults.innerHTML = '';
+        }
+    });
+
+    destSelect.addEventListener('change', function () {
+        syncWarehouseDropdowns();
+    });
+
+    syncWarehouseDropdowns();
+
+    function fetchProducts(q) {
+        const warehouseId = originSelect.value;
+        if (!warehouseId) {
+            searchResults.innerHTML = '<div style="position:absolute; z-index:100; background:#fff; border:1px solid #f87171; width:100%; padding:10px; border-radius:6px; box-shadow:0 4px 6px rgba(0,0,0,0.1); color:#b91c1c;">Debe seleccionar primero la bodega de origen.</div>';
+            return;
+        }
+
+        searchResults.innerHTML = '<div style="position:absolute; z-index:100; background:#fff; border:1px solid #ddd; width:100%; padding:10px; border-radius:6px; box-shadow:0 4px 6px rgba(0,0,0,0.1); color:#6b7280;">Consultando existencias de la bodega...</div>';
+
+        fetch(`/InventoryTransfers/SearchProducts?query=${encodeURIComponent(q || '')}&warehouseId=${encodeURIComponent(warehouseId)}`)
+            .then(res => res.json())
+            .then(products => {
+                renderSearchResults(products, q);
+            })
+            .catch(err => {
+                console.error(err);
+                searchResults.innerHTML = '<div style="position:absolute; z-index:100; background:#fff; border:1px solid #f87171; width:100%; padding:10px; border-radius:6px; color:#ef4444;">Error al consultar productos.</div>';
+            });
+    }
+
+    searchInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        const q = this.value.trim();
+        debounceTimer = setTimeout(() => {
+            fetchProducts(q);
+        }, 200);
+    });
+
+    searchInput.addEventListener('focus', function () {
+        if (!searchResults.innerHTML || searchResults.children.length === 0) {
+            fetchProducts(this.value.trim());
+        }
+    });
+
+    browseBtn.addEventListener('click', function () {
+        searchInput.focus();
+        fetchProducts('');
+    });
+
+    function renderSearchResults(products, term) {
+        currentResultsMap.clear();
+        if (!products || products.length === 0) {
+            searchResults.innerHTML = '<div style="position:absolute; z-index:100; background:#fff; border:1px solid #ddd; width:100%; padding:12px; border-radius:6px; box-shadow:0 4px 6px rgba(0,0,0,0.1); color:#6b7280;">No se encontraron productos para esta búsqueda.</div>';
+            return;
+        }
+
+        let html = '<div style="position:absolute; z-index:100; background:#fff; border:1px solid #cbd5e1; width:100%; max-height:280px; overflow-y:auto; border-radius:6px; box-shadow:0 8px 16px rgba(0,0,0,0.12);">';
+        
+        products.forEach(p => {
+            currentResultsMap.set(p.id, p);
+            const isAdded = addedProductIds.has(p.id);
+            const hasStock = p.currentStock > 0;
+            const stockBadge = hasStock
+                ? `<span style="background:#ecfdf5; color:#065f46; font-weight:600; font-size:0.8rem; padding:2px 8px; border-radius:4px; border:1px solid #a7f3d0;">Stock en origen: ${p.currentStock.toFixed(2)}</span>`
+                : `<span style="background:#fef2f2; color:#991b1b; font-size:0.8rem; padding:2px 8px; border-radius:4px; border:1px solid #fecaca;">Sin existencias (0.00)</span>`;
+
+            html += `<div class="search-item" data-id="${p.id}" style="padding:10px 14px; cursor:${isAdded ? 'default' : 'pointer'}; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; background:${isAdded ? '#f8fafc' : (hasStock ? '#ffffff' : '#fafafa')};">
+                <div>
+                    <div style="font-size:0.925rem;"><strong>${p.name}</strong> <span style="color:#64748b; font-size:0.8rem;">(${p.code})</span></div>
+                    <div style="margin-top:4px; display:flex; gap:8px; align-items:center;">
+                        ${stockBadge}
+                        <span style="font-size:0.8rem; color:#64748b;">Costo base: Q${p.cost.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div>
+                    ${isAdded ? '<span style="color:#94a3b8; font-size:0.825rem;">Ya agregado</span>' : '<button type="button" class="button-secondary btn-add-prod" data-id="' + p.id + '" style="padding:4px 10px; font-size:0.825rem;">+ Agregar</button>'}
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        searchResults.innerHTML = html;
+
+        searchResults.querySelectorAll('.btn-add-prod').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const prodId = this.getAttribute('data-id');
+                const prod = currentResultsMap.get(prodId);
+                if (prod && !addedProductIds.has(prod.id)) {
+                    addProductToTable(prod);
+                    searchResults.innerHTML = '';
+                    searchInput.value = '';
+                }
+            });
+        });
+
+        searchResults.querySelectorAll('.search-item').forEach(el => {
+            el.addEventListener('click', function () {
+                const prodId = this.getAttribute('data-id');
+                const prod = currentResultsMap.get(prodId);
+                if (prod && !addedProductIds.has(prod.id)) {
+                    addProductToTable(prod);
+                    searchResults.innerHTML = '';
+                    searchInput.value = '';
+                }
+            });
+        });
+    }
+
+    function addProductToTable(product) {
+        addedProductIds.add(product.id);
+        if (emptyRow) emptyRow.style.display = 'none';
+
+        const defaultQty = product.currentStock > 0 ? (product.currentStock >= 1 ? 1 : product.currentStock) : 1;
+        const row = document.createElement('tr');
+        row.setAttribute('data-product-id', product.id);
+        row.innerHTML = `
+            <td>
+                <strong>${product.name}</strong>
+                <div style="color:var(--text-muted); font-size:0.8rem;">${product.code}</div>
+                <input type="hidden" name="Items[${itemIndex}].ProductId" value="${product.id}" />
+                <input type="hidden" name="Items[${itemIndex}].ProductName" value="${product.name}" />
+            </td>
+            <td>
+                <span class="stock-badge" style="font-weight:600; ${product.currentStock > 0 ? 'color:#047857;' : 'color:#b91c1c;'}">${product.currentStock.toFixed(2)}</span>
+            </td>
+            <td>
+                <input type="number" step="0.000001" min="0.000001" max="${product.currentStock > 0 ? product.currentStock : ''}" name="Items[${itemIndex}].Quantity" class="input qty-input" value="${defaultQty}" required style="width:110px;" />
+            </td>
+            <td>
+                Q${product.cost.toFixed(4)}
+                <input type="hidden" name="Items[${itemIndex}].UnitCostOrigin" value="${product.cost}" />
+            </td>
+            <td>
+                <input type="number" step="0.0001" min="0" name="Items[${itemIndex}].AssignedUnitCost" class="input" value="${product.cost.toFixed(4)}" required style="width:130px;" title="Costo con el que ingresará en la sucursal de destino" />
+            </td>
+            <td style="text-align:center;">
+                <button type="button" class="button-ghost remove-btn" style="color:#ef4444; padding:4px 8px;" title="Quitar fila">✕</button>
+            </td>
+        `;
+
+        row.querySelector('.remove-btn').addEventListener('click', function () {
+            addedProductIds.delete(product.id);
+            row.remove();
+            if (itemsBody.querySelectorAll('tr[data-product-id]').length === 0 && emptyRow) {
+                emptyRow.style.display = '';
+            }
+        });
+
+        itemsBody.appendChild(row);
+        itemIndex++;
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== browseBtn) {
+            searchResults.innerHTML = '';
+        }
+    });
+
+    form.addEventListener('submit', function (e) {
+        if (!originSelect.value || !destSelect.value) {
+            alert('Debe seleccionar la bodega de origen y la bodega de destino.');
+            e.preventDefault();
+            return;
+        }
+
+        if (originSelect.value === destSelect.value) {
+            alert('La bodega de origen no puede ser igual a la bodega de destino.');
+            e.preventDefault();
+            return;
+        }
+
+        if (addedProductIds.size === 0) {
+            alert('Debe agregar al menos un producto al traslado.');
+            e.preventDefault();
+            return;
+        }
+    });
+});
+</script>

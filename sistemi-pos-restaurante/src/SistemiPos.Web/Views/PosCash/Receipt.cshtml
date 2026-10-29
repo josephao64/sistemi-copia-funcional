@@ -1,0 +1,33 @@
+@model SistemiPos.Application.Cash.PosCashState
+@{
+    ViewData["Title"] = "Comprobante de cierre";
+    var s = Model.Session!;
+    var totals = s.Summary!;
+    var zone = TimeZoneInfo.FindSystemTimeZoneById(Model.Timezone);
+    string Date(DateTimeOffset? at) => at.HasValue ? TimeZoneInfo.ConvertTime(at.Value, zone).ToString("dd/MM/yyyy HH:mm:ss") : "—";
+    string Money(decimal? value)
+    {
+        if (!value.HasValue) return "—";
+        var format = new System.Globalization.NumberFormatInfo { NumberDecimalDigits = Model.Currency.Decimals, NumberDecimalSeparator = Model.Currency.DecimalSeparator, NumberGroupSeparator = Model.Currency.ThousandsSeparator };
+        var number = value.Value.ToString("N", format);
+        return Model.Currency.SymbolPosition == "After" ? $"{number} {Model.Currency.Symbol}" : $"{Model.Currency.Symbol} {number}";
+    }
+}
+<section class="page-header"><div><p class="eyebrow">Caja cerrada · @Model.Timezone</p><h1>Comprobante de cierre</h1></div><button class="button-primary" type="button" onclick="window.print()">Imprimir</button></section>
+<section class="form-card">
+    <dl class="two-column-detail-list">
+        <div><dt>Identificador</dt><dd>@s.Id</dd></div><div><dt>Sucursal / terminal</dt><dd>@Model.Branch · @Model.Terminal</dd></div>
+        <div><dt>Responsable de apertura</dt><dd>@s.Cashier</dd></div><div><dt>Responsable de cierre</dt><dd>@(s.ClosedBy ?? "Consultar auditoría histórica")</dd></div>
+        <div><dt>Apertura</dt><dd>@Date(s.OpenedAtUtc)</dd></div><div><dt>Cierre</dt><dd>@Date(s.ClosedAtUtc)</dd></div>
+        <div><dt>Fondo inicial</dt><dd>@Money(s.OpeningAmount)</dd></div><div><dt>Moneda</dt><dd>@Model.Currency.Code</dd></div>
+        <div><dt>Cobros en efectivo, antes de devoluciones</dt><dd>@Money(totals.CashSales)</dd></div><div><dt>Tarjeta / POS neto</dt><dd>@Money(totals.CardSales)</dd></div>
+        <div><dt>Transferencia neto</dt><dd>@Money(totals.TransferSales)</dd></div><div><dt>Otros medios netos</dt><dd>@Money(totals.OtherSales)</dd></div>
+        <div><dt>Entradas manuales</dt><dd>@Money(totals.Income)</dd></div><div><dt>Salidas manuales</dt><dd>@Money(totals.Expenses)</dd></div>
+        <div><dt>Devoluciones en efectivo</dt><dd>@Money(totals.CashRefunds)</dd></div><div><dt>Otros egresos / cobros CxC</dt><dd>@Money(totals.OtherCashOut) / @Money(totals.Collections)</dd></div>
+        <div><dt>Efectivo esperado</dt><dd>@Money(totals.ExpectedCash)</dd></div><div><dt>Efectivo contado</dt><dd>@Money(totals.CountedCash)</dd></div>
+        <div><dt>Diferencia (contado − esperado)</dt><dd>@Money(totals.Difference)</dd></div>
+    </dl>
+    <h2>Movimientos confirmados</h2><div class="table-responsive"><table class="data-table"><thead><tr><th>Fecha</th><th>Tipo / motivo</th><th>Responsable</th><th>Referencia</th><th>Importe</th></tr></thead><tbody>
+    @foreach (var movement in totals.Movements) { <tr><td>@Date(movement.AtUtc)</td><td>@movement.Type · @movement.Reason</td><td>@movement.User</td><td>@movement.Reference</td><td>@Money(movement.Amount)</td></tr> }
+    </tbody></table></div>
+</section>

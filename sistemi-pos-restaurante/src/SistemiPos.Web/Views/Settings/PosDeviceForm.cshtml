@@ -1,0 +1,17 @@
+@model SistemiPos.Web.Models.Settings.PosDeviceFormViewModel
+@{ ViewData["Title"] = "Editar dispositivo POS"; }
+<section class="page-header"><div><p class="eyebrow">Caja y pagos</p><h1>Editar dispositivo POS</h1></div></section>
+<div class="form-card">
+    <form asp-action="EditPosDevice" method="post" class="form-grid two-column-grid">
+        @Html.AntiForgeryToken()<input asp-for="Id" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="validation full-span"></div>
+        <div class="field"><label asp-for="Name">Nombre</label><input asp-for="Name" class="input" maxlength="100" /><span asp-validation-for="Name" class="validation"></span></div>
+        <div class="field"><label asp-for="Provider">Banco / proveedor</label><input asp-for="Provider" class="input" maxlength="100" /><span asp-validation-for="Provider" class="validation"></span></div>
+        <div class="field"><label asp-for="TerminalId">Terminal ID</label><input asp-for="TerminalId" class="input" maxlength="100" autocomplete="off" /><span asp-validation-for="TerminalId" class="validation"></span></div>
+        <div class="field"><label asp-for="BankAccountId">Cuenta bancaria asociada</label><select asp-for="BankAccountId" asp-items="Model.BankAccounts" class="input"><option value="">Seleccionar cuenta</option></select><span asp-validation-for="BankAccountId" class="validation"></span></div>
+        <div class="field full-span"><label asp-for="Location">Ubicación / caja</label><input asp-for="Location" class="input" maxlength="150" /><span asp-validation-for="Location" class="validation"></span></div>
+        <div class="field full-span"><label asp-for="Observation">Observación <small>(opcional)</small></label><textarea asp-for="Observation" class="input textarea" maxlength="500" rows="2"></textarea></div>
+        <label class="checkbox full-span"><input asp-for="IsActive" /><span>Activo</span></label>
+        <div class="action-row full-span"><button type="button" class="button-secondary" onclick="this.closest('dialog')?.close()">Cancelar</button><button class="button-primary">Guardar cambios</button></div>
+    </form>
+</div>

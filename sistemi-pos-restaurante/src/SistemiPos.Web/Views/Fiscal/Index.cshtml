@@ -1,0 +1,13 @@
+@model IReadOnlyList<SistemiPos.Application.Sales.FiscalCandidate>
+@using SistemiPos.Domain.Sales
+@{ ViewData["Title"]="Facturación por empresa"; string State(FiscalSubmissionStatus? value)=>value switch {
+    FiscalSubmissionStatus.Certified=>"Certificada",FiscalSubmissionStatus.PendingConfiguration=>"Pendiente de configuración",
+    FiscalSubmissionStatus.Submitting=>"Enviando",FiscalSubmissionStatus.ReconciliationRequired=>"Requiere conciliación",
+    FiscalSubmissionStatus.Rejected=>"Rechazada",FiscalSubmissionStatus.Ready=>"Preparada",_=>"Sin preparar"}; }
+<link rel="stylesheet" href="~/css/control.css" asp-append-version="true" />
+<header class="control-heading"><div><h1>Facturación por empresa</h1><p>Últimas 200 ventas de sucursales autorizadas.</p></div></header>
+<p class="helper-text">La certificación requiere contrato, configuración fiscal y conector del proveedor. Preparar conserva los datos históricos de la venta; la autorización, serie y DTE solo se registran cuando provienen de una certificación real.</p>
+@if(TempData["FiscalMessage"] is string message){<p role="status">@message</p>}
+<div class="table-card"><table class="data-table"><thead><tr><th>Venta</th><th>Sucursal</th><th>Total</th><th>Estado fiscal</th><th>Autorización</th><th>Acción</th></tr></thead><tbody>
+@foreach(var row in Model){<tr><td><a href="/Sales/Details/@row.SaleId">@row.Number</a></td><td>@row.Branch</td><td>@row.Currency @row.Total.ToString("N2")</td><td>@State(row.Status)<small>@row.Message</small></td><td>@(row.Authorization??"Pendiente")</td><td>@if(row.Status is null or FiscalSubmissionStatus.PendingConfiguration or FiscalSubmissionStatus.Ready){<form method="post" action="/control/fiscal/@row.SaleId/preparar">@Html.AntiForgeryToken()<button class="button-secondary">Preparar</button></form>}</td></tr>}
+</tbody></table>@if(Model.Count==0){<p class="control-empty">No hay ventas disponibles.</p>}</div>

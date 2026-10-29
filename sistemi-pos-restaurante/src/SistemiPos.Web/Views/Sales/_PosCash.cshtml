@@ -1,0 +1,107 @@
+@model SistemiPos.Web.Models.Sales.SaleFormViewModel
+@inject SistemiPos.Web.Services.INavigationPermissionService CashNavigationPermissions
+@inject SistemiPos.Application.Cash.CashAuthorizationPolicy CashAuthorization
+<section class="pos-cash-context" aria-label="Estado del turno de caja" data-cash-context hidden>
+    <div class="pos-cash-compact-facts">
+        <div><span>Sucursal</span><strong data-cash-branch>Consultando…</strong></div>
+        <div><span>Cajero</span><strong data-cash-cashier>Sin turno activo</strong></div>
+        <div class="pos-cash-status"><span>Estado</span><strong data-cash-status role="status">◷ Verificando caja</strong></div>
+        <div><span>Fondo inicial</span><strong data-cash-opening-amount>—</strong></div>
+        <div><span data-cash-duration-label>Tiempo abierto</span><strong data-cash-duration>—</strong></div>
+    </div>
+    <details class="pos-cash-extra-details">
+        <summary>Detalles del turno</summary>
+        <div class="pos-cash-extra-grid">
+            <div><span>Terminal</span><strong data-cash-terminal>Sin seleccionar</strong></div>
+            <div><span data-cash-opened-label>Apertura</span><time data-cash-opened>—</time></div>
+            <div><span>Hora de la sucursal</span><time data-cash-clock>Sincronizando…</time></div>
+            <div><span>Actualización</span><small data-cash-sync>Esperando al servidor</small></div>
+        </div>
+        <p data-cash-secondary-context class="visually-hidden"></p>
+        <button type="button" class="button-secondary" data-cash-summary-open>Gestionar caja</button>
+    </details>
+    <p class="pos-cash-warning" data-cash-warning role="status">Selecciona una terminal para consultar o abrir caja.</p>
+</section>
+
+<dialog class="checkout-dialog pos-cash-dialog" data-cash-open-dialog aria-labelledby="pos-cash-open-title">
+    <form data-cash-command="abrir" autocomplete="off">
+        @Html.AntiForgeryToken()
+        <div class="dialog-header"><div><p class="eyebrow">Nuevo turno</p><h2 id="pos-cash-open-title">Abrir caja</h2></div><button type="button" class="icon-button" data-cash-dialog-close aria-label="Cerrar">×</button></div>
+        <div class="checkout-dialog-body">
+            <p class="pos-cash-readonly" data-cash-command-context></p>
+            <div class="field"><label for="cash-opening">Fondo inicial <span data-cash-symbol></span></label><input id="cash-opening" name="amount" type="text" inputmode="decimal" class="input" value="0.00" required autocomplete="off" /><small>Se admite cero. Máximo dos decimales.</small></div>
+            <div class="field"><label for="cash-opening-note">Observación (opcional)</label><textarea id="cash-opening-note" name="note" class="input" rows="2" maxlength="500"></textarea></div>
+            @if (Model.PosPaymentsEnabled && Model.PosDevices.Count > 0)
+            {
+                <fieldset class="pos-cash-device-options"><legend>POS bancarios asignados (opcional)</legend>@foreach (var device in Model.PosDevices) { <label><input name="posDeviceIds" type="checkbox" value="@device.Value" /> @device.Text</label> }<small>Si asignas dispositivos, registra sus cierres físicos antes de cerrar la caja.</small></fieldset>
+            }
+            <div class="field" data-cash-own-password-field hidden><label for="cash-open-password">Tu contraseña</label><input id="cash-open-password" name="password" type="password" class="input" autocomplete="current-password" /></div>
+            <p class="validation" data-cash-command-error role="alert"></p>
+        </div>
+        <div class="checkout-dialog-footer"><button type="button" class="button-secondary" data-cash-dialog-close>Cancelar</button><button class="button-primary" type="submit">Confirmar apertura</button></div>
+    </form>
+</dialog>
+
+<dialog class="checkout-dialog pos-cash-dialog" data-cash-summary-dialog aria-labelledby="pos-cash-summary-title">
+    <div class="dialog-header"><div><p class="eyebrow">Tu turno de trabajo</p><h2 id="pos-cash-summary-title">Caja y arqueo</h2></div><button type="button" class="icon-button" data-cash-dialog-close aria-label="Cerrar">×</button></div>
+    <div class="checkout-dialog-body">
+        <p class="pos-cash-menu-status" data-cash-menu-status role="status">Consultando caja…</p>
+        <p data-cash-summary-context></p>
+        <dl class="pos-cash-opening-facts">
+            <div><dt>Responsable del turno</dt><dd data-cash-menu-owner>—</dd></div>
+            <div><dt>Apertura registrada</dt><dd data-cash-menu-opened>—</dd></div>
+            <div><dt>Fondo inicial</dt><dd data-cash-menu-fund>—</dd></div>
+            <div><dt>Cierre registrado</dt><dd data-cash-menu-closed>—</dd></div>
+        </dl>
+        <p class="pos-cash-readonly" data-cash-menu-help></p>
+        @if (Model.Terminals.Count == 0 && !string.IsNullOrWhiteSpace(Model.CurrentCashRegisterCode)
+            && (await CashNavigationPermissions.GetPermissionCodesAsync()).Contains(PermissionCodes.CashView))
+        {
+            <a asp-controller="Cash" asp-action="Index" class="button-secondary link-button">Consultar mi caja actual (@Model.CurrentCashRegisterCode)</a>
+        }
+        <div data-cash-summary-content></div><p data-cash-blind-message hidden>El esperado y los totales están protegidos por el conteo ciego. Puedes declarar el efectivo al cerrar.</p><div data-cash-summary-movements></div>
+    </div>
+    <div class="checkout-dialog-footer pos-cash-summary-actions"><button type="button" class="button-primary" data-cash-open hidden>Abrir caja</button><a class="button-secondary link-button" data-cash-details-link hidden>Contar efectivo / arqueo</a><a class="button-secondary link-button" data-cash-receipt-link hidden>Comprobante de cierre</a><button type="button" class="button-secondary" data-cash-movement-open hidden>Movimientos de efectivo</button><button type="button" class="button-primary" data-cash-close-open hidden>Cerrar caja</button></div>
+</dialog>
+
+<dialog class="checkout-dialog pos-cash-dialog" data-cash-movement-dialog aria-labelledby="pos-cash-movement-title">
+    <form data-cash-command="movimiento" autocomplete="off">
+        @Html.AntiForgeryToken()
+        <div class="dialog-header"><h2 id="pos-cash-movement-title">Entrada o salida</h2><button type="button" class="icon-button" data-cash-dialog-close aria-label="Cerrar">×</button></div>
+        <div class="checkout-dialog-body">
+            <p class="pos-cash-readonly" data-cash-command-context></p>
+            <div class="field"><label for="cash-movement-type">Tipo</label><select id="cash-movement-type" name="type" class="input"><option value="income">Entrada de efectivo</option><option value="expense">Salida de efectivo</option></select></div>
+            <div class="field"><label for="cash-movement-amount">Importe <span data-cash-symbol></span></label><input id="cash-movement-amount" name="amount" type="text" inputmode="decimal" class="input" required /></div>
+            <div class="field"><label for="cash-movement-reason">Motivo</label><textarea id="cash-movement-reason" name="reason" class="input" maxlength="500" required rows="2"></textarea></div>
+            <div class="field"><label for="cash-movement-reference">Comprobante / referencia (opcional)</label><input id="cash-movement-reference" name="reference" class="input" maxlength="100" /></div>
+            <input name="reversalOfId" type="hidden" />
+            <fieldset data-cash-movement-authorization hidden><legend>Autorización de supervisor</legend><label for="cash-movement-authorizer">Usuario</label><input id="cash-movement-authorizer" name="authorizer" class="input" autocomplete="off" /><label for="cash-movement-authorizer-password">Contraseña</label><input id="cash-movement-authorizer-password" name="authorizerPassword" type="password" class="input" autocomplete="off" /></fieldset>
+            <p class="validation" data-cash-command-error role="alert"></p>
+        </div>
+        <div class="checkout-dialog-footer"><button type="button" class="button-secondary" data-cash-dialog-close>Cancelar</button><button class="button-primary" type="submit">Registrar movimiento</button></div>
+    </form>
+</dialog>
+
+<dialog class="checkout-dialog pos-cash-dialog" data-cash-close-dialog aria-labelledby="pos-cash-close-title">
+    <form data-cash-command="cerrar" autocomplete="off">
+        @Html.AntiForgeryToken()
+        <div class="dialog-header"><div><p class="eyebrow">Declaración de efectivo</p><h2 id="pos-cash-close-title">Cerrar caja</h2></div><button type="button" class="icon-button" data-cash-dialog-close aria-label="Cerrar">×</button></div>
+        <div class="checkout-dialog-body">
+            <p class="pos-cash-readonly" data-cash-command-context></p><p data-cash-close-explanation>Declara el efectivo contado. El servidor recalculará el resumen y validará la diferencia.</p>
+            <div class="pos-cash-pos-help">
+                <strong>¿Asignaste un POS bancario?</strong>
+                <p>Primero registra su cierre en «Cierre POS / tarjetas». Si no lo utilizaste y su cierre es cero, registra ese monto.</p>
+                @if ((await CashNavigationPermissions.GetPermissionCodesAsync()).Contains(PermissionCodes.CashView))
+                {
+                    <a class="button-secondary link-button" data-cash-pos-closing-link>Registrar cierre de POS</a>
+                }
+            </div>
+            <div class="field"><label for="cash-counted">Efectivo contado <span data-cash-symbol></span></label><input id="cash-counted" name="amount" type="text" inputmode="decimal" class="input" required /></div>
+            <div class="field"><label for="cash-closing-note">Observación / motivo de diferencia</label><textarea id="cash-closing-note" name="note" class="input" maxlength="500" rows="2"></textarea></div>
+            @if (!CashAuthorization.SkipAdditionalCredentials) { <details><summary>Autorización para diferencias, si corresponde</summary><div class="field"><label for="cash-close-authorizer">Usuario supervisor</label><input id="cash-close-authorizer" name="authorizer" class="input" autocomplete="off" /></div><div class="field"><label for="cash-close-authorizer-password">Contraseña supervisor</label><input id="cash-close-authorizer-password" name="authorizerPassword" type="password" class="input" autocomplete="off" /></div></details> }
+            <div class="field" data-cash-own-password-field hidden><label for="cash-close-password">Tu contraseña</label><input id="cash-close-password" name="password" type="password" class="input" autocomplete="current-password" /></div>
+            <p class="validation" data-cash-command-error role="alert"></p>
+        </div>
+        <div class="checkout-dialog-footer"><button type="button" class="button-secondary" data-cash-dialog-close>Cancelar</button><button class="button-primary" type="submit">Confirmar cierre</button></div>
+    </form>
+</dialog>

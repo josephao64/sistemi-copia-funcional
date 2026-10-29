@@ -1,0 +1,68 @@
+@model SistemiPos.Application.Inventory.ProductLotsDto
+@{
+    ViewData["Title"] = "Lotes del producto";
+}
+<section class="page-header">
+    <div><h1>@Model.ProductName</h1><p>@Model.WarehouseName · Existencia: @Model.Stock @Model.Unit</p></div>
+    <a asp-controller="Inventory" asp-action="Index" class="button-secondary">Volver a inventario</a>
+</section>
+@if (!Model.ManagesLots)
+{
+    <p class="helper-text">Este producto controla su existencia sin lotes.</p>
+}
+@if (Model.ManagesLots && Model.Unassigned > 0)
+{
+    <section class="form-card">
+        <h2>Saldo inicial pendiente: @Model.Unassigned @Model.Unit</h2>
+        <p>Registra la cantidad que corresponde a cada lote. La fecha de apertura se registra hoy; no representa una recepción histórica.</p>
+        <form asp-action="Opening" method="post" class="form-grid">
+            <input type="hidden" name="productId" value="@Model.ProductId" />
+            <input type="hidden" name="warehouseId" value="@Model.WarehouseId" />
+            <div class="field"><label for="opening-number">Lote (opcional)</label><input id="opening-number" name="lotNumber" class="input" maxlength="100" placeholder="Se genera si se deja vacío" /></div>
+            <div class="field"><label for="opening-quantity">Cantidad (@Model.Unit)</label><input id="opening-quantity" name="quantity" class="input" type="number" min="0.01" step="0.01" required /></div>
+            @if (Model.ManagesExpiry)
+            {
+                <div class="field"><label for="opening-expiry">Vencimiento real</label><input id="opening-expiry" name="expiryDate" class="input" type="date" required /></div>
+            }
+            <div class="action-row"><button class="button-primary" type="submit">Registrar saldo inicial</button></div>
+        </form>
+    </section>
+}
+<div class="table-card table-responsive">
+    <table class="data-table">
+        <thead><tr><th>Lote</th><th>Ingreso / apertura</th><th>Vencimiento</th><th>Recibido / saldo inicial</th><th>Disponible (@Model.Unit)</th><th>Origen</th><th>Acción</th></tr></thead>
+        <tbody>
+        @foreach (var lot in Model.Lots)
+        {
+            <tr>
+                <td>@lot.Number</td><td>@lot.ReceivedAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@(lot.ExpiryDate?.ToString("dd/MM/yyyy") ?? "No aplica")</td><td>@lot.ReceivedQuantity</td><td>@lot.AvailableQuantity</td>
+                <td>@(lot.IsOpeningBalance ? "Saldo inicial" : "Recepción")</td>
+                <td>
+                    @if (Model.ManagesLots && lot.AvailableQuantity > 0)
+                    {
+                        <details><summary>Registrar baja</summary>
+                            <form asp-action="Discard" method="post" data-confirm="¿Registrar esta baja de inventario en el lote seleccionado?">
+                                <input type="hidden" name="productId" value="@Model.ProductId" /><input type="hidden" name="warehouseId" value="@Model.WarehouseId" /><input type="hidden" name="lotId" value="@lot.Id" />
+                                <label>Cantidad (@Model.Unit)<input name="quantity" class="input" type="number" min="0.01" step="0.01" required /></label>
+                                <label>Motivo<input name="reason" class="input" maxlength="500" required /></label>
+                                <button type="submit" class="button-secondary">Registrar baja</button>
+                            </form>
+                        </details>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+<div class="table-card table-responsive">
+    <h2>Movimientos por lote</h2><p>Últimas 200 asignaciones. Las cantidades negativas son salidas; las positivas son entradas o devoluciones.</p>
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Lote</th><th>Cantidad (@Model.Unit)</th><th>Usuario</th></tr></thead>
+        <tbody>@foreach (var movement in Model.Movements)
+        {
+            <tr><td>@movement.Date.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</td><td>@movement.Type</td><td>@movement.Document</td><td>@movement.LotNumber</td><td>@movement.Quantity</td><td>@movement.UserName</td></tr>
+        }</tbody>
+    </table>
+</div>

@@ -1,0 +1,118 @@
+@model SistemiPos.Application.Purchases.PurchaseDto
+@using SistemiPos.Application.Finance
+@using SistemiPos.Domain.Common
+@using SistemiPos.Domain.Finance
+@using SistemiPos.Domain.Purchases
+@using Microsoft.AspNetCore.Authorization
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
+@{
+    ViewData["Title"] = "Detalle de compra";
+    var symbol = ViewBag.CurrencySymbol as string ?? "Q";
+    var decimals = ViewBag.CurrencyDecimals is int value ? value : 2;
+    var payable = ViewBag.PayableAccount as PayableAccountDto;
+    string Money(decimal amount) => $"{symbol} {amount.ToString($"N{decimals}")}";
+    var paymentStatus = payable?.Status switch
+    {
+        AccountStatus.Pending or AccountStatus.Overdue => "Pendiente",
+        AccountStatus.PartiallyPaid => "Parcialmente pagada",
+        AccountStatus.Paid => "Pagada",
+        AccountStatus.Cancelled => "Anulada",
+        _ => null
+    };
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert-error">@error</div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert-success">@success</div>
+}
+
+<section class="purchase-details-summary">
+    <dl class="detail-list two-column-detail-list">
+            <div><dt>Número interno</dt><dd>@Model.Number</dd></div>
+            <div><dt>Factura/documento</dt><dd>@(string.IsNullOrWhiteSpace(Model.InvoiceNumber) ? "Sin documento" : Model.InvoiceNumber)</dd></div>
+            <div><dt>Proveedor</dt><dd>@Model.SupplierName</dd></div>
+            <div><dt>Sucursal de destino</dt><dd>@(Model.BranchName ?? "—")</dd></div>
+            <div><dt>Bodega de destino</dt><dd>@(Model.WarehouseName ?? "—")</dd></div>
+            <div><dt>NIT del proveedor</dt><dd>@(Model.SupplierNit ?? "No registrado")</dd></div>
+            <div><dt>Fecha de factura/documento</dt><dd>@Model.PurchaseDateUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy")</dd></div>
+            <div><dt>Condición</dt><dd>@(Model.Terms == PurchaseTermsType.Credit ? "Crédito" : "Contado")</dd></div>
+            @if (Model.Terms == PurchaseTermsType.Credit && Model.DueDateUtc.HasValue)
+            {
+                <div><dt>Días de crédito</dt><dd>@((Model.DueDateUtc.Value.Date - Model.PurchaseDateUtc.Date).Days)</dd></div>
+                <div><dt>Vencimiento</dt><dd>@Model.DueDateUtc.Value.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy")</dd></div>
+                <div><dt>Estado de pago</dt><dd>@(paymentStatus ?? "Pendiente")</dd></div>
+                <div><dt>Saldo pendiente</dt><dd>@Money(payable?.Balance ?? Model.Total)</dd></div>
+            }
+            <div><dt>Origen</dt><dd>@(Model.PurchaseOrderNumber is null ? "Compra directa" : $"Orden {Model.PurchaseOrderNumber}")</dd></div>
+            <div><dt>Estado actual</dt><dd>@(Model.Status == DocumentStatus.Confirmed ? "Confirmada" : Model.Status == DocumentStatus.Cancelled ? "Anulada" : "Borrador")</dd></div>
+            @if (Model.Status == DocumentStatus.Cancelled)
+            {
+                <div><dt>Anulada por</dt><dd>@Model.CancelledBy</dd></div>
+                <div><dt>Fecha de anulación</dt><dd>@Model.CancelledAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</dd></div>
+                <div class="full-span"><dt>Motivo de anulación</dt><dd>@Model.CancellationReason</dd></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Observations))
+            {
+                <div class="full-span"><dt>Observaciones</dt><dd>@Model.Observations</dd></div>
+            }
+    </dl>
+</section>
+
+@if (Model.Status == DocumentStatus.Confirmed && (await AuthorizationService.AuthorizeAsync(User, PermissionCodes.PurchasesCancel)).Succeeded)
+{
+    <form asp-action="CancelPurchase" method="post" class="form-card"
+          data-confirm="Se retirarán las existencias de los lotes originales, se anulará la cuenta por pagar sin pagos y se reabrirá el pendiente de la orden cuando corresponda. ¿Desea continuar?"
+          data-confirm-title="Anular compra" data-confirm-text="Sí, anular compra">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <div class="field"><label for="cancellation-reason">Motivo de anulación</label><textarea id="cancellation-reason" name="reason" required maxlength="500"></textarea></div>
+        <button type="submit" class="button-danger">Anular compra</button>
+    </form>
+}
+
+<div class="table-card purchase-detail-products">
+    <div class="table-responsive">
+        <table class="data-table purchase-detail-items-table">
+            <thead><tr><th>Nombre</th><th>Presentación</th><th>Cantidad</th><th>Unidades</th><th>Precio</th><th>Descuento</th><th>Costo unitario</th><th>Total</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td><strong>@item.ProductName</strong>@if (!string.IsNullOrWhiteSpace(item.SystemDescription)) { <br /><span class="helper-text">@item.SystemDescription</span> }</td>
+                    <td>@item.PackageName</td>
+                    <td>@DisplayFormats.Quantity(item.PackageQuantity)</td>
+                    <td>@DisplayFormats.Quantity(item.Quantity)</td>
+                    <td>@Money(item.PackageCost)</td>
+                    <td>@Money(item.LineDiscountAmount + item.GlobalDiscountAmount)</td>
+                    <td>@Money(item.UnitCost)</td>
+                    <td>@Money(item.Subtotal)</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr><th colspan="7" class="purchase-total-label">SUBTOTAL BRUTO</th><th class="purchase-total-value">@Money(Model.GrossSubtotal)</th></tr>
+                <tr><th colspan="7" class="purchase-total-label">DESCUENTOS POR LÍNEA</th><th class="purchase-total-value">@Money(Model.LineDiscountTotal)</th></tr>
+                <tr><th colspan="7" class="purchase-total-label">DESCUENTO GLOBAL</th><th class="purchase-total-value">@Money(Model.GlobalDiscountAmount)</th></tr>
+                <tr><th colspan="7" class="purchase-total-label">TOTAL DE LA COMPRA</th><th class="purchase-total-value">@Money(Model.Total)</th></tr>
+                @if (Model.Terms == PurchaseTermsType.Credit)
+                {
+                    <tr><th colspan="7" class="purchase-total-label">SALDO PENDIENTE</th><th class="purchase-total-value">@Money(payable?.Balance ?? Model.Total)</th></tr>
+                }
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<section class="purchase-trace-section">
+    <h2>Trazabilidad</h2>
+    <ol class="trace-list">
+        @foreach (var stage in Model.Traceability ?? [])
+        {
+            <li><strong>@stage.Stage</strong><span>@stage.UserName</span><time>@stage.OccurredAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</time></li>
+        }
+    </ol>
+</section>

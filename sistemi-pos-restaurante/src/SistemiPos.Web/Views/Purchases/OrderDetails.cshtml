@@ -1,0 +1,179 @@
+@model SistemiPos.Application.Purchases.PurchaseOrderDto
+@using SistemiPos.Domain.Purchases
+@{
+    ViewData["Title"] = "Detalle de orden";
+    var status = Model.Status switch
+    {
+        PurchaseOrderStatus.Draft => "Borrador",
+        PurchaseOrderStatus.Requested => "Solicitada",
+        PurchaseOrderStatus.PartiallyReceived => "Recibida parcialmente",
+        PurchaseOrderStatus.Received => "Recibida",
+        _ => "Cancelada"
+    };
+    var editable = (Model.Status is PurchaseOrderStatus.Draft or PurchaseOrderStatus.Requested) && Model.Receipts is not { Count: > 0 };
+}
+
+<div class="action-row purchase-detail-actions">
+    @if (editable)
+    {
+        <a asp-action="EditOrder" asp-route-id="@Model.Id" class="button-secondary link-button">Editar</a>
+    }
+    @if (Model.Status is PurchaseOrderStatus.Requested or PurchaseOrderStatus.PartiallyReceived)
+    {
+        <a asp-action="OrderPdf" asp-route-id="@Model.Id" target="_blank" class="button-secondary link-button">Imprimir orden</a>
+        <a asp-action="OrderPdf" asp-route-id="@Model.Id" asp-route-download="true" class="button-secondary link-button">Descargar PDF</a>
+        <a asp-action="ReceiveOrder" asp-route-id="@Model.Id" class="button-primary link-button">Registrar recepción</a>
+    }
+    @if (editable)
+    {
+        <form asp-action="CancelOrder" method="post" data-confirm="La orden quedará cancelada y ya no podrá recibirse. ¿Desea continuar?" data-confirm-title="Cancelar orden" data-confirm-text="Sí, cancelar orden">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button class="button-danger" type="submit">Cancelar orden</button>
+        </form>
+    }
+</div>
+
+@if (Model.Status == PurchaseOrderStatus.Draft)
+{
+    <div class="action-row">
+        <form asp-action="SubmitOrder" method="post" data-confirm="La orden será marcada como solicitada y quedará lista para recepción. ¿Desea continuar?" data-confirm-title="Solicitar orden" data-confirm-text="Sí, solicitar orden">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button class="button-primary">Marcar como solicitado</button>
+        </form>
+    </div>
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert-error">@error</div>
+}
+
+<div class="form-card purchase-order-readonly">
+    <div class="readonly-order-meta">
+        <div class="field">
+            <label>Proveedor</label>
+            <div class="readonly-value">@Model.SupplierName</div>
+        </div>
+        <div class="field">
+            <label>Fecha de creación</label>
+            <div class="readonly-value">@Model.RequestedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</div>
+        </div>
+        <div class="field">
+            <label>Fecha de solicitud</label>
+            <div class="readonly-value">@(Model.SubmittedAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm") ?? "—")</div>
+        </div>
+        <div class="field">
+            <label>Estado</label>
+            <div class="readonly-value">@status</div>
+        </div>
+        <div class="field"><label>Sucursal de destino</label><div class="readonly-value">@(Model.BranchName ?? "—")</div></div>
+        <div class="field"><label>Bodega de destino</label><div class="readonly-value">@(Model.WarehouseName ?? "—")</div></div>
+    </div>
+
+    <section class="table-card purchase-order-products">
+        <div class="table-toolbar"><h2>Productos solicitados</h2></div>
+        <div class="table-responsive">
+            <table class="data-table purchase-order-detail-table">
+                <thead>
+                    <tr>
+                        <th>Presentación</th>
+                        <th>Cantidad</th>
+                        <th>Nombre</th>
+                        <th>Unidades equivalentes</th>
+                        <th>Nombre de proveedor</th>
+                        @if (Model.Receipts is { Count: > 0 })
+                        {
+                            <th>Recibido</th>
+                            <th>Costo real</th>
+                            <th>Resultado</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.PresentationName (@DisplayFormats.Quantity(item.BaseQuantityPerPackage) @item.BaseUnitCode)</td>
+                            <td>@DisplayFormats.Quantity(item.PackageQuantity > 0 ? item.PackageQuantity : item.RequestedQuantity)</td>
+                            <td>
+                                <strong>@item.ProductName</strong>
+                                @if (item.IsAdditional)
+                                {
+                                    <br /><span class="status-badge">Adicional</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(item.SystemDescription))
+                                {
+                                    <br /><span class="helper-text"><strong>Descripción sistema:</strong> @item.SystemDescription</span>
+                                }
+                            </td>
+                            <td>@DisplayFormats.Quantity(item.RequestedQuantity)</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(item.SupplierInvoiceName))
+                                {
+                                    <span>@item.SupplierInvoiceName</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(item.SupplierDescription))
+                                {
+                                    <br /><span class="helper-text"><strong>Descripción proveedor:</strong> @item.SupplierDescription</span>
+                                }
+                            </td>
+                            @if (Model.Receipts is { Count: > 0 })
+                            {
+                                <td>@DisplayFormats.Quantity(item.ReceivedQuantity)</td>
+                                <td>Q @item.ActualUnitCost.ToString("N2")</td>
+                                <td>@(item.IsAdditional ? "Adicional" : item.PendingQuantity > 0 ? $"Pendiente {DisplayFormats.Quantity(item.PendingQuantity)}" : item.ReceivedQuantity > item.RequestedQuantity ? "Excedente" : "Completo")</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Observations))
+    {
+        <div class="field purchase-order-comment">
+            <label>Comentario</label>
+            <div class="readonly-value">@Model.Observations</div>
+        </div>
+    }
+</div>
+
+@if (Model.Receipts is { Count: > 0 })
+{
+    <div class="stats-grid">
+        <article class="stat-card"><span>Recepción</span><strong>@Model.ReceiptNumber</strong></article>
+        <article class="stat-card"><span>Documento proveedor</span><strong>@Model.SupplierDocumentNumber</strong></article>
+        <article class="stat-card"><span>Fecha documento</span><strong>@Model.SupplierDocumentDateUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy")</strong></article>
+        <article class="stat-card"><span>Condición</span><strong>@(Model.ReceiptTerms == PurchaseTermsType.Credit ? $"Crédito · {Model.CreditDays} días" : "Contado")</strong></article>
+        <article class="stat-card"><span>Total real</span><strong>Q @Model.ActualTotal.ToString("N2")</strong></article>
+    </div>
+    <section class="table-card">
+        <div class="table-toolbar"><h2>Recepciones registradas</h2></div>
+        <div class="table-responsive"><table class="data-table"><thead><tr><th>Recepción</th><th>Documento</th><th>Fecha</th><th>Condición</th><th>Total</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
+        @foreach (var receipt in Model.Receipts)
+        {
+            <tr><td>@receipt.Number</td><td>@receipt.SupplierDocumentNumber</td><td>@receipt.ReceivedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</td><td>@(receipt.Terms == PurchaseTermsType.Credit ? $"Crédito · {receipt.CreditDays} días" : "Contado")</td><td>Q @receipt.Total.ToString("N2")</td><td>@(receipt.Status == SistemiPos.Domain.Common.DocumentStatus.Cancelled ? "Anulada" : "Vigente")</td><td><a asp-action="Details" asp-route-id="@receipt.PurchaseId">Ver compra</a></td></tr>
+        }
+        </tbody></table></div>
+    </section>
+    @if (Model.PurchaseId.HasValue)
+    {
+        <div class="action-row">
+            <a asp-action="Details" asp-route-id="@Model.PurchaseId" class="button-primary link-button">Ver compra generada</a>
+            @if (Model.ReceiptTerms == PurchaseTermsType.Credit)
+            {
+                <a asp-controller="AccountsPayable" asp-action="Index" class="button-secondary link-button">Ver cuenta por pagar</a>
+            }
+        </div>
+    }
+    <div class="action-row">
+        <span class="helper-text">Movimientos relacionados:</span>
+        @foreach (var item in Model.Items.DistinctBy(x => x.ProductId))
+        {
+            <a asp-controller="Inventory" asp-action="Kardex" asp-route-productId="@item.ProductId" class="button-ghost link-button">Kardex · @item.ProductName</a>
+        }
+    </div>
+}

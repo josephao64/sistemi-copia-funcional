@@ -1,0 +1,16 @@
+@model SistemiPos.Application.Cash.CashCutDto
+@inject SistemiPos.Application.Settings.ISettingsService Settings
+@{
+    ViewData["Title"] = Model.IsFinal ? "Corte Z" : "Corte X";
+    var settings = await Settings.GetSystemSettingAsync();
+    var currency = Model.CurrencySnapshotJson is null ? new SistemiPos.Domain.Configuration.CurrencySnapshot(settings.CurrencyCode,
+        settings.CurrencyName, settings.CurrencySymbol, settings.CurrencyDecimals, settings.DecimalSeparator, settings.ThousandsSeparator, settings.CurrencySymbolPosition.ToString())
+        : System.Text.Json.JsonSerializer.Deserialize<SistemiPos.Domain.Configuration.CurrencySnapshot>(Model.CurrencySnapshotJson)!;
+    var format = new System.Globalization.NumberFormatInfo { NumberDecimalSeparator = currency.DecimalSeparator, NumberGroupSeparator = currency.ThousandsSeparator };
+    string Money(decimal amount) => currency.SymbolPosition == "Before" ? $"{currency.Symbol} {amount.ToString($"N{currency.Decimals}", format)}" : $"{amount.ToString($"N{currency.Decimals}", format)} {currency.Symbol}";
+}
+<section class="page-header compact-page-header"><h1>@ViewData["Title"] · @Model.RegisterCode</h1><a asp-action="Details" asp-route-id="@Model.SessionId" class="button-ghost link-button">Volver a caja</a></section>
+<div class="table-card"><p>Responsable: @Model.Cashier · Fecha UTC: @Model.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</p>
+<dl><dt>Ventas en efectivo</dt><dd>@Money(Model.CashSales)</dd><dt>Transferencias</dt><dd>@Money(Model.TransferSales)</dd><dt>Tarjeta</dt><dd>@Money(Model.CardSales)</dd><dt>Efectivo esperado</dt><dd>@Money(Model.ExpectedCash)</dd>
+<dt>Otros medios configurados</dt><dd>@Money(Model.OtherSales)</dd>
+@if (Model.IsFinal) { <dt>Efectivo declarado</dt><dd>@Money(Model.DeclaredCash ?? 0)</dd><dt>Diferencia</dt><dd>@Money(Model.Difference ?? 0)</dd> }</dl></div>

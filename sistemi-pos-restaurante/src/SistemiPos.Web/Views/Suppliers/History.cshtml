@@ -1,0 +1,14 @@
+@model IReadOnlyList<SistemiPos.Application.Purchases.PurchaseDto>
+@{
+    ViewData["Title"] = "Historial de compras";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Proveedores</p>
+        <h1>Historial de compras</h1>
+        <p class="lead">@ViewData["SupplierName"]</p>
+    </div>
+</section>
+
+<partial name="~/Views/Purchases/_PurchaseTable.cshtml" model="Model" />

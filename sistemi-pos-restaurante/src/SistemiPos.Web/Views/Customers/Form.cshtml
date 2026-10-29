@@ -1,0 +1,36 @@
+@model SistemiPos.Web.Models.Customers.CustomerFormViewModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Nuevo cliente" : "Editar cliente";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Clientes</p>
+        <h1>@ViewData["Title"]</h1>
+    </div>
+</section>
+
+<div class="form-card">
+    <form method="post" class="form-grid two-column-grid">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="validation full-span"></div>
+        <div class="field full-span"><label asp-for="Name"></label><input asp-for="Name" class="input" /><span asp-validation-for="Name" class="validation"></span></div>
+        <div class="field"><label asp-for="Nit"></label><input asp-for="Nit" class="input" /></div>
+        <div class="field"><label asp-for="Phone"></label><input asp-for="Phone" class="input" /></div>
+        <div class="field"><label asp-for="VisitOrigin"></label><input asp-for="VisitOrigin" class="input" list="customer-visit-origins" autocomplete="off" /></div>
+        <div class="field"><label asp-for="Email"></label><input asp-for="Email" class="input" /><span asp-validation-for="Email" class="validation"></span></div>
+        <div class="field"><label asp-for="CreditDays"></label><input asp-for="CreditDays" class="input" type="number" min="0" step="1" /></div>
+        <div class="field"><label asp-for="GraceDays"></label><input asp-for="GraceDays" class="input" type="number" min="0" step="1" /></div>
+        <div class="field full-span"><label asp-for="Address"></label><textarea asp-for="Address" class="input textarea"></textarea></div>
+        <label class="checkbox"><input asp-for="IsActive" /><span>Activo</span></label>
+        <div class="action-row full-span">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+    <datalist id="customer-visit-origins"></datalist>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,50 @@
+@model SistemiPos.Web.Models.Reports.CashierSalesViewModel
+@using SistemiPos.Domain.Configuration
+@{
+    ViewData["Title"] = "Ventas por cajero";
+    string Money(decimal amount) => Model.CurrencySymbolPosition == CurrencySymbolPosition.After
+        ? $"{amount.ToString($"N{Model.CurrencyDecimals}")} {Model.CurrencySymbol}"
+        : $"{Model.CurrencySymbol} {amount.ToString($"N{Model.CurrencyDecimals}")}";
+    var returnUrl = Model.ReturnUrl;
+}
+
+<section class="page-header ranking-page-header"><div><h1>Ventas por cajero</h1></div></section>
+
+<div class="table-card">
+    <form method="get" class="form-grid compact-form-grid" data-auto-filter-form>
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <div class="field">
+            <label for="cashier-sales-user">Cajero</label>
+            <select id="cashier-sales-user" name="cashierUserName" class="input">
+                <option value="">Todos</option>
+                @foreach (var cashier in Model.Cashiers)
+                {
+                    <option value="@cashier.Value" selected="@(cashier.Value == Model.CashierUserName)">@cashier.Text</option>
+                }
+            </select>
+        </div>
+        <div class="field"><label for="cashier-sales-from">Desde</label><input id="cashier-sales-from" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="input" type="date" /></div>
+        <div class="field"><label for="cashier-sales-to">Hasta</label><input id="cashier-sales-to" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="input" type="date" /></div>
+        <div class="action-row"><a asp-action="CashierSales" asp-route-returnUrl="@returnUrl" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+</div>
+
+<div class="table-card cashier-sales-card">
+    <div class="table-toolbar"><div><h2>Ventas por cajero</h2><p class="helper-text">@Model.Rows.Count registros</p></div></div>
+    <div class="table-responsive">
+        <table class="data-table cashier-sales-table">
+            <thead><tr><th>Cajero / Usuario</th><th>Ventas</th><th>Unidades vendidas</th><th>Total vendido</th><th>Ticket promedio</th></tr></thead>
+            <tbody>
+                @foreach (var cashier in Model.Rows)
+                {
+                    var averageTicket = cashier.SalesCount == 0 ? 0m : cashier.TotalSold / cashier.SalesCount;
+                    <tr><td>@cashier.CashierUserName</td><td>@cashier.SalesCount</td><td>@DisplayFormats.Quantity(cashier.UnitsSold)</td><td>@Money(cashier.TotalSold)</td><td>@Money(averageTicket)</td></tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="5">No hay ventas por cajero para los filtros seleccionados.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

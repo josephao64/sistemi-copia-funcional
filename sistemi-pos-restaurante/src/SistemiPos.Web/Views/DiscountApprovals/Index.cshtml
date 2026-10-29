@@ -1,0 +1,66 @@
+@model IReadOnlyList<SistemiPos.Application.Sales.DiscountApprovalDto>
+@using SistemiPos.Domain.Sales
+@{
+    ViewData["Title"] = "Aprobaciones de descuentos";
+}
+
+<div class="page-heading">
+    <div><p class="eyebrow">Ventas</p><h1>Aprobaciones de descuentos</h1><p>Revise los productos, cantidades y descuentos solicitados antes de decidir.</p></div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <section class="form-card empty-state"><h2>No hay solicitudes pendientes</h2><p>Las nuevas solicitudes de los vendedores aparecerán aquí.</p></section>
+}
+else
+{
+    <div class="approval-list">
+    @foreach (var request in Model)
+    {
+        <section class="form-card approval-card">
+            <div class="approval-heading">
+                <div><span class="status-badge">Pendiente</span><h2>Solicitud de @request.RequestedByUserName</h2><p>@request.RequestedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
+                <div class="approval-total"><small>Descuento total</small><strong>Q @request.DiscountTotal.ToString("N2")</strong><span>Total final: Q @request.NetTotal.ToString("N2")</span></div>
+            </div>
+            <div class="table-wrap approval-items-wrap">
+                <table class="data-table approval-items-table">
+                    <colgroup>
+                        <col class="approval-product-column" />
+                        <col class="approval-quantity-column" />
+                        <col class="approval-price-column" />
+                        <col class="approval-discount-column" />
+                        <col class="approval-amount-column" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">Producto</th>
+                            <th scope="col" class="numeric-column">Cantidad</th>
+                            <th scope="col" class="numeric-column">Precio unitario</th>
+                            <th scope="col" class="numeric-column">Descuento solicitado</th>
+                            <th scope="col" class="numeric-column">Monto descontado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in request.Items)
+                    {
+                        <tr>
+                            <td><strong>@item.ProductName</strong>@if (!string.IsNullOrWhiteSpace(item.Comment)) { <small class="table-note">@item.Comment</small> }</td>
+                            <td class="numeric-column">@item.Quantity.ToString("N2")</td>
+                            <td class="numeric-column money">Q @item.UnitPrice.ToString("N2")</td>
+                            <td class="numeric-column">@(item.DiscountType == SaleDiscountType.FixedAmount ? $"Q {item.DiscountValue:N2}" : $"{item.DiscountValue:N2}%")</td>
+                            <td class="numeric-column money"><strong>Q @item.DiscountAmount.ToString("N2")</strong></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <form asp-action="Decide" method="post" class="approval-actions">
+                @Html.AntiForgeryToken()<input type="hidden" name="id" value="@request.Id" />
+                <label class="field"><span>Comentario de la decisión (opcional)</span><input class="input" name="comment" maxlength="500" /></label>
+                <button class="button-secondary" type="submit" name="approve" value="false">Rechazar</button>
+                <button class="button-primary" type="submit" name="approve" value="true">Aprobar descuento</button>
+            </form>
+        </section>
+    }
+    </div>
+}

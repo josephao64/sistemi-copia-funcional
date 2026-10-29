@@ -1,0 +1,578 @@
+@model SistemiPos.Application.Restaurant.RestaurantWorkspace
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Configuración del menú — " + Model.BranchName;
+    var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+}
+<partial name="_Navigation" />
+
+<div class="restaurant-workspace restaurant-menu-config-workspace">
+    <!-- Encabezado Principal Fijo -->
+    <header class="menu-config-top-header">
+        <div class="menu-config-title-group">
+            <h1>Configuración del menú — @Model.BranchName</h1>
+            <p>Organiza las secciones, productos, recetas, extras y la visualización en el POS.</p>
+        </div>
+        <div class="menu-config-status-group">
+            <span id="restaurant-config-state" class="config-status-pill status-saved">
+                <span class="status-dot"></span> Sin cambios
+            </span>
+            <span class="config-revision-label">Última actualización: Revisión #@Model.ConfigurationRevision</span>
+            <button type="button" id="btn-open-copy-branch" class="button-secondary button-sm" title="Copiar menú desde otra sucursal">
+                Copiar menú
+            </button>
+            <a href="/restaurante" class="config-close-btn" aria-label="Volver a restaurante">×</a>
+        </div>
+    </header>
+
+    <!-- Barra de Pestañas Principales (5 Pestañas) -->
+    <nav class="menu-config-main-tabs" role="tablist" aria-label="Pestañas de configuración">
+        <button type="button" class="main-tab-btn active" data-tab="tab-menu-productos" role="tab" aria-selected="true">
+            Menú y productos
+        </button>
+        <button type="button" class="main-tab-btn" data-tab="tab-opciones-extras" role="tab" aria-selected="false">
+            Grupos de opciones / Extras
+        </button>
+        <button type="button" class="main-tab-btn" data-tab="tab-estaciones" role="tab" aria-selected="false">
+            Estaciones de preparación
+        </button>
+        <button type="button" class="main-tab-btn" data-tab="tab-disponibilidad" role="tab" aria-selected="false">
+            Disponibilidad y canales
+        </button>
+        <button type="button" class="main-tab-btn" data-tab="tab-vista-previa" role="tab" aria-selected="false">
+            Vista previa
+        </button>
+    </nav>
+
+    <form id="restaurant-configuration" class="menu-config-form" data-revision="@Model.ConfigurationRevision">
+        @Html.AntiForgeryToken()
+
+        <!-- PESTAÑA 1: MENÚ Y PRODUCTOS (LAYOUT 3 COLUMNAS) -->
+        <section id="tab-menu-productos" class="tab-pane active" role="tabpanel">
+            <div class="menu-three-columns-layout">
+                <!-- COLUMNA 1: SECCIONES DE LA CARTA (25%) -->
+                <aside class="menu-col-sections">
+                    <div class="col-header">
+                        <h2>Secciones de la carta</h2>
+                        <button type="button" id="btn-add-section" class="button-primary button-sm">+ Agregar sección</button>
+                    </div>
+                    <div id="section-cards-list" class="section-cards-list">
+                        <!-- Generado dinámicamente con JS -->
+                    </div>
+                    <div class="col-sections-footer">
+                        <button type="button" id="btn-delete-section" class="button-danger-outline button-sm" disabled>
+                            Eliminar sección <small>(Solo secciones sin productos)</small>
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- COLUMNA 2: PRODUCTOS DE LA SECCIÓN (40%) -->
+                <main class="menu-col-products">
+                    <div class="col-header col-header-products">
+                        <div class="section-current-title">
+                            <h2>Productos de la sección</h2>
+                            <span id="current-section-badge" class="current-section-tag">Pizzas</span>
+                        </div>
+                        <button type="button" id="btn-open-picker" class="button-primary button-sm">+ Agregar producto</button>
+                    </div>
+                    <!-- Buscador -->
+                    <div class="products-search-box">
+                        <svg class="search-icon config-line-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+                        <input type="search" id="products-search-input" class="input input-sm" placeholder="Buscar por código o nombre..." />
+                    </div>
+                    <!-- Filtros Rápidos -->
+                    <div class="products-filter-bar">
+                        <label class="filter-item">
+                            <select id="filter-product-status" class="input input-sm">
+                                <option value="all">Estado: Todos</option>
+                                <option value="active">Activos</option>
+                                <option value="inactive">Inactivos</option>
+                            </select>
+                        </label>
+                        <label class="filter-item">
+                            <select id="filter-product-recipe" class="input input-sm">
+                                <option value="all">Receta: Todos</option>
+                                <option value="with-recipe">Con receta</option>
+                                <option value="retail">Reventa / Sin receta</option>
+                            </select>
+                        </label>
+                        <button type="button" id="filter-btn-favorites" class="pill-filter-btn">
+                            Favoritos
+                        </button>
+                        <button type="button" id="filter-btn-order" class="pill-filter-btn">
+                            ⇅ Orden
+                        </button>
+                    </div>
+                    <!-- Lista de Productos -->
+                    <div id="products-cards-list" class="products-cards-list">
+                        <!-- Generado dinámicamente con JS -->
+                    </div>
+                </main>
+
+                <!-- COLUMNA 3: CONFIGURACIÓN DEL PRODUCTO (35%) -->
+                <aside id="product-inspector" class="menu-col-inspector">
+                    <div class="inspector-header">
+                        <h2>Configuración del producto</h2>
+                        <button type="button" id="btn-close-inspector" class="btn-icon config-icon-button" aria-label="Cerrar inspector">×</button>
+                    </div>
+                    <!-- Tarjeta Resumen del Producto Seleccionado -->
+                    <div id="inspector-summary-card" class="inspector-summary-card">
+                        <!-- Foto, Nombre, Código, Badges, Favorito, Switch Visible -->
+                    </div>
+                    <!-- 4 Sub-pestañas Internas -->
+                    <nav class="inspector-subtabs" role="tablist">
+                        <button type="button" class="subtab-btn active" data-subtab="subtab-general" role="tab">General</button>
+                        <button type="button" class="subtab-btn" data-subtab="subtab-receta" role="tab">Receta y exclusiones</button>
+                        <button type="button" class="subtab-btn" data-subtab="subtab-extras" role="tab">Extras y opciones</button>
+                        <button type="button" class="subtab-btn" data-subtab="subtab-disponibilidad" role="tab">Disponibilidad</button>
+                    </nav>
+
+                    <div class="inspector-subtab-contents">
+                        <!-- SUB-PESTAÑA 1: GENERAL -->
+                        <div id="subtab-general" class="subtab-pane active">
+                            <div class="inspector-form-grid">
+                                <label class="field-box">
+                                    <span class="field-label">Nombre visible en el menú</span>
+                                    <input type="text" id="insp-custom-name" class="input" placeholder="Nombre para el cliente" maxlength="120" />
+                                </label>
+                                <label class="field-box">
+                                    <span class="field-label">Precio de venta (Q)</span>
+                                    <input type="number" id="insp-custom-price" class="input" step="0.01" min="0" placeholder="0.00" />
+                                </label>
+                                <label class="field-box">
+                                    <span class="field-label">Sección de la carta</span>
+                                    <select id="insp-section-id" class="input"></select>
+                                </label>
+                                <label class="field-box">
+                                    <span class="field-label">Posición en sección</span>
+                                    <input type="number" id="insp-sort-order" class="input" min="0" step="1" />
+                                </label>
+                                <label class="field-box field-full">
+                                    <span class="field-label">Estación de preparación</span>
+                                    <select id="insp-station-id" class="input"></select>
+                                </label>
+                                <div class="field-box field-full">
+                                    <span class="field-label">Tipo de producto</span>
+                                    <div id="insp-article-type-badge" class="readonly-badge-box">Se prepara al momento (con receta)</div>
+                                </div>
+                                <div class="field-toggle-row">
+                                    <div>
+                                        <strong>Visible en el menú</strong>
+                                        <small>Se mostrará en el POS y canales autorizados</small>
+                                    </div>
+                                    <label class="switch-control">
+                                        <input type="checkbox" id="insp-active-switch" checked />
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="field-toggle-row">
+                                    <div>
+                                        <strong>Destacar como favorito</strong>
+                                        <small>Aparece en accesos rápidos del cajero</small>
+                                    </div>
+                                    <label class="switch-control">
+                                        <input type="checkbox" id="insp-favorite-switch" />
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+                                <label class="field-box field-full">
+                                    <div class="label-with-counter">
+                                        <span class="field-label">Descripción (opcional)</span>
+                                        <span id="insp-desc-counter" class="text-counter">0/200</span>
+                                    </div>
+                                    <textarea id="insp-description" class="input" rows="3" maxlength="200" placeholder="Descripción comercial del producto..."></textarea>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SUB-PESTAÑA 2: RECETA Y EXCLUSIONES -->
+                        <div id="subtab-receta" class="subtab-pane">
+                            <div class="recipe-subtab-header">
+                                <div>
+                                    <h3>Ingredientes de la receta</h3>
+                                    <p class="restaurant-muted">Selecciona qué ingredientes puede excluir el cliente al hacer su pedido.</p>
+                                </div>
+                                <button type="button" id="insp-btn-view-recipe" class="button-link">Ver receta completa</button>
+                            </div>
+                            <div class="recipe-ingredients-table-wrap">
+                                <table class="recipe-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ingrediente</th>
+                                            <th class="col-num">Cantidad</th>
+                                            <th>Unidad</th>
+                                            <th class="col-center">¿Permite exclusión?</th>
+                                            <th class="col-center">Requerido</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="insp-recipe-components-tbody">
+                                        <!-- Generado dinámicamente con JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="info-alert-callout">
+                                <span class="alert-icon">ℹ</span>
+                                <p>Las exclusiones modifican el consumo de inventario según la receta efectiva en el POS.</p>
+                            </div>
+                        </div>
+
+                        <!-- SUB-PESTAÑA 3: EXTRAS Y OPCIONES -->
+                        <div id="subtab-extras" class="subtab-pane">
+                            <div class="extras-subtab-header">
+                                <div>
+                                    <h3>Grupos de opciones asignados</h3>
+                                    <p class="restaurant-muted">Define los extras, tamaños y modificadores disponibles para este producto.</p>
+                                </div>
+                                <button type="button" id="insp-btn-add-group" class="button-primary button-sm">+ Agregar grupo</button>
+                            </div>
+                            <div id="insp-groups-cards-list" class="groups-cards-list">
+                                <!-- Grupos asignados (Tamaño, Ingredientes adicionales, etc.) -->
+                            </div>
+                            <div id="insp-selected-group-section" class="selected-group-section" hidden>
+                                <div class="group-options-header">
+                                    <h4 id="insp-selected-group-title">Opciones del grupo</h4>
+                                    <button type="button" id="insp-btn-add-option" class="button-primary button-sm">+ Agregar opción</button>
+                                </div>
+                                <div class="options-table-wrap">
+                                    <table class="options-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre de la opción</th>
+                                                <th class="col-num">Precio adicional (Q)</th>
+                                                <th>Consumo de inventario</th>
+                                                <th class="col-center">Orden</th>
+                                                <th class="col-center">Estado</th>
+                                                <th class="col-action">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="insp-options-tbody">
+                                            <!-- Opciones del grupo seleccionado -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SUB-PESTAÑA 4: DISPONIBILIDAD -->
+                        <div id="subtab-disponibilidad" class="subtab-pane">
+                            <div class="availability-subtab-container">
+                                <h3>Configuración de disponibilidad</h3>
+                                <div class="field-toggle-row availability-active-box">
+                                    <div>
+                                        <strong>Producto activo</strong>
+                                        <small>Si está inactivo, no se mostrará en ningún canal.</small>
+                                    </div>
+                                    <label class="switch-control">
+                                        <input type="checkbox" id="insp-disp-active" checked />
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="availability-block">
+                                    <h4>Canales de venta</h4>
+                                    <p class="restaurant-muted">Selecciona en qué canales estará disponible este producto.</p>
+                                    <div class="channels-checkboxes-grid">
+                                        <label class="channel-chip-check">
+                                            <input type="checkbox" id="chan-pos" value="pos" checked />
+                                            <span>Punto de venta (restaurante)</span>
+                                        </label>
+                                        <label class="channel-chip-check">
+                                            <input type="checkbox" id="chan-takeaway" value="takeaway" checked />
+                                            <span>Para llevar</span>
+                                        </label>
+                                        <label class="channel-chip-check">
+                                            <input type="checkbox" id="chan-delivery" value="delivery" checked />
+                                            <span>Servicio a domicilio</span>
+                                        </label>
+                                        <label class="channel-chip-check">
+                                            <input type="checkbox" id="chan-pedidosya" value="pedidosya" checked />
+                                            <span>Pedidos Ya</span>
+                                        </label>
+                                        <label class="channel-chip-check">
+                                            <input type="checkbox" id="chan-otros" value="otros" />
+                                            <span>Otros canales</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="availability-block">
+                                    <h4>Horarios de disponibilidad</h4>
+                                    <p class="restaurant-muted">Define los días y horarios en los que se puede vender este producto.</p>
+                                    <div class="schedule-radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="insp-schedule-type" id="sched-always" value="always" checked />
+                                            <span>Siempre disponible</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="insp-schedule-type" id="sched-specific" value="specific" />
+                                            <span>Horario específico</span>
+                                        </label>
+                                    </div>
+                                    <div id="schedule-specific-box" class="schedule-specific-box" hidden>
+                                        <div class="schedule-time-row">
+                                            <label>Desde <input type="time" id="insp-time-from" class="input input-sm" value="08:00" /></label>
+                                            <label>Hasta <input type="time" id="insp-time-to" class="input input-sm" value="22:00" /></label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="availability-block">
+                                    <div class="label-with-counter">
+                                        <span class="field-label">Observaciones de disponibilidad</span>
+                                        <span id="insp-obs-counter" class="text-counter">0/200</span>
+                                    </div>
+                                    <textarea id="insp-observations" class="input" rows="2" maxlength="200" placeholder="Ej. Solo fines de semana, sujeto a existencias, etc."></textarea>
+                                </div>
+
+                                <div class="availability-block">
+                                    <div class="label-with-counter">
+                                        <span class="field-label">Motivo de suspensión (si aplica)</span>
+                                        <span id="insp-susp-counter" class="text-counter">0/200</span>
+                                    </div>
+                                    <textarea id="insp-suspension" class="input" rows="2" maxlength="200" placeholder="Ej. Sin queso mozzarella, mantenimiento de equipo, etc."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 2: GRUPOS DE OPCIONES / EXTRAS (GLOBAL) -->
+        <section id="tab-opciones-extras" class="tab-pane" role="tabpanel">
+            <div class="global-tab-container">
+                <div class="global-tab-heading">
+                    <div>
+                        <h2>Grupos de modificadores y extras</h2>
+                        <p class="restaurant-muted">Configura los grupos de personalización disponibles para los productos de esta sucursal.</p>
+                    </div>
+                    <button type="button" id="btn-global-add-group" class="button-primary">+ Crear grupo</button>
+                </div>
+                <div id="global-groups-container" class="global-groups-container">
+                    <!-- Tarjetas de grupos globales -->
+                </div>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 3: ESTACIONES DE PREPARACIÓN -->
+        <section id="tab-estaciones" class="tab-pane" role="tabpanel">
+            <div class="global-tab-container">
+                <div class="global-tab-heading">
+                    <div>
+                        <h2>Estaciones de preparación</h2>
+                        <p class="restaurant-muted">Define los destinos donde se procesan los pedidos (ej. Cocina Caliente, Horno Pizzas, Barra / Bebidas).</p>
+                    </div>
+                    <button type="button" id="btn-global-add-station" class="button-primary">+ Crear estación</button>
+                </div>
+                <div id="global-stations-container" class="cards-compact-grid">
+                    <!-- Tarjetas de estaciones -->
+                </div>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 4: DISPONIBILIDAD Y CANALES GENERAL -->
+        <section id="tab-disponibilidad" class="tab-pane" role="tabpanel">
+            <div class="global-tab-container">
+                <div class="global-tab-heading">
+                    <div>
+                        <h2>Canales, mesas y servicio</h2>
+                        <p class="restaurant-muted">Configura los canales de venta, salones, zonas de delivery y motoristas de esta sucursal.</p>
+                    </div>
+                </div>
+                <div class="channels-grid-layout">
+                    <div class="config-card-box" id="global-channels-box">
+                        <h3>Canales de venta</h3>
+                        <div id="config-channels"></div>
+                    </div>
+                    <div class="config-card-box" id="global-tables-box">
+                        <h3>Salones y mesas</h3>
+                        <div id="config-tables"></div>
+                    </div>
+                    <div class="config-card-box" id="global-zones-box">
+                        <h3>Zonas de delivery y tarifas</h3>
+                        <div id="config-zones"></div>
+                    </div>
+                    <div class="config-card-box" id="global-drivers-box">
+                        <h3>Motoristas</h3>
+                        <div id="config-drivers"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 5: VISTA PREVIA EN EL POS (SIMULADOR INTERACTIVO) -->
+        <section id="tab-vista-previa" class="tab-pane" role="tabpanel">
+            <div class="pos-preview-container">
+                <div class="pos-preview-top-bar">
+                    <div>
+                        <h2>Vista previa del menú en el POS</h2>
+                        <p class="restaurant-muted">Así se verá esta sección y sus productos en la pantalla de pedidos del cajero.</p>
+                    </div>
+                    <div class="pos-preview-controls">
+                        <div class="view-mode-toggle">
+                            <button type="button" id="pos-view-screen-btn" class="pill-btn active">Pantalla de productos</button>
+                            <button type="button" id="pos-view-detail-btn" class="pill-btn">Detalle de producto</button>
+                        </div>
+                        <label class="pos-channel-select">
+                            <span>Canal de venta:</span>
+                            <select id="pos-preview-channel" class="input input-sm">
+                                <option value="pos">Punto de venta</option>
+                                <option value="takeaway">Para llevar</option>
+                                <option value="delivery">Servicio a domicilio</option>
+                                <option value="pedidosya">Pedidos Ya</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Layout POS Pantalla de Productos -->
+                <div id="pos-screen-layout" class="pos-screen-layout">
+                    <aside class="pos-sections-column">
+                        <div id="pos-sections-list" class="pos-sections-list">
+                            <!-- Botones grandes de secciones (Pizzas, Bebidas, etc.) -->
+                        </div>
+                    </aside>
+                    <main class="pos-products-grid-column">
+                        <div id="pos-products-grid" class="pos-products-grid">
+                            <!-- Tarjetas visuales de productos con fotos y precios -->
+                        </div>
+                    </main>
+                </div>
+
+                <!-- Detalle de Producto Simulado (Inline o Modal) -->
+                <div id="pos-detail-layout" class="pos-detail-layout" hidden>
+                    <div class="pos-detail-card" id="pos-detail-card">
+                        <!-- Simulación interactiva de extras, exclusiones y total calculado en tiempo real -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BARRA DE ACCIONES INFERIOR FIJA -->
+        <footer class="menu-config-bottom-bar">
+            <div class="bottom-bar-left">
+                <button type="button" id="btn-discard-changes" class="button-secondary">Descartar cambios</button>
+            </div>
+            <div class="bottom-bar-center">
+                <p class="restaurant-message" role="status"></p>
+            </div>
+            <div class="bottom-bar-right">
+                <a href="/restaurante" class="button-secondary">Cancelar</a>
+                <button type="submit" id="btn-save-configuration" class="button-primary">
+                    Guardar configuración
+                </button>
+            </div>
+        </footer>
+    </form>
+</div>
+
+<!-- MODAL: AGREGAR PRODUCTOS DEL CATÁLOGO -->
+<dialog id="restaurant-product-picker" class="restaurant-picker modal-lg menu-config-dialog" aria-labelledby="restaurant-picker-title">
+    <div class="restaurant-panel-heading">
+        <div>
+            <h2 id="restaurant-picker-title">Agregar productos al menú</h2>
+            <p>Busca un artículo de venta y agrégalo a una sección de la sucursal.</p>
+        </div>
+        <button type="button" id="restaurant-picker-close" class="button-secondary" aria-label="Cerrar selector">×</button>
+    </div>
+    <div class="restaurant-picker-filters">
+        <label class="restaurant-search">
+            Buscar por nombre o código
+            <input id="restaurant-picker-search" class="input" placeholder="Ejemplo: pizza, gaseosa, canelitas" />
+        </label>
+        <label>
+            Categoría del catálogo
+            <select id="restaurant-picker-category" class="input">
+                <option value="">Todas las categorías</option>
+            </select>
+        </label>
+        <label>
+            Tipo de artículo
+            <select id="restaurant-picker-type" class="input">
+                <option value="">Todos los vendibles</option>
+                <option value="Preparado">Preparados</option>
+                <option value="Terminado">Terminados / Reventa</option>
+            </select>
+        </label>
+    </div>
+    <div id="restaurant-picker-results" class="restaurant-picker-results"></div>
+    <div class="picker-footer">
+        <button type="button" id="restaurant-picker-more" class="button-secondary" hidden>Mostrar más</button>
+        <button type="button" id="restaurant-picker-done" class="button-primary">Listo</button>
+    </div>
+</dialog>
+
+<!-- MODAL: COPIAR MENÚ DESDE OTRA SUCURSAL -->
+<dialog id="restaurant-copy-branch-dialog" class="restaurant-dialog modal-md menu-config-dialog" aria-labelledby="copy-dialog-title">
+    <div class="restaurant-panel-heading">
+        <h2 id="copy-dialog-title">Copiar menú desde otra sucursal</h2>
+        <button type="button" id="copy-dialog-close" class="button-secondary" aria-label="Cerrar">×</button>
+    </div>
+    <div class="dialog-body-content">
+        <p class="restaurant-muted">Selecciona una sucursal de origen para importar sus secciones, productos, estaciones y grupos de modificadores. Se creará un borrador en memoria que podrás revisar antes de guardar.</p>
+        <label class="field-box">
+            <span class="field-label">Sucursal de origen autorizada</span>
+            <select id="copy-source-branch-select" class="input">
+                <option value="">Selecciona una sucursal...</option>
+                @if (ViewBag.AuthorizedBranches is not null)
+                {
+                    foreach (var b in ViewBag.AuthorizedBranches)
+                    {
+                        <option value="@b.Id">@b.Name (@b.Code)</option>
+                    }
+                }
+            </select>
+        </label>
+        <div id="copy-preview-summary" class="copy-preview-summary" hidden>
+            <div class="copy-stat-pill"><span id="copy-stat-sections">0</span> secciones</div>
+            <div class="copy-stat-pill"><span id="copy-stat-products">0</span> productos</div>
+            <div class="copy-stat-pill"><span id="copy-stat-stations">0</span> estaciones</div>
+            <p id="copy-conflict-warning" class="copy-warning-text"></p>
+        </div>
+    </div>
+    <div class="restaurant-dialog-footer">
+        <button type="button" id="copy-dialog-cancel" class="button-secondary">Cancelar</button>
+        <button type="button" id="copy-dialog-confirm" class="button-primary" disabled>Copiar menú</button>
+    </div>
+</dialog>
+
+<!-- MODAL: SIMULACIÓN INTERACTIVA DE PEDIDO POS -->
+<dialog id="restaurant-pos-simulation-modal" class="restaurant-dialog modal-pos menu-config-dialog" aria-labelledby="pos-sim-title">
+    <div class="pos-modal-header">
+        <div>
+            <span class="pos-badge">Simulación interactiva</span>
+            <h2 id="pos-sim-title">Personalizar producto</h2>
+        </div>
+        <button type="button" id="pos-sim-close" class="btn-icon config-icon-button" aria-label="Cerrar simulación">×</button>
+    </div>
+    <div class="pos-modal-body" id="pos-sim-body">
+        <!-- Contenido interactivo generado con JS -->
+    </div>
+    <div class="pos-modal-footer">
+        <div class="pos-total-display">
+            <span>Total calculado:</span>
+            <strong id="pos-sim-total">Q 0.00</strong>
+        </div>
+        <button type="button" id="pos-sim-add-btn" class="button-primary button-lg">
+            ✓ Probar agregar (Solo simulación)
+        </button>
+    </div>
+</dialog>
+
+<partial name="_ActionDialog" />
+
+<!-- Payload JSON Inicial -->
+<script type="application/json" id="restaurant-config-data">
+@Html.Raw(JsonSerializer.Serialize(new { 
+    definition = Model.Configuration, 
+    products = ViewBag.Products, 
+    components = ViewBag.Components,
+    branchId = Model.BranchId,
+    branchName = Model.BranchName,
+    revision = Model.ConfigurationRevision
+}, json))
+</script>
+
+@section Scripts {
+    <script src="~/js/restaurant-config.js" asp-append-version="true"></script>
+}

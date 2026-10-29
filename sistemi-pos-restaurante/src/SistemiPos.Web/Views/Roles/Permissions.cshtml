@@ -1,0 +1,42 @@
+@model SistemiPos.Web.Models.Security.RolePermissionsViewModel
+@{
+    ViewData["Title"] = "Configurar permisos";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad · Roles</p>
+        <h1>Permisos de @Model.RoleName</h1>
+        <p class="lead">Selecciona qué módulos y acciones puede utilizar este rol.</p>
+    </div>
+</section>
+
+<form asp-action="ConfigurePermissions" method="post" class="form-card form-grid">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+
+    @if (Model.IsProtected)
+    {
+        <div class="role-protection-note">Rol protegido: todos los permisos permanecen habilitados para evitar perder el acceso administrativo.</div>
+    }
+
+    <div class="permission-groups full-span">
+        @foreach (var module in Model.AvailablePermissions.GroupBy(x => x.Module))
+        {
+            <fieldset class="permission-group">
+                <legend>@module.Key</legend>
+                @foreach (var permission in module)
+                {
+                    <label class="permission-item">
+                        <input type="checkbox" name="SelectedPermissionIds" value="@permission.Id" checked="@permission.Selected" disabled="@Model.IsProtected" />
+                        <span><strong>@permission.Action</strong></span>
+                    </label>
+                }
+            </fieldset>
+        }
+    </div>
+
+    <div class="action-row full-span">
+        <button type="submit" class="button-primary">Guardar permisos</button>
+    </div>
+</form>

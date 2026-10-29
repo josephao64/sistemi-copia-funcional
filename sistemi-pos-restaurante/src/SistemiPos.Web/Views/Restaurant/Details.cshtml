@@ -1,0 +1,60 @@
+@model SistemiPos.Domain.Restaurant.RestaurantOrder
+@using SistemiPos.Domain.Restaurant
+@using SistemiPos.Web.Models.Restaurant
+@using System.Text.Json
+@inject SistemiPos.Web.Services.INavigationPermissionService Navigation
+@{ ViewData["Title"] = Model.Number; var permissions = await Navigation.GetPermissionCodesAsync(); var workspace = (SistemiPos.Application.Restaurant.RestaurantWorkspace)ViewBag.Workspace; }
+<partial name="_Navigation" />
+<div class="restaurant-workspace">
+<header class="restaurant-page-header"><div><p class="restaurant-eyebrow">@workspace.BranchName · Detalle del pedido</p><h1>@Model.Number</h1><p>@Model.ChannelName · @RestaurantLabels.Service(Model.ServiceType) · @Model.CreatedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</p></div><span class="restaurant-badge" data-state="@Model.Status">@RestaurantLabels.Order(Model.Status)</span></header>
+<div class="restaurant-detail-overview">
+<section class="restaurant-panel"><h2>Datos de atención</h2><dl class="restaurant-meta">
+<div><dt>Cliente</dt><dd>@(string.IsNullOrWhiteSpace(Model.CustomerName) ? "Sin nombre" : Model.CustomerName)</dd></div>
+<div><dt>Teléfono</dt><dd>@(string.IsNullOrWhiteSpace(Model.Phone) ? "Sin teléfono" : Model.Phone)</dd></div>
+<div><dt>Referencia externa</dt><dd>@(Model.ExternalReference ?? "Sin referencia")</dd></div>
+<div><dt>Bodega de consumo</dt><dd>@workspace.Warehouses.FirstOrDefault(x => x.Id == Model.WarehouseId)?.Name</dd></div>
+</dl>
+@if(!string.IsNullOrWhiteSpace(Model.Address)) { <p class="restaurant-address">@Model.Address · @Model.DeliveryZoneName</p> }
+@if(!string.IsNullOrWhiteSpace(Model.Notes)) { <p class="restaurant-note">@Model.Notes</p> }
+</section>
+<section class="restaurant-panel restaurant-total-panel"><span>Total del pedido</span><strong data-money="@Model.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">@Model.Total.ToString("N2")</strong><p>Tarifa de entrega: <span data-money="@Model.DeliveryFee.ToString(System.Globalization.CultureInfo.InvariantCulture)">@Model.DeliveryFee.ToString("N2")</span></p><small>Este importe no confirma un pago.</small></section>
+</div>
+<div id="restaurant-actions" data-order="@Model.Id" data-revision="@Model.Revision">@Html.AntiForgeryToken()
+<p class="restaurant-message" role="status"></p>
+<div class="restaurant-action-toolbar">
+@if(Model.Status == RestaurantOrderStatus.Draft && permissions.Contains(PermissionCodes.OrdersUpdate)) { <button class="button-primary" data-action="submit">Enviar a cocina y reservar</button> <a class="button-secondary" href="/restaurante/@Model.Id/editar">Editar productos</a> <button class="button-secondary" id="restaurant-refresh-draft">Actualizar precios del borrador</button> }
+@if((Model.ServiceType == RestaurantServiceType.Delivery ? Model.Status == RestaurantOrderStatus.OutForDelivery : Model.Status == RestaurantOrderStatus.Ready) && permissions.Contains(PermissionCodes.OrdersDeliver)) { <button class="button-primary" data-action="deliver">Confirmar entrega</button> }
+@if(Model.Status is not (RestaurantOrderStatus.Delivered or RestaurantOrderStatus.OutForDelivery or RestaurantOrderStatus.Cancelled) && permissions.Contains(PermissionCodes.OrdersCancel)) { <button class="button-danger" data-action="cancel" data-reason="true">Cancelar pedido</button> }
+</div>
+<section class="restaurant-panel"><div class="restaurant-panel-heading"><h2>Productos y preparación</h2><span class="restaurant-muted">Revisión @Model.Revision</span></div><div class="restaurant-table-scroll"><table class="data-table"><thead><tr><th>Producto y opciones</th><th>Cantidad activa</th><th>Estación</th><th>Estado</th><th>Total</th><th>Acciones</th></tr></thead><tbody>
+@foreach(var line in Model.Lines) { var s = line.Read();
+<tr><td><strong>@s.ProductName</strong><small>@s.ComboName @s.PromotionName</small><small>@s.Options</small>
+@if(line.CancelledQuantity > 0 || line.WasteQuantity > 0 || line.ReturnedQuantity > 0) { <small>Cancelado: @line.CancelledQuantity · Merma: @line.WasteQuantity · Reintegrado: @line.ReturnedQuantity</small> }
+</td><td>@line.ActiveQuantity.ToString("0.######")</td><td>@s.StationName</td><td><span class="restaurant-badge" data-state="@(Model.Status == RestaurantOrderStatus.Draft ? "Draft" : line.Status.ToString())">@(Model.Status == RestaurantOrderStatus.Draft ? "Sin enviar" : RestaurantLabels.Line(line.Status))</span></td><td class="restaurant-number" data-money="@line.ActiveTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)">@line.ActiveTotal.ToString("N2")</td><td class="restaurant-line-actions">
+@if(Model.Status != RestaurantOrderStatus.Draft && permissions.Contains(PermissionCodes.KitchenOrdersStatus)) {
+ if(line.Status == KitchenLineStatus.Queued) { <button class="button-primary" data-action="start" data-line="@line.Id" data-quantity="@line.ActiveQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">Preparar cantidad</button> }
+ if(line.Status == KitchenLineStatus.Preparing) { <button class="button-primary" data-action="ready" data-line="@line.Id">Listo</button> }
+}
+@if(Model.Status is not (RestaurantOrderStatus.Draft or RestaurantOrderStatus.Delivered or RestaurantOrderStatus.OutForDelivery or RestaurantOrderStatus.Cancelled) && line.ActiveQuantity > 0 && permissions.Contains(PermissionCodes.OrdersCancel)) { <button class="button-secondary" data-action="cancel" data-line="@line.Id" data-quantity="@line.ActiveQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-reason="true">Cancelar cantidad</button> }
+@if(Model.Status is not (RestaurantOrderStatus.Delivered or RestaurantOrderStatus.OutForDelivery or RestaurantOrderStatus.Cancelled) && line.ActiveQuantity > 0 && line.StartedAtUtc.HasValue && !s.RecipeVersionId.HasValue && s.Consumption.Count == 1 && s.Consumption[0].ProductId == line.ProductId && permissions.Contains(PermissionCodes.OrdersCancel) && permissions.Contains(PermissionCodes.InventoryAdjust)) { <button class="button-secondary" data-action="cancel" data-line="@line.Id" data-quantity="@line.ActiveQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-reason="true" data-return-intact="true">Cancelar y reintegrar intacto</button> }
+</td></tr> }
+</tbody></table></div></section>
+<div class="restaurant-detail-operations">
+@if(Model.ServiceType == RestaurantServiceType.Delivery && permissions.Contains(PermissionCodes.DeliveryManage)) {
+<section class="restaurant-panel"><h2>Despacho de delivery</h2><p>Motorista: @(Model.DriverName ?? "Sin asignar") · Ruta: @(Model.Route ?? "Sin instrucciones")</p>
+@if(Model.Status == RestaurantOrderStatus.Ready) { <label>Motorista<select id="restaurant-driver" class="input">@foreach(var driver in workspace.Configuration.Drivers.Where(x => x.Active)) { <option value="@driver.Id">@driver.Name</option> }</select></label><label>Ruta / instrucciones<input id="restaurant-route" class="input" /></label><button class="button-primary" data-action="assign">Asignar</button>@if(Model.DriverId.HasValue) { <button class="button-primary" data-action="depart">Registrar salida</button> } }
+@if(Model.Status == RestaurantOrderStatus.OutForDelivery) { <button class="button-secondary" data-action="incident" data-reason="true">Registrar incidencia</button> }
+</section> }
+@if(Model.TableTurnId.HasValue && permissions.Contains(PermissionCodes.TablesManage)) {
+<section class="restaurant-panel"><h2>Mesa y turno</h2><label>Mesa de destino<select id="restaurant-table" class="input">@foreach(var t in workspace.Configuration.Tables.Where(x => x.Active)) { <option value="@t.Id">@t.Area / @t.Name</option> }</select></label><button class="button-secondary" data-action="move-table" data-reason="true">Cambiar mesa</button><button class="button-secondary" data-action="close-table" data-reason="true">Liberar mesa</button><p class="helper-text">La liberación exige pedidos entregados o cancelados. No confirma el pago de la cuenta.</p></section> }
+</div>
+</div>
+@if(Model.Status is RestaurantOrderStatus.Submitted or RestaurantOrderStatus.InPreparation or RestaurantOrderStatus.Ready && permissions.Contains(PermissionCodes.OrdersUpdate)) {
+<details class="restaurant-panel restaurant-additions"><summary>Agregar productos al pedido</summary><p>Los productos adicionales se envían a cocina conservando el historial anterior.</p><form id="restaurant-order-form" data-endpoint="/restaurante/@Model.Id/lineas" data-revision="@Model.Revision">@Html.AntiForgeryToken()<label>Buscar producto<input id="restaurant-menu-search" class="input" placeholder="Nombre, código o categoría" /></label><div class="restaurant-order-layout"><section><div id="restaurant-menu" class="restaurant-menu"></div><div id="restaurant-combos" class="restaurant-combos"></div></section><aside class="restaurant-panel"><h3>Productos adicionales <span class="restaurant-count" id="restaurant-cart-count">0</span></h3><div id="restaurant-cart"></div><button class="button-primary">Enviar líneas adicionales</button><p class="restaurant-message" role="status"></p></aside></div></form></details>
+}
+<details class="restaurant-panel restaurant-history"><summary>Historial de cambios <span class="restaurant-count">@Model.Events.Count</span></summary><ol class="restaurant-timeline">@foreach(var e in Model.Events.OrderByDescending(x => x.Revision)) { <li><time>@e.AtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM HH:mm")</time><div><strong>@e.Actor</strong><span class="restaurant-muted"> · @RestaurantLabels.Action(e.Action)</span><p>@e.Detail</p></div></li> }</ol>@if(Model.Events.Count == 0) { <p class="restaurant-muted">Todavía no hay cambios registrados.</p> }</details>
+</div>
+<partial name="_ActionDialog" />
+<script type="application/json" id="restaurant-menu-data">@Html.Raw(JsonSerializer.Serialize(new { workspace.Menu, workspace.Configuration.Combos, workspace.Components }, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
+<script type="application/json" id="restaurant-draft-data">@Html.Raw(Model.DraftJson.Replace("<", "\\u003c"))</script>
+@section Scripts { <script src="~/js/restaurant.js" asp-append-version="true"></script> }

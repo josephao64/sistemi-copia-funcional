@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMI POS — Informe de Funcionalidad: Multi-sucursal</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.8cm 1.5cm 1.8cm 1.5cm;
+            @bottom-right {
+                content: counter(page);
+            }
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.55;
+            color: #1e293b;
+            background: #ffffff;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .header-card {
+            border-bottom: 2px solid #059669;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: #ecfdf5;
+            color: #047857;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #a7f3d0;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 11.5pt;
+            color: #64748b;
+            margin: 0 0 16px 0;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 9pt;
+        }
+
+        .meta-item strong {
+            display: block;
+            color: #475569;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            font-size: 7.5pt;
+            letter-spacing: 0.04em;
+        }
+
+        .meta-item span {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #1e293b;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin: 24px 0 12px 0;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #334155;
+            margin: 16px 0 8px 0;
+        }
+
+        p {
+            margin: 0 0 10px 0;
+        }
+
+        .checklist-card {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .check-item {
+            margin-bottom: 16px;
+            padding-bottom: 14px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .check-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .check-title {
+            font-size: 10.5pt;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            font-size: 8pt;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            border: 1px solid #86efac;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 8.5pt;
+            background: #f1f5f9;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #0f172a;
+        }
+
+        ul {
+            margin: 0 0 10px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <div class="header-badge">Fase 1 • Fundación Empresarial</div>
+        <h1>SISTEMI POS Restaurante</h1>
+        <div class="subtitle">Documentación y Verificación de Criterios: Módulo Multi-sucursal</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <strong>Módulo</strong>
+                <span>Multi-sucursal (ORG-03)</span>
+            </div>
+            <div class="meta-item">
+                <strong>Rama Git</strong>
+                <span>development-joseph</span>
+            </div>
+            <div class="meta-item">
+                <strong>Estado</strong>
+                <span class="badge-pill">100% Implementado y Verificado</span>
+            </div>
+            <div class="meta-item">
+                <strong>Base de Datos</strong>
+                <span>PostgreSQL (Restricciones activas)</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>1. Resumen de la Funcionalidad</h2>
+    <p>
+        El módulo <strong>Multi-sucursal</strong> habilita al sistema para gestionar operaciones comerciales, inventarios, cajas y facturación de múltiples puntos de venta físicos o quioscos bajo una misma personería jurídica institucional.
+    </p>
+
+    <h2>2. Verificación de Criterios de Aceptación (Checklist)</h2>
+    <div class="checklist-card">
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">CUMPLIDO</span>
+                <span>1. Todas las sucursales pertenecen a una única empresa.</span>
+            </div>
+            <p><strong>Evidencia técnica:</strong></p>
+            <ul>
+                <li><code>src/SistemiPos.Domain/Organizations/Branch.cs</code>: La entidad exige obligatoriamente la clave foránea <code>CompanyId</code> en el constructor. No existe sucursal sin empresa asociada.</li>
+                <li><code>src/SistemiPos.Infrastructure/Persistence/Configurations/BranchConfiguration.cs</code>: Se define la relación relacional con <code>Company</code> con política <code>OnDelete: ReferentialAction.Restrict</code>.</li>
+                <li><code>src/SistemiPos.Application/Organizations/EnterpriseSettingsResolver.cs</code>: Valida en cada operación que <code>branch.CompanyId == companyId</code>, bloqueando accesos cruzados.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">CUMPLIDO</span>
+                <span>2. Una sucursal puede estar activa o inactiva.</span>
+            </div>
+            <p><strong>Evidencia técnica:</strong></p>
+            <ul>
+                <li><code>Branch.cs</code> contiene la propiedad <code>bool IsActive</code> y el método de dominio <code>SetActive(bool isActive)</code>.</li>
+                <li><code>OrganizationService.ToggleBranchActiveAsync(id)</code> y <code>OrganizationController.ToggleBranchActive(id)</code> permiten cambiar el estado operativo.</li>
+                <li>La interfaz administrativa (<code>/Organization?tab=branches</code>) muestra badges de estado y botones interactivos para activar/desactivar cada sede.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">CUMPLIDO</span>
+                <span>3. Desactivar una sucursal no elimina su información histórica.</span>
+            </div>
+            <p><strong>Evidencia técnica:</strong></p>
+            <ul>
+                <li>El sistema aplica <strong>borrado lógico (soft toggle)</strong>. La sentencia <code>DELETE</code> sobre la tabla <code>Branches</code> está prohibida y bloqueada por el motor de base de datos.</li>
+                <li>Todas las tablas dependientes (<code>Sales</code>, <code>CashSessions</code>, <code>InventoryMovements</code>, <code>Warehouses</code>) conservan permanentemente su <code>BranchId</code>.</li>
+                <li>La base de datos cuenta con la restricción <code>ReferentialAction.Restrict</code>; si se intentase borrar físicamente, PostgreSQL rechaza la eliminación para proteger los datos históricos.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">CUMPLIDO</span>
+                <span>4. El sistema debe identificar en qué sucursal se está operando.</span>
+            </div>
+            <p><strong>Evidencia técnica:</strong></p>
+            <ul>
+                <li>Servicio central <code>IOperationContextAccessor</code> e implementación <code>HttpOperationContextAccessor.cs</code> que resuelven <code>CurrentBranchId</code> y <code>CurrentBranchName</code> en cada solicitud HTTP.</li>
+                <li>Almacenamiento seguro en la cookie <code>.SistemiPosRestaurante.BranchContext</code>.</li>
+                <li>La barra superior (<code>_Layout.cshtml</code>) muestra el selector desplegable cuando el usuario tiene múltiples sucursales, o el badge de sucursal fija cuando tiene una sola.</li>
+                <li>Los módulos de inventario, cajas y ventas filtran automáticamente sus datos según <code>CurrentBranchId</code>.</li>
+            </ul>
+        </div>
+
+        <div class="check-item">
+            <div class="check-title">
+                <span class="badge-pill">CUMPLIDO</span>
+                <span>5. Un usuario puede tener acceso a una o varias sucursales.</span>
+            </div>
+            <p><strong>Evidencia técnica:</strong></p>
+            <ul>
+                <li>Entidad relacional <code>UserScopeAssignment</code> con nivel de alcance <code>UserScopeLevel.Branch</code>.</li>
+                <li>Permite asociar una colección de sucursales autorizadas (<code>SelectedBranchIds</code>) y una sucursal de entrada por defecto (<code>DefaultBranchId</code>).</li>
+                <li>Formulario de administración de usuarios (<code>Users/Form.cshtml</code> y <code>UsersController.cs</code>) permite seleccionar las casillas de sucursales permitidas para cada empleado.</li>
+                <li>Seguridad estricta: Si un usuario intenta acceder a una sucursal no asignada, el sistema rechaza la petición con <code>UnauthorizedAccessException</code>.</li>
+            </ul>
+        </div>
+
+    </div>
+
+</body>
+</html>

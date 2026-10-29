@@ -1,0 +1,36 @@
+@model IReadOnlyList<SistemiPos.Application.Catalog.CategoryDto>
+@{
+    ViewData["Title"] = "Categorías";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Catálogo</p>
+        <h1>Categorías</h1>
+    </div>
+    <a asp-action="Create" class="button-primary link-button" data-crud-modal>+ Nueva categoría</a>
+</section>
+
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.Description</td>
+                <td>@(item.IsActive ? "Activa" : "Inactiva")</td>
+                <td><a asp-action="Edit" asp-route-id="@item.Id" data-crud-modal>Editar</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

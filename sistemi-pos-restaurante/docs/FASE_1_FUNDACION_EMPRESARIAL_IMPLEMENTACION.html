@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMI POS ERP — Informe de Implementación Fase 1: Fundación Empresarial</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.8cm 1.5cm 1.8cm 1.5cm;
+            @bottom-right {
+                content: counter(page);
+            }
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.55;
+            color: #1e293b;
+            background: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header-card {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #bfdbfe;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 13pt;
+            font-weight: 600;
+            color: #475569;
+            margin: 0 0 14px 0;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 9pt;
+        }
+
+        .meta-item strong {
+            display: block;
+            color: #64748b;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 2px;
+        }
+
+        .meta-item span {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        h2 {
+            font-size: 13.5pt;
+            font-weight: 700;
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin-top: 28px;
+            margin-bottom: 14px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            page-break-after: avoid;
+        }
+
+        p {
+            margin: 0 0 10px 0;
+            text-align: justify;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin: 14px 0 20px 0;
+            page-break-inside: auto;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            text-align: left;
+            border: 1px solid #cbd5e1;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 8pt;
+            letter-spacing: 0.03em;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .badge-success {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 8pt;
+            border: 1px solid #bbf7d0;
+            white-space: nowrap;
+        }
+
+        .code-inline {
+            font-family: "Cascadia Code", "Fira Code", Consolas, Courier, monospace;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 8.5pt;
+            border: 1px solid #e2e8f0;
+        }
+
+        .diagram-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 14px 0;
+            page-break-inside: avoid;
+        }
+
+        .diagram-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .diagram-node {
+            background: #ffffff;
+            border: 2px solid #2563eb;
+            border-radius: 6px;
+            padding: 8px 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 8.5pt;
+            color: #1e3a8a;
+            flex: 1;
+            min-width: 120px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .diagram-node small {
+            display: block;
+            color: #64748b;
+            font-size: 7.5pt;
+            font-weight: normal;
+            margin-top: 2px;
+        }
+
+        .diagram-arrow {
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        .alert-box {
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 12px 14px;
+            border-radius: 0 6px 6px 0;
+            margin: 14px 0;
+            font-size: 9pt;
+        }
+
+        .alert-box strong {
+            color: #1d4ed8;
+        }
+
+        ul, ol {
+            margin: 0 0 12px 0;
+            padding-left: 22px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .footer-note {
+            margin-top: 30px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            font-size: 8pt;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <div class="header-badge">Informe de Implementación de Arquitectura</div>
+        <h1>SISTEMI POS ERP</h1>
+        <div class="subtitle">Fase 1: Fundación Empresarial (Tareas ORG-01 a ORG-10)</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <strong>Rama Git</strong>
+                <span>development-joseph</span>
+            </div>
+            <div class="meta-item">
+                <strong>Stack Técnico</strong>
+                <span>.NET 10 · C# · MVC</span>
+            </div>
+            <div class="meta-item">
+                <strong>Base de Datos</strong>
+                <span>PostgreSQL (EF Core)</span>
+            </div>
+            <div class="meta-item">
+                <strong>Estado</strong>
+                <span style="color: #16a34a;">Listo & En Ejecución</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>1. Resumen Ejecutivo</h2>
+    <p>
+        El objetivo principal de la <strong>Fase 1: Fundación Empresarial</strong> ha sido dotar a SISTEMI POS de una estructura multi-empresa, multi-sucursal y multi-bodega que impida rigurosamente la mezcla o contaminación de ventas, aperturas/cierres de caja e inventarios entre distintas ubicaciones físicas.
+    </p>
+    <p>
+        La solución implementa una jerarquía empresarial limpia y escalable: <code>Grupo Empresarial &rarr; Empresas (Razones Sociales) &rarr; Sucursales (Restaurantes) &rarr; Bodegas de Almacenamiento</code>, complementada con un modelo de seguridad que desacopla los roles funcionales de los alcances geográficos, un selector contextual interactivo en la barra superior (topbar) y filtros de existencias por ubicación en tiempo real.
+    </p>
+
+    <h2>2. Arquitectura de Datos y Relaciones Jerárquicas</h2>
+    
+    <div class="diagram-box">
+        <strong>Jerarquía Organizacional de SISTEMI POS:</strong>
+        <div class="diagram-flow">
+            <div class="diagram-node">
+                Grupo Empresarial
+                <small>BusinessGroup (Raíz)</small>
+            </div>
+            <div class="diagram-arrow">&rarr;</div>
+            <div class="diagram-node">
+                Empresa / Fiscal
+                <small>Company (NIT/Legal)</small>
+            </div>
+            <div class="diagram-arrow">&rarr;</div>
+            <div class="diagram-node">
+                Sucursal Operativa
+                <small>Branch (Restaurante)</small>
+            </div>
+            <div class="diagram-arrow">&rarr;</div>
+            <div class="diagram-node">
+                Bodegas Físicas
+                <small>Warehouse (Cocina/Barra)</small>
+            </div>
+        </div>
+    </div>
+
+    <p>
+        <strong>Asociación estricta de operaciones por sucursal:</strong>
+    </p>
+    <ul>
+        <li><strong>Existencias (<code>InventoryStocks</code>):</strong> Pasan de tener un índice único simple por producto a un índice compuesto único <code>(ProductId, WarehouseId)</code>, permitiendo que un mismo producto tenga existencia física diferenciada en la Bodega General, Barra, Cocina o Sub-bodegas.</li>
+        <li><strong>Movimientos de Kardex (<code>InventoryMovements</code>):</strong> Cada movimiento registra el <code>WarehouseId</code> para auditoría y trazabilidad exacta de entradas, salidas y transferencias.</li>
+        <li><strong>Sesiones de Caja (<code>CashSessions</code>):</strong> Cada sesión de cajero queda formalmente amarrada a un <code>BranchId</code>, impidiendo mezclar arqueos o cobros entre locales.</li>
+        <li><strong>Alcance de Usuarios (<code>UserScopeAssignments</code>):</strong> Un usuario puede tener asignadas múltiples sucursales con una sucursal predeterminada, o alcance Global si es Super Administrador.</li>
+    </ul>
+
+    <h2>3. Matriz de Tareas Implementadas (ORG-01 a ORG-10)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 70px;">Código</th>
+                <th style="width: 150px;">Tarea</th>
+                <th style="width: 90px;">Estado</th>
+                <th>Descripción de la Solución Técnica</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>ORG-01</strong></td>
+                <td>Grupo Empresarial</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Entidad <span class="code-inline">BusinessGroup</span> en dominio con código único, razón social corporativa, tax ID y estado activo.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-02</strong></td>
+                <td>Empresa / Fiscal</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Entidad <span class="code-inline">Company</span> ligada al grupo, con campos fiscales para facturación FEL (NIT, nombre comercial, dirección, teléfono, email).</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-03</strong></td>
+                <td>Sucursal / Local</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Entidad <span class="code-inline">Branch</span> como unidad operativa principal para cajas, ventas y comandas. Incluye bandera <span class="code-inline">IsMain</span>.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-04</strong></td>
+                <td>Bodegas</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Entidad <span class="code-inline">Warehouse</span> por sucursal, con bandera <span class="code-inline">IsDefault</span> para identificar la bodega de despacho principal.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-05</strong></td>
+                <td>Contexto Activo</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td><span class="code-inline">IOperationContextAccessor</span> y <span class="code-inline">HttpOperationContextAccessor</span> con cookie segura y validación de autorización en backend.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-06</strong></td>
+                <td>Alcance de Usuarios</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Entidad <span class="code-inline">UserScopeAssignment</span> con niveles (Global, BusinessGroup, Company, Branch) integrada a la gestión de usuarios.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-07</strong></td>
+                <td>Módulo Administrativo</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td><span class="code-inline">OrganizationController</span> y vistas para gestión jerárquica con modales de creación y edición compactos y responsivos.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-08</strong></td>
+                <td>Selector en Topbar</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Selector visual en la barra superior de <span class="code-inline">_Layout.cshtml</span> tanto en entorno administrativo como en terminal POS.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-09</strong></td>
+                <td>Inventario Multi-sede</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Filtros por sucursal y bodega en <span class="code-inline">/Inventory</span>, nuevas columnas en tabla y reporte Excel con columnas de ubicación.</td>
+            </tr>
+            <tr>
+                <td><strong>ORG-10</strong></td>
+                <td>Migración y Datos</td>
+                <td><span class="badge-success">✅ Completada</span></td>
+                <td>Migración PostgreSQL <span class="code-inline">20260919000000_AddEnterpriseStructurePhase1</span> y conciliation seeder para no dejar registros huérfanos.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>4. Detalle de Cambios por Capa del Sistema</h2>
+
+    <h3>4.1 Capa de Dominio (SistemiPos.Domain)</h3>
+    <ul>
+        <li><strong>Nuevas entidades:</strong> <code>BusinessGroup</code>, <code>Company</code>, <code>Branch</code>, <code>Warehouse</code>, <code>UserScopeAssignment</code> y enum <code>UserScopeLevel</code>.</li>
+        <li><strong>Ajustes a entidades existentes:</strong>
+            <ul>
+                <li><code>InventoryStock</code>: Se incorpora <code>WarehouseId</code> y navegación hacia <code>Warehouse</code>.</li>
+                <li><code>InventoryMovement</code>: Se incorpora <code>WarehouseId</code> para auditoría de movimientos.</li>
+                <li><code>CashSession</code>: Se incorpora <code>BranchId</code> y navegación hacia <code>Branch</code>.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>4.2 Capa de Aplicación (SistemiPos.Application)</h3>
+    <ul>
+        <li><strong>Permisos de Seguridad:</strong> Nuevos códigos en <code>PermissionCodes</code>: <code>OrganizationsView</code>, <code>OrganizationsManage</code>, <code>UserScopesManage</code>.</li>
+        <li><strong>Abstracción de Contexto:</strong> <code>IOperationContextAccessor</code> para resolver en cualquier punto del sistema la sucursal actual activa y las sucursales autorizadas del usuario.</li>
+        <li><strong>Servicios y Repositorios:</strong> Contratos DTO, <code>IOrganizationRepository</code>, <code>IOrganizationService</code> y sobrecargas en <code>IInventoryRepository</code> e <code>IInventoryQueryService</code> manteniendo compatibilidad regresiva completa.</li>
+    </ul>
+
+    <h3>4.3 Capa de Infraestructura (SistemiPos.Infrastructure)</h3>
+    <ul>
+        <li><strong>Configuraciones Fluent API:</strong> Mapeo relacional en <code>BusinessGroupConfiguration</code>, <code>CompanyConfiguration</code>, <code>BranchConfiguration</code>, <code>WarehouseConfiguration</code>, <code>UserScopeAssignmentConfiguration</code> e índices compuestos.</li>
+        <li><strong>Migración PostgreSQL:</strong> Creación de <code>20260919000000_AddEnterpriseStructurePhase1.cs</code>.</li>
+        <li><strong>Seeder y Conciliación Automática (<code>OrganizationDefaultsSeeder.cs</code>):</strong>
+            <ul>
+                <li>Crea el Grupo Corporativo por defecto, Empresa principal, Sucursal Central y Bodega General.</li>
+                <li>Asigna la bodega general a los registros de stock históricos sin ubicación asignada.</li>
+                <li>Asigna la sucursal central a movimientos de kardex y sesiones de caja históricas.</li>
+                <li>Otorga alcance Global al Super Administrador y alcance sobre la sucursal central a los usuarios operativos existentes.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>4.4 Capa Web (SistemiPos.Web)</h3>
+    <ul>
+        <li><strong>Implementación de Contexto (<code>HttpOperationContextAccessor.cs</code>):</strong> Lectura de la cookie <code>.SistemiPosRestaurante.BranchContext</code>, validación estricta de pertenencia y fallback seguro a la sucursal predeterminada.</li>
+        <li><strong>Controlador y Vistas Organizacionales (<code>OrganizationController.cs</code>):</strong> Ruta <code>/Organization</code> con vista en árbol jerárquico y modales de alta/edición para cada nivel.</li>
+        <li><strong>Administración de Usuarios:</strong> Edición de sucursales permitidas y sucursal por defecto desde <code>/Users</code>.</li>
+        <li><strong>Barra Superior (Topbar):</strong> Selector dinámico en <code>_Layout.cshtml</code> (administrativo y POS) con auto-envío y recarga contextual.</li>
+        <li><strong>Inventario Multi-bodega:</strong> Filtros en cascada por sucursal y bodega en <code>/Inventory</code>, columnas de ubicación en el grid y en la exportación Excel.</li>
+    </ul>
+
+    <h2>5. Verificación y Resultados de Ejecución</h2>
+    <div class="alert-box">
+        <strong>Estado de Compilación y Servicio:</strong><br>
+        • Compilación limpia con <strong>0 Errores y 0 Advertencias</strong>.<br>
+        • Migración PostgreSQL ejecutada con éxito.<br>
+        • Conciliación de datos completada sin pérdida de históricos.<br>
+        • Servidor web activo y verificado en <strong>http://localhost:5077</strong> (Endpoint <code>/health</code> responde <strong>Healthy</strong>).
+    </div>
+
+    <h2>6. Instrucciones para Pruebas Manuales</h2>
+    <ol>
+        <li>Abrir el navegador en <code>http://localhost:5077</code> e iniciar sesión con el usuario administrador.</li>
+        <li>Comprobar el selector de sucursal con el ícono 🏢 en la barra superior.</li>
+        <li>Ir a <strong>Estructura empresarial</strong> (<code>/Organization</code>) para crear una sucursal adicional o bodegas de prueba.</li>
+        <li>Cambiar la sucursal activa desde el topbar y verificar cómo se conserva el contexto operativo.</li>
+        <li>Ir a <strong>Inventario</strong> (<code>/Inventory</code>) y aplicar filtros por sucursal y bodega, o descargar el archivo Excel.</li>
+        <li>Ir a <strong>Usuarios</strong> (<code>/Users</code>) y configurar las sucursales asignadas a un usuario específico.</li>
+    </ol>
+
+    <div class="footer-note">
+        SISTEMI POS Restaurante & Pizzería · Documento generado automáticamente para archivo y exportación · Septiembre 2026
+    </div>
+
+</body>
+</html>

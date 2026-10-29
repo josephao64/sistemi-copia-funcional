@@ -1,0 +1,45 @@
+@model SistemiPos.Web.Models.Home.DashboardDetailViewModel
+@using SistemiPos.Web.Models.Home
+@using SistemiPos.Domain.Purchases
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<section class="page-header dashboard-detail-header">
+    <div>
+        <p class="lead">@Model.Count registros</p>
+    </div>
+    <div class="topbar-actions dashboard-detail-actions">
+        <span>Actualizado: @Model.UpdatedAt.ToString("HH:mm:ss")</span>
+        <a asp-action="Export" asp-route-section="@Model.ExportSection" class="button-primary link-button">Exportar a Excel</a>
+    </div>
+</section>
+
+<div class="table-card dashboard-detail-card" data-filter-table>
+    <div class="dashboard-detail-tools">
+        <input type="search" class="input table-search" data-table-search placeholder="Buscar en el listado..." aria-label="Buscar en el listado" />
+    </div>
+    <div class="table-responsive dashboard-detail-table">
+        @if (Model.Section is DashboardDetailSection.LowStock or DashboardDetailSection.OutOfStock)
+        {
+            <table class="data-table">
+                <thead><tr><th>Código</th><th>Nombre</th><th>Existencia actual</th>@if (Model.Section == DashboardDetailSection.LowStock){<th>Existencia mínima</th>}</tr></thead>
+                <tbody>@foreach (var product in Model.StockRows){<tr><td>@product.InternalCode</td><td>@product.ProductName</td><td>@DisplayFormats.Quantity(product.CurrentStock)</td>@if (Model.Section == DashboardDetailSection.LowStock){<td>@DisplayFormats.Quantity(product.MinimumStock)</td>}</tr>}</tbody>
+            </table>
+        }
+        else if (Model.Section == DashboardDetailSection.PendingOrders)
+        {
+            <table class="data-table">
+                <thead><tr><th>Orden</th><th>Proveedor</th><th>Fecha de solicitud</th><th>Días transcurridos</th><th>Estado</th><th></th></tr></thead>
+                <tbody>@foreach (var order in Model.PendingOrders){<tr><td>@order.Number</td><td>@order.SupplierName</td><td>@order.RequestedAtUtc.ToOffset(Model.UpdatedAt.Offset).ToString("dd/MM/yyyy")</td><td>@order.ElapsedDays</td><td>Solicitada</td><td><a asp-controller="Purchases" asp-action="OrderDetails" asp-route-id="@order.OrderId">Ver orden</a></td></tr>}</tbody>
+            </table>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead><tr><th>Código</th><th>Nombre</th><th>Existencia actual</th><th>Fecha de última venta</th><th>Días sin movimiento</th><th>Días configurados</th></tr></thead>
+                <tbody>@foreach (var product in Model.ProductsWithoutMovement){<tr><td>@product.InternalCode</td><td>@product.ProductName</td><td>@DisplayFormats.Quantity(product.CurrentStock)</td><td>@(product.LastSaleAtUtc?.ToOffset(Model.UpdatedAt.Offset).ToString("dd/MM/yyyy") ?? "Nunca")</td><td>@product.DaysWithoutMovement</td><td>@product.ConfiguredDays</td></tr>}</tbody>
+            </table>
+        }
+    </div>
+</div>

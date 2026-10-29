@@ -1,0 +1,44 @@
+@model SistemiPos.Web.Models.Catalog.CategoryFormViewModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Nueva categoría" : "Editar categoría";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Catálogo</p>
+        <h1>@ViewData["Title"]</h1>
+    </div>
+</section>
+
+<div class="form-card">
+    <form method="post" class="form-grid">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <input asp-for="ReturnUrl" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+        <div class="field">
+            <label asp-for="Name"></label>
+            <input asp-for="Name" class="input" />
+            <span asp-validation-for="Name" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Description"></label>
+            <textarea asp-for="Description" class="input textarea"></textarea>
+        </div>
+
+        <label class="checkbox">
+            <input asp-for="IsActive" />
+            <span>Activa</span>
+        </label>
+
+        <div class="action-row">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

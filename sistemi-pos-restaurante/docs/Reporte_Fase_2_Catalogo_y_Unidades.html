@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Técnico y Operativo - Fase 2: Catálogo y Unidades</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm 20mm 15mm;
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+      }
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.55;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-size: 13px;
+    }
+    .header-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      color: #ffffff;
+      padding: 30px 25px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .header-banner h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .header-banner p {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 9999px;
+      margin-right: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-primary { background-color: #3b82f6; color: white; }
+    .badge-success { background-color: #10b981; color: white; }
+    .badge-secondary { background-color: #64748b; color: white; }
+    
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+      padding: 15px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .meta-item h4 {
+      margin: 0 0 4px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.5px;
+    }
+    .meta-item p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    h2 {
+      color: #0f172a;
+      font-size: 17px;
+      font-weight: 700;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    h3 {
+      color: #1e3a8a;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 15px;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid;
+      font-size: 12.5px;
+    }
+    .alert-success {
+      background-color: #ecfdf5;
+      border-left-color: #10b981;
+      color: #065f46;
+    }
+    .alert-info {
+      background-color: #eff6ff;
+      border-left-color: #3b82f6;
+      color: #1e40af;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .card-title {
+      font-weight: bold;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .task-card-box {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+      border: 1px solid #334155;
+    }
+    .task-card-box h3 {
+      color: #ffffff;
+      margin: 0 0 6px 0;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .task-card-box p {
+      color: #cbd5e1;
+      font-size: 12.5px;
+      margin: 0 0 10px 0;
+      line-height: 1.45;
+    }
+    .progress-bar-container {
+      background: #334155;
+      border-radius: 9999px;
+      height: 8px;
+      width: 100%;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-bar-fill {
+      background: #10b981;
+      height: 100%;
+      width: 100%;
+      border-radius: 9999px;
+    }
+    .page-break {
+      page-break-after: always;
+    }
+    ul, ol {
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-banner">
+    <div style="margin-bottom: 8px;">
+      <span class="badge badge-primary">SISTEMI POS Restaurante</span>
+      <span class="badge badge-success">Fase 2 Completada</span>
+      <span class="badge badge-secondary">Versión 2.0</span>
+    </div>
+    <h1>Informe Técnico y Operativo de Implementación</h1>
+    <p>Fase 2: Catálogo Compartido, Unidades de Medida y Configuraciones Comerciales (CAT-01 a CAT-08)</p>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <h4>Fecha de Entrega</h4>
+      <p>22 de Septiembre de 2026</p>
+    </div>
+    <div class="meta-item">
+      <h4>Ramas Desplegadas</h4>
+      <p><code>development-joseph</code> &amp; <code>Dev</code></p>
+    </div>
+    <div class="meta-item">
+      <h4>Commit SHA</h4>
+      <p><code>fcc5c89</code></p>
+    </div>
+    <div class="meta-item">
+      <h4>Estado General</h4>
+      <p style="color: #10b981;">✅ 100% Verificado</p>
+    </div>
+  </div>
+
+  <h2>1. Resumen Ejecutivo</h2>
+  <p>
+    Se ha completado satisfactoriamente el encargo de la <strong>Fase 2: Catálogo y unidades</strong> conforme al plan maestro de arquitectura de <strong>SISTEMI POS Restaurante</strong>. 
+    Esta fase transforma el inventario plano en una estructura jerárquica con dimensiones físicas, conversiones matemáticas precisas, presentaciones de compra de proveedores, gestión multi-sucursal independiente y trazabilidad de auditoría en tiempo real.
+  </p>
+  
+  <div class="alert alert-success">
+    <strong>Verificación Exitosa:</strong> Solución compilada con <strong>0 errores y 0 advertencias</strong>. Se ejecutó la suite completa de pruebas automáticas alcanzando <strong>103 pruebas unitarias</strong> y <strong>44 pruebas funcionales</strong> aprobadas al 100%.
+  </div>
+
+  <h2>2. Desglose del Alcance Implementado (CAT-01 a CAT-08)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 15%;">Código</th>
+        <th style="width: 25%;">Componente</th>
+        <th>Descripción y Logros Técnicos</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>CAT-01</strong></td>
+        <td>Tipos de Artículo</td>
+        <td>Implementación del enum <code>ArticleType</code> (Insumo, Preparado, Reventa, Subreceta, Empaque). Transiciones no destructivas con valor por defecto Reventa para productos históricos.</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-02</strong></td>
+        <td>Unidades Base y Dimensiones</td>
+        <td>Entidad <code>UnitOfMeasure</code> y enum <code>UnitDimension</code> (Masa, Volumen, Conteo). Registro de <code>BaseUnitId</code> por producto. Semillas oficiales para <code>g</code>, <code>kg</code>, <code>lb</code>, <code>ml</code>, <code>L</code>, <code>unidad</code>, <code>porcion</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-03</strong></td>
+        <td>Servicio de Conversión</td>
+        <td>Servicio <code>UnitConversionService</code> con aritmética decimal estricta y validación dimensional. Reglas universales y conversiones específicas por producto (<code>ProductUnitConversion</code>). Rechazo de factores &le; 0.</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-04</strong></td>
+        <td>Presentaciones de Compra</td>
+        <td>Entidad <code>ProductPurchasePresentation</code> con <code>BaseQuantityPerPackage</code> en precisión decimal. Permite comprar en sacos, cajas o paquetes y convertir automáticamente al inventario base.</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-05</strong></td>
+        <td>Configuración por Sucursal</td>
+        <td>Entidad <code>ProductBranchSetting</code>. Cada sucursal puede encender/apagar productos, ocultarlos del menú o definir un precio/stock mínimo especial (o heredar los valores generales del producto si se dejan en blanco).</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-06</strong></td>
+        <td>Variantes y Presentaciones</td>
+        <td>Reutilización del modelo de variantes con herencia de tipo de artículo y unidad base del padre, conservando SKUs independientes por combinación.</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-07</strong></td>
+        <td>Historial de Auditoría</td>
+        <td>Entidad <code>CatalogChangeLog</code>. Registra en la misma transacción el actor, fecha/hora UTC, campo modificado, valor anterior y valor nuevo para cambios comerciales críticos.</td>
+      </tr>
+      <tr>
+        <td><strong>CAT-08</strong></td>
+        <td>Interfaz de Usuario POS</td>
+        <td>Actualización de <code>ProductsController</code>, <code>ProductFormViewModel</code>, <code>Index.cshtml</code> y <code>Form.cshtml</code> con selectores dinámicos, filtros por tipo, pestañas de sucursales, compras e historial.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Auditoría Exhaustiva: Tarjeta de Tareas "Productos"</h2>
+  
+  <div class="task-card-box">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span class="badge badge-primary">Tarjeta de Tareas</span>
+      <span class="badge badge-success">Estado: 100% Completado (9 de 9)</span>
+    </div>
+    <h3>⚪ Productos</h3>
+    <p>
+      <strong>Descripción Oficial:</strong> Permitir administrar los productos e ítems utilizados por el restaurante, definiendo su clasificación, unidad de control y comportamiento dentro de los diferentes procesos del sistema.
+    </p>
+    <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: #94a3b8; font-weight: 600;">
+      <span>Checklist de Validación Técnica</span>
+      <span>100% (9 de 9 elementos verificados)</span>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill"></div>
+    </div>
+  </div>
+
+  <p>
+    A continuación se presenta el contraste y evidencia de cumplimiento de cada uno de los requisitos literales exigidos en la tarjeta de seguimiento:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 4%;">#</th>
+        <th style="width: 46%;">Requisito Literal del Checklist</th>
+        <th style="width: 14%;">Estado</th>
+        <th>Evidencia Técnica y Componentes de Backend / UI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td><strong>Todo producto debe clasificarse como Insumo, Preparado, Reventa, Subreceta o Empaque</strong>, ya que su tipo determina cómo participará posteriormente en compras, inventario, recetas, producción y ventas.</td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td><code>ArticleType.cs</code>, <code>Product.cs</code>. Selector en <code>Form.cshtml</code> y filtro en <code>Index.cshtml</code>. Protegido con pruebas unitarias en <code>ArticleTypeInvariantsTests.cs</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td><strong>Cada producto debe manejar una unidad base que determine cómo se controle físicamente su existencia.</strong></td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td><code>UnitOfMeasure.cs</code> (Masa, Volumen, Conteo). Campo obligatorio <code>Product.BaseUnitId</code>. Semillas predeterminadas en <code>CatalogDefaultsSeeder.cs</code>. Invariante: bloquea modificación de unidad si existen movimientos.</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td><strong>Un producto puede comprarse en diferentes presentaciones, pero cada presentación debe indicar su equivalencia en la unidad base del producto.</strong></td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td>Entidad <code>ProductPurchasePresentation.cs</code> con factor <code>BaseQuantityPerPackage</code>. <code>PurchaseService.cs</code> convierte automáticamente la compra a la unidad base de inventario físico.</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td><strong>Un mismo producto puede tener configuración comercial diferente por sucursal</strong>, incluyendo habilitación, visibilidad, precio y stock mínimo.</td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td><code>ProductBranchSetting.cs</code>. Permite fijar <code>CustomPrice</code>, <code>CustomMinimumStock</code>, <code>IsEnabled</code> y <code>IsVisibleInMenu</code>. Herencia automática del catálogo base si los campos se dejan vacíos.</td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td><strong>Cada producto debe permitir definir si requiere control por lote.</strong></td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td>Campo booleano <code>Product.TrackInventoryLots</code> y migración PostgreSQL <code>20261008120000_AddOptionalProductLotTracking</code>. Switch en formulario y protección si el producto ya cuenta con saldos.</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td><strong>Cuando un producto controle lotes, cada recepción de compra debe registrar el lote correspondiente y, cuando aplique, su fecha de caducidad.</strong></td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td><code>PurchaseService.ValidateIncomingLot</code>. Captura de <code>LotNumber</code> y <code>ExpiryDate</code> en Compra Directa y Recepción de Órdenes de Compra. Obligatoriedad de vencimiento si <code>ManagesExpiry == true</code> y auto-generación de código si se deja vacío.</td>
+      </tr>
+      <tr>
+        <td><strong>7</strong></td>
+        <td><strong>Las existencias de productos con control por lote deben mantenerse separadas por lote</strong>, conservando cantidad disponible, fecha de ingreso y fecha de caducidad cuando aplique.</td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td>Entidad <code>InventoryExpiryLot</code> (tabla <code>InventoryExpiryLots</code>) con <code>WarehouseId</code>, <code>LotNumber</code>, <code>ReceivedAtUtc</code>, <code>ExpiryDate</code>, <code>AvailableQuantity</code> y <code>UnitCost</code>. Consulta en vivo en <code>/InventoryLots</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>8</strong></td>
+        <td><strong>Cuando un producto tenga varios lotes disponibles, el sistema debe priorizar el consumo del lote con la fecha de caducidad más próxima.</strong></td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td>Algoritmo FEFO en <code>InventoryLotAllocation.cs</code> y <code>InventoryLotLedger.cs</code>. Ordena por <code>ExpiryDate ASC</code>, desempata por <code>ReceivedAtUtc ASC</code> (FIFO) y <strong>excluye lotes vencidos</strong>. Probado en <code>InventoryLotAllocationTests.cs</code> (5/5 pruebas aprobadas).</td>
+      </tr>
+      <tr>
+        <td><strong>9</strong></td>
+        <td><strong>El sistema debe permitir identificar y alertar los lotes próximos a vencer con base en un período configurable.</strong></td>
+        <td><span class="badge badge-success">Cumplido</span></td>
+        <td>Propiedad <code>Product.ExpiryAlertDays</code> por ítem. <code>InventoryQueryService.GetExpiryLotsAsync</code> evalúa los vencimientos contra la fecha actual y muestra semáforos en <code>/Products/Expiring</code>. Probado en <code>InventoryExpiryAlertTests.cs</code> (5/5 pruebas aprobadas).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <h2>4. Guía Operativa: Tipos de Artículo en un Restaurante</h2>
+  <p>
+    A continuación se detalla el fin comercial y operativo de cada clasificación para el personal de cocina, compras y caja:
+  </p>
+
+  <div class="card">
+    <div class="card-title">🥩 1. Insumo (Materia Prima Pura)</div>
+    <p><strong>Fin:</strong> Ingrediente base que se compra por volumen a proveedores. <em>No se vende suelto ni aparece en la comanda del mesero.</em></p>
+    <p><strong>Ejemplos en el restaurante:</strong> Piezas de carne cruda (Lomito, Puyazo), costales de papa, arroz, frijol crudo, leche, aceite, sal, verduras frescas.</p>
+    <p><strong>Comportamiento en Sistema:</strong> Se adquiere mediante presentaciones de compra (bulto, saco, galón) y se almacena en su unidad base (<code>lb</code>, <code>g</code>, <code>ml</code>). Alimenta las recetas.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🍲 2. Subreceta (Preparación Intermedia)</div>
+    <p><strong>Fin:</strong> Alimentos elaborados previamente por el equipo de cocina en tandas u ollas grandes para abastecer el servicio del día.</p>
+    <p><strong>Ejemplos en el restaurante:</strong> Caldo o fondo de res de 10 litros, olla de puré de papas para guarniciones, salsa de champiñones y vino, carne molida ya sazonada.</p>
+    <p><strong>Comportamiento en Sistema:</strong> Al producirse la subreceta, el sistema descuenta los insumos crudos y da de alta las porciones intermedias. Cuando se vende un plato, se descuenta 1 porción de la subreceta sin recalcular insumos individuales.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🥤 3. Reventa (Producto Terminado Directo)</div>
+    <p><strong>Fin:</strong> Productos de marca de fábrica que se comercializan tal como se adquieren, sin transformación en cocina.</p>
+    <p><strong>Ejemplos en el restaurante:</strong> Latas o botellas de Coca-Cola, cervezas nacionales e importadas, botellas de agua pura, jugos embotellados.</p>
+    <p><strong>Comportamiento en Sistema:</strong> Visible directamente en la caja y menú del mesero. Al vender 1 unidad, se descuenta exactamente 1 unidad del inventario comercial.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🍽️ 4. Preparado (Platillo Final a la Carta)</div>
+    <p><strong>Fin:</strong> El platillo completo que pide el cliente en el comedor o para llevar.</p>
+    <p><strong>Ejemplos en el restaurante:</strong> <em>Lomito en Salsa de Champiñones</em> (lleva: 1 corte de carne cruda [insumo] + 1 cucharón de salsa de champiñones [subreceta] + 1 porción de puré [subreceta]).</p>
+    <p><strong>Comportamiento en Sistema:</strong> Tiene el precio de venta al público en el menú. Al cobrarse, descuenta automáticamente de bodega y cocina todos los componentes de su receta.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 5. Empaque (Desechables de Servicio)</div>
+    <p><strong>Fin:</strong> Envases, cajas y bolsas indispensables para pedidos a domicilio (Delivery) o comida para llevar (Takeout).</p>
+    <p><strong>Ejemplos en el restaurante:</strong> Contenedores térmicos biodegradables de 3 divisiones, vasos térmicos para café con tapa, bolsas kraft, cubiertos desechables.</p>
+    <p><strong>Comportamiento en Sistema:</strong> Permite imputar el costo del empaque al costo real de ventas a domicilio y controlar existencias para evitar desabastecimiento en horas pico.</p>
+  </div>
+
+  <div class="page-break"></div>
+
+  <h2>4. Control de Calidad y Resultados de Pruebas</h2>
+  <p>
+    Se desarrollaron suites de pruebas dedicadas para asegurar que ninguna regla crítica de negocio sea violada:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Suite de Pruebas</th>
+        <th>Tipo</th>
+        <th>Pruebas</th>
+        <th>Resultado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>InventoryExpiryAlertTests</code></td>
+        <td>Unitaria (Lotes)</td>
+        <td>5 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>InventoryLotAllocationTests</code></td>
+        <td>Unitaria (FEFO/FIFO)</td>
+        <td>5 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>UnitConversionServiceTests</code></td>
+        <td>Unitaria</td>
+        <td>9 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>ProductBranchSettingTests</code></td>
+        <td>Unitaria</td>
+        <td>4 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>ArticleTypeInvariantsTests</code></td>
+        <td>Unitaria</td>
+        <td>4 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>CatalogVariantServiceTests &amp; ProductTests</code></td>
+        <td>Unitaria</td>
+        <td>59 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>PurchaseServiceTests</code></td>
+        <td>Integración Compras/Lotes</td>
+        <td>17 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+      <tr>
+        <td><code>CatalogPhase2FunctionalTests</code></td>
+        <td>Funcional</td>
+        <td>4 pruebas</td>
+        <td style="color: #10b981; font-weight: bold;">PASÓ (100%)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6. Entrega y Estado de Ramas en Git</h2>
+  <ul>
+    <li><strong>Ramas Sincronizadas:</strong> <code>development-joseph</code>, <code>dev</code> y <code>main</code> (todas sincronizadas y subidas al repositorio remoto).</li>
+    <li><strong>Migración de Base de Datos:</strong> <code>20261008120000_AddOptionalProductLotTracking</code> aplicada exitosamente en PostgreSQL local (<code>SISTEMI_RESTAURANTE</code>).</li>
+    <li><strong>Semillas de Datos:</strong> <code>CatalogDefaultsSeeder</code> ejecutado con unidades base, conversiones universales y tipos de artículo predeterminados.</li>
+  </ul>
+
+  <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #cbd5e1; text-align: center; color: #64748b; font-size: 11px;">
+    SISTEMI POS Restaurante &bull; Documento generado automáticamente para entrega y auditoría técnica &bull; 2026
+  </div>
+
+</body>
+</html>

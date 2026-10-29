@@ -1,0 +1,44 @@
+@model SistemiPos.Web.Models.Purchases.SupplierComparisonViewModel
+@using SistemiPos.Domain.Purchases
+@{
+    ViewData["Title"] = "Comparar proveedores";
+    var bestId = Model.Rows.Where(x => x.LastUnitCost > 0).OrderBy(x => x.LastUnitCost).Select(x => (Guid?)x.Id).FirstOrDefault();
+}
+
+<section class="page-header compact-page-header"><div><h1>Comparar proveedores</h1></div></section>
+
+<div class="table-card supplier-comparison-card">
+    <form method="get" class="filters-row compact-filters" data-product-comparison-filter>
+        <div class="field"><label for="comparison-product-search">Nombre</label><input name="productId" value="@Model.ProductId" type="hidden" data-comparison-product-id /><input id="comparison-product-search" value="@Model.ProductName" class="input" list="comparison-products" autocomplete="off" placeholder="Buscar por nombre..." data-comparison-product-search /></div>
+        <a asp-action="CompareSuppliers" class="button-ghost link-button">Limpiar</a>
+    </form>
+    <datalist id="comparison-products">@foreach (var product in Model.Products){<option value="@product.Text" data-id="@product.Value"></option>}</datalist>
+
+    @if (Model.ProductId.HasValue)
+    {
+        <div class="table-responsive"><table class="data-table"><thead><tr><th>Proveedor</th><th>Empaque</th><th class="number-column">Unidades por empaque</th><th class="money">Último costo empaque</th><th class="money">Costo unitario</th><th>Crédito</th><th>Última compra</th><th></th></tr></thead><tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr class="@(row.Id == bestId ? "supplier-best-price" : null)"><td><strong>@row.SupplierName</strong>@if(row.Id == bestId){<span class="status-badge status-success">Mejor costo</span>}<br/><span class="helper-text">@row.SupplierProductName@if(!string.IsNullOrWhiteSpace(row.SupplierProductCode)){<text> · @row.SupplierProductCode</text>}</span></td><td>@row.PackageName</td><td class="number-column">@row.UnitsPerPackage</td><td class="money">@Model.CurrencySymbol @row.LastPackageCost.ToString($"N{Model.CurrencyDecimals}")</td><td class="money"><strong>@Model.CurrencySymbol @row.LastUnitCost.ToString($"N{Model.CurrencyDecimals}")</strong></td><td>@(row.Terms == PurchaseTermsType.Credit ? $"{row.CreditDays} días" : "Contado")</td><td>@(row.LastPurchaseDateUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy") ?? "Sin compras")</td><td><a asp-action="SupplierPriceHistory" asp-route-productId="@row.ProductId" asp-route-supplierId="@row.SupplierId">Historial</a></td></tr>
+        }
+        @if(Model.Rows.Count == 0){<tr><td colspan="8">Este producto aún no tiene proveedores relacionados.</td></tr>}
+        </tbody></table></div>
+
+        <details class="inline-editor"><summary class="button-secondary">Relacionar proveedor</summary>
+            <form asp-action="SaveProductSupplier" method="post" class="form-grid compact-relation-form">
+                @Html.AntiForgeryToken()<input name="ProductId" value="@Model.ProductId" type="hidden" />
+                <div class="field"><label>Proveedor</label><input name="SupplierId" type="hidden" data-relation-supplier-id /><input class="input" list="comparison-suppliers" autocomplete="off" placeholder="Buscar proveedor..." required data-relation-supplier-search /></div>
+                <div class="field"><label>Nombre de proveedor</label><input name="SupplierProductName" class="input" maxlength="300" required /></div>
+                <div class="field"><label>Código del proveedor</label><input name="SupplierProductCode" class="input" maxlength="100" /></div>
+                <div class="field"><label>Empaque</label><select name="PackageType" class="input"><option value="1">Unidad</option><option value="2">Caja</option><option value="3">Paquete</option><option value="4">Fardo</option><option value="5">Docena</option><option value="6">Otro</option></select></div>
+                <div class="field"><label>Unidades por empaque</label><input name="UnitsPerPackage" value="1" class="input" type="number" min="1" step="1" required /></div>
+                <div class="field"><label>Condición</label><select name="Terms" class="input" data-relation-terms><option value="">Sin definir</option><option value="1">Contado</option><option value="2">Crédito</option></select></div>
+                <div class="field" data-relation-credit hidden><label>Días de crédito</label><input name="CreditDays" class="input" type="number" min="1" step="1" /></div>
+                <div class="action-row"><button class="button-primary" type="submit">Guardar relación</button></div>
+            </form>
+            <datalist id="comparison-suppliers">@foreach(var supplier in Model.Suppliers){<option value="@supplier.Text" data-id="@supplier.Value"></option>}</datalist>
+        </details>
+    }
+</div>
+
+@section Scripts { <script src="~/js/supplier-comparison.js" asp-append-version="true"></script> }

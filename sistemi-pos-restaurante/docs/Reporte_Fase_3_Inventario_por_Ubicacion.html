@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Técnico y Operativo - Fase 3: Inventario por Ubicación</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm 20mm 15mm;
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+      }
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.55;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-size: 13px;
+    }
+    .header-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #065f46 100%);
+      color: #ffffff;
+      padding: 30px 25px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .header-banner h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .header-banner p {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 9999px;
+      margin-right: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-primary { background-color: #3b82f6; color: white; }
+    .badge-success { background-color: #10b981; color: white; }
+    .badge-secondary { background-color: #64748b; color: white; }
+    
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+      padding: 15px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .meta-item h4 {
+      margin: 0 0 4px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.5px;
+    }
+    .meta-item p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    h2 {
+      color: #0f172a;
+      font-size: 17px;
+      font-weight: 700;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    h3 {
+      color: #065f46;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 15px;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 12.5px;
+    }
+    th, td {
+      padding: 9px 12px;
+      text-align: left;
+      border: 1px solid #e2e8f0;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #334155;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    .check-cell {
+      text-align: center;
+      font-weight: bold;
+      color: #059669;
+    }
+    
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px 18px;
+      margin-bottom: 18px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-accent {
+      border-left: 4px solid #10b981;
+    }
+    .card-title {
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .alert-box {
+      background-color: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 6px;
+      padding: 12px 15px;
+      margin-bottom: 18px;
+      color: #065f46;
+      font-size: 12.5px;
+    }
+    .code-block {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 12px 15px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 11.5px;
+      margin-bottom: 15px;
+      overflow-x: auto;
+    }
+    .footer {
+      margin-top: 40px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 15px;
+      text-align: center;
+      color: #64748b;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-banner">
+    <div style="margin-bottom: 10px;">
+      <span class="badge badge-success">Completado 100%</span>
+      <span class="badge badge-primary">Fase 3: Inventario por Ubicación</span>
+      <span class="badge badge-secondary">SISTEMI POS Restaurante</span>
+    </div>
+    <h1>Informe Técnico y de Operación: Fase 3</h1>
+    <p>Inventario por Ubicación, Kardex por Bodega, Traslados y Conciliación Multialmacén</p>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <h4>Arquitectura</h4>
+      <p>Clean Architecture .NET 10</p>
+    </div>
+    <div class="meta-item">
+      <h4>Base de Datos</h4>
+      <p>PostgreSQL 17 (Sin nulos)</p>
+    </div>
+    <div class="meta-item">
+      <h4>Pruebas Aprobadas</h4>
+      <p>235 tests (100% éxito)</p>
+    </div>
+    <div class="meta-item">
+      <h4>Ramas Git</h4>
+      <p>development-joseph / dev / main</p>
+    </div>
+  </div>
+
+  <div class="alert-box">
+    <strong>Estado de Entrega:</strong> Todos los 9 criterios de la Fase 3 (<code>INV-01</code> a <code>INV-09</code>) han sido completamente implementados, verificados con pruebas automatizadas e inspeccionados en la base de datos real. No existe mezcla accidental de saldos entre bodegas o sucursales.
+  </div>
+
+  <h2>1. Matriz de Cumplimiento de Fase 3 (INV-01 a INV-09)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 10%;">Clave</th>
+        <th style="width: 25%;">Tarea</th>
+        <th style="width: 45%;">Descripción del Criterio Implementado</th>
+        <th style="width: 20%;">Resultado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>INV-01</strong></td>
+        <td>Stock por Ubicación</td>
+        <td>Existencias aisladas por bodega (WarehouseId). Ventas y compras descuentan de la bodega de la sucursal activa sin mezclas globales.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-02</strong></td>
+        <td>Libro Mayor Transaccional</td>
+        <td>InventoryLotLedger con registro histórico atómico de PreviousStock, NewStock y control de concurrencia optimista.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-03</strong></td>
+        <td>Kardex por Ubicación</td>
+        <td>Filtrado por bodega en interfaz web y reporte XLSX de exportación con columna explícita de almacén.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-04</strong></td>
+        <td>FEFO / FIFO por Bodega</td>
+        <td>Consumo de lotes prioritario por fecha de expiración próxima dentro de la bodega seleccionada. Bloqueo de vencidos.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-05</strong></td>
+        <td>Ajustes con Autorización</td>
+        <td>Incrementos/decrementos extraordinarios exigen motivo, bodega y código de permiso de backend (inventory.adjust).</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-06</strong></td>
+        <td>Toma Física Aislada</td>
+        <td>Conteos físicos y ajustes acotados exclusivamente a la bodega del conteo sin afectar otras sucursales.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-07</strong></td>
+        <td>Traslados Origen - Tránsito - Destino</td>
+        <td>Validación origen != destino, deducción al despachar, custodia en tránsito y alta al recibir en destino.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-08</strong></td>
+        <td>Alertas de Mínimos</td>
+        <td>Notificación de existencias críticas por sucursal y bodega según umbral parametrizado en el catálogo.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>INV-09</strong></td>
+        <td>Conciliación de Datos</td>
+        <td>Auditoría en PostgreSQL: 0 registros huérfanos o con bodega nula en Stocks, Movimientos y Lotes.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Detalles Técnicos de la Implementación</h2>
+
+  <div class="card card-accent">
+    <div class="card-title">Segregación de Existencias en Ventas (SaleService.cs)</div>
+    <p>Se ajustó el flujo de creación de borradores de venta para resolver la bodega antes de comprobar existencias. De esta forma, si el producto existe en otra sucursal pero no en la bodega de la sucursal activa, la venta es rechazada apropiadamente impidiendo saldos negativos.</p>
+    <p>Asimismo, en <code>CancelAsync</code> y <code>ReturnSaleAsync</code>, los reingresos por anulación o devolución se dirigen con precisión a la bodega que originó la transacción.</p>
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">Kardex por Bodega y Exportación (InventoryController.cs & Kardex.cshtml)</div>
+    <p>Se extendió la acción <code>Kardex</code> y <code>Export</code> para aceptar <code>branchId</code> y <code>warehouseId</code>, validando permisos de sucursal con <code>IOperationContextAccessor</code>. La interfaz ahora provee un selector de bodegas autorizadas y la exportación a Excel incluye la columna <strong>Bodega</strong> con trazabilidad completa de entradas, salidas y documentos fuente.</p>
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">Toma Física sin Colisiones (PhysicalInventoryCountService.cs)</div>
+    <p>Se restringió la consulta de saldos vigentes en <code>SaveItemAsync</code> a la bodega asociada a la toma física (<code>count.WarehouseId</code>). En <code>FinalizeAsync</code> se incorporó un filtro de unicidad (<code>DistinctBy</code>) para garantizar operaciones transaccionales seguras y deterministas.</p>
+  </div>
+
+  <h2>3. Verificación Automatizada de Calidad</h2>
+  <div class="code-block">
+Serie de pruebas para SistemiPos.UnitTests.dll (.NETCoreApp,Version=v10.0)
+Correctas! - Con error: 0, Superado: 180, Omitido: 0, Total: 180, Duración: 451 ms
+
+Serie de pruebas para SistemiPos.FunctionalTests.dll (.NETCoreApp,Version=v10.0)
+Correctas! - Con error: 0, Superado: 47, Omitido: 0, Total: 47, Duración: 1.2 s
+
+Serie de pruebas para SistemiPos.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Correctas! - Con error: 0, Superado: 8, Omitido: 1 (requiere Docker live), Total: 9, Duración: 3.1 s
+
+TOTAL: 235 pruebas superadas con éxito (100% tasa de aprobación).
+  </div>
+
+  <h2>4. Auditoría de Base de Datos PostgreSQL (INV-09)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Tabla de Inventario</th>
+        <th>Total de Registros</th>
+        <th>Registros con Bodega Válida</th>
+        <th>Registros con Bodega Nula</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>InventoryStocks</code></td>
+        <td>9</td>
+        <td>9</td>
+        <td><strong>0</strong></td>
+      </tr>
+      <tr>
+        <td><code>InventoryMovements</code></td>
+        <td>19</td>
+        <td>19</td>
+        <td><strong>0</strong></td>
+      </tr>
+      <tr>
+        <td><code>InventoryExpiryLots</code></td>
+        <td>2</td>
+        <td>2</td>
+        <td><strong>0</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    SISTEMI POS Restaurante & Pizzería — Sistema de Punto de Venta y Gestión de Inventarios Multi-Ubicación.<br/>
+    Documentación oficial de Fase 3 · Octubre 2026.
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+@model SistemiPos.Web.Models.Organizations.OrganizationIndexViewModel
+@using SistemiPos.Application.Security
+@{
+    ViewData["Title"] = "Estructura empresarial";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1>Estructura empresarial</h1>
+    </div>
+    <div class="action-row">
+        @if (Model.ActiveTab == "groups")
+        {
+            <a asp-action="CreateGroup" class="button-primary link-button" data-crud-modal>+ Nuevo grupo</a>
+        }
+        else if (Model.ActiveTab == "companies")
+        {
+            <a asp-action="CreateCompany" class="button-primary link-button" data-crud-modal>+ Nueva empresa</a>
+        }
+        else if (Model.ActiveTab == "warehouses")
+        {
+            <a asp-action="CreateWarehouse" class="button-primary link-button" data-crud-modal>+ Nueva bodega</a>
+        }
+        else
+        {
+            <a asp-action="CreateBranch" class="button-primary link-button" data-crud-modal>+ Nueva sucursal</a>
+        }
+    </div>
+</section>
+
+<nav class="subnav-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--color-border, #e2e8f0); padding-bottom: 0.5rem;">
+    <a asp-action="Index" asp-route-tab="branches" class="button-primary link-button" aria-current="@(Model.ActiveTab == "branches" ? "page" : null)">
+        🏢 Sucursales (@Model.Branches.Count)
+    </a>
+    <a asp-action="Index" asp-route-tab="warehouses" class="button-primary link-button" aria-current="@(Model.ActiveTab == "warehouses" ? "page" : null)">
+        📦 Bodegas (@Model.Warehouses.Count)
+    </a>
+    <a asp-action="Index" asp-route-tab="companies" class="button-primary link-button" aria-current="@(Model.ActiveTab == "companies" ? "page" : null)">
+        🏛️ Empresas (@Model.Companies.Count)
+    </a>
+    <a asp-action="Index" asp-route-tab="groups" class="button-primary link-button" aria-current="@(Model.ActiveTab == "groups" ? "page" : null)">
+        🌐 Grupos corporativos (@Model.BusinessGroups.Count)
+    </a>
+</nav>
+
+@if (Model.ActiveTab == "branches")
+{
+    <div class="table-card" data-filter-table>
+        <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por código, nombre, empresa o dirección" aria-label="Buscar sucursales" /></div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Sucursal</th>
+                    <th>Empresa</th>
+                    <th>Dirección</th>
+                    <th>Zona horaria</th>
+                    <th>Bodegas</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Branches)
+            {
+                <tr>
+                    <td><code>@item.Code</code></td>
+                    <td><strong>@item.Name</strong></td>
+                    <td>@item.CompanyTradeName</td>
+                    <td>@(item.Address ?? "—")</td>
+                    <td><small>@item.TimeZone</small></td>
+                    <td><span class="badge">@item.WarehouseCount</span></td>
+                    <td>
+                        <span class="status-badge @(item.IsActive ? "status-success" : "status-neutral")">
+                            @(item.IsActive ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                    <td class="table-actions">
+                        <a asp-action="EditBranch" asp-route-id="@item.Id" data-crud-modal>Editar</a>
+                        <form asp-action="ToggleBranchActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="button-link" style="color: @(item.IsActive ? "#dc2626" : "#16a34a");">
+                                @(item.IsActive ? "Desactivar" : "Activar")
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Branches.Count == 0)
+            {
+                <tr><td colspan="8">No hay sucursales registradas.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.ActiveTab == "warehouses")
+{
+    <div class="table-card" data-filter-table>
+        <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por código, nombre, sucursal o tipo" aria-label="Buscar bodegas" /></div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Bodega / Punto</th>
+                    <th>Sucursal</th>
+                    <th>Tipo / Rol</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Warehouses)
+            {
+                <tr>
+                    <td><code>@item.Code</code></td>
+                    <td><strong>@item.Name</strong></td>
+                    <td>@item.BranchName <small class="muted">(@item.CompanyName)</small></td>
+                    <td>
+                        @if (item.IsDefault) { <span class="badge" style="background:#e0f2fe; color:#0369a1;">Principal</span> }
+                        @if (item.IsKitchen) { <span class="badge" style="background:#fef3c7; color:#92400e;">Cocina</span> }
+                        @if (!item.IsDefault && !item.IsKitchen) { <span class="badge">Estándar</span> }
+                    </td>
+                    <td><small>@(item.Description ?? "—")</small></td>
+                    <td>
+                        <span class="status-badge @(item.IsActive ? "status-success" : "status-neutral")">
+                            @(item.IsActive ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                    <td class="table-actions">
+                        <a asp-action="EditWarehouse" asp-route-id="@item.Id" data-crud-modal>Editar</a>
+                        <form asp-action="ToggleWarehouseActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="button-link" style="color: @(item.IsActive ? "#dc2626" : "#16a34a");">
+                                @(item.IsActive ? "Desactivar" : "Activar")
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Warehouses.Count == 0)
+            {
+                <tr><td colspan="7">No hay bodegas registradas.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.ActiveTab == "companies")
+{
+    <div class="table-card" data-filter-table>
+        <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por código, nombre comercial, NIT o razón social" aria-label="Buscar empresas" /></div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre comercial</th>
+                    <th>Razón social</th>
+                    <th>NIT</th>
+                    <th>Grupo corporativo</th>
+                    <th>Sucursales</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Companies)
+            {
+                <tr>
+                    <td><code>@item.Code</code></td>
+                    <td><strong>@item.TradeName</strong></td>
+                    <td>@(item.LegalName ?? "—")</td>
+                    <td>@(item.Nit ?? "—")</td>
+                    <td>@item.BusinessGroupName</td>
+                    <td><span class="badge">@item.BranchCount</span></td>
+                    <td>
+                        <span class="status-badge @(item.IsActive ? "status-success" : "status-neutral")">
+                            @(item.IsActive ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                    <td class="table-actions">
+                        <a asp-action="EditCompany" asp-route-id="@item.Id" data-crud-modal>Editar</a>
+                        <form asp-action="ToggleCompanyActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="button-link" style="color: @(item.IsActive ? "#dc2626" : "#16a34a");">
+                                @(item.IsActive ? "Desactivar" : "Activar")
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Companies.Count == 0)
+            {
+                <tr><td colspan="8">No hay empresas registradas.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="table-card" data-filter-table>
+        <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por código, nombre o NIT" aria-label="Buscar grupos empresariales" /></div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Grupo corporativo</th>
+                    <th>Razón legal</th>
+                    <th>NIT</th>
+                    <th>Empresas</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.BusinessGroups)
+            {
+                <tr>
+                    <td><code>@item.Code</code></td>
+                    <td><strong>@item.Name</strong></td>
+                    <td>@(item.LegalName ?? "—")</td>
+                    <td>@(item.TaxNumber ?? "—")</td>
+                    <td><span class="badge">@item.CompanyCount</span></td>
+                    <td>
+                        <span class="status-badge @(item.IsActive ? "status-success" : "status-neutral")">
+                            @(item.IsActive ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                    <td class="table-actions">
+                        <a asp-action="EditGroup" asp-route-id="@item.Id" data-crud-modal>Editar</a>
+                        <form asp-action="ToggleGroupActive" asp-route-id="@item.Id" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="button-link" style="color: @(item.IsActive ? "#dc2626" : "#16a34a");">
+                                @(item.IsActive ? "Desactivar" : "Activar")
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.BusinessGroups.Count == 0)
+            {
+                <tr><td colspan="7">No hay grupos empresariales registrados.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

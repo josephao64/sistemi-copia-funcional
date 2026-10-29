@@ -1,0 +1,37 @@
+@model SistemiPos.Application.Restaurant.RestaurantWorkspace
+@using SistemiPos.Domain.Restaurant
+@using SistemiPos.Web.Models.Restaurant
+@inject SistemiPos.Web.Services.INavigationPermissionService Navigation
+@{ ViewData["Title"] = "Pedidos"; var permissions = await Navigation.GetPermissionCodesAsync(); var active = Model.Orders.Where(x => x.Status is not (RestaurantOrderStatus.Delivered or RestaurantOrderStatus.Cancelled)).ToList(); }
+<partial name="_Navigation" />
+<div class="restaurant-workspace">
+<header class="restaurant-page-header"><div><p class="restaurant-eyebrow">@Model.BranchName · Operación del restaurante</p><h1>Pedidos</h1><p>Consulta el avance de cada pedido y continúa su atención.</p></div>
+@if(permissions.Contains(PermissionCodes.OrdersCreate)) { <a class="button-primary" href="/restaurante/nuevo">+ Nuevo pedido</a> }</header>
+<div class="restaurant-metrics">
+<article><span>Pedidos abiertos</span><strong>@active.Count</strong><small>Incluye borradores</small></article>
+<article class="tone-amber"><span>En cocina</span><strong>@active.Count(x => x.Status is RestaurantOrderStatus.Submitted or RestaurantOrderStatus.InPreparation)</strong><small>En cola o preparando</small></article>
+<article class="tone-green"><span>Listos para entregar</span><strong>@active.Count(x => x.Status == RestaurantOrderStatus.Ready)</strong><small>Espera de despacho</small></article>
+<article class="tone-blue"><span>En ruta</span><strong>@active.Count(x => x.Status == RestaurantOrderStatus.OutForDelivery)</strong><small>Delivery en curso</small></article>
+</div>
+<section class="restaurant-panel">
+<div class="restaurant-panel-heading"><h2>Listado de pedidos</h2><span id="restaurant-result-count" class="restaurant-muted" aria-live="polite"></span></div>
+<div class="restaurant-filters"><label class="restaurant-search">Buscar<input class="input" id="restaurant-filter" placeholder="Pedido, cliente o referencia" /></label>
+<label>Estado<select class="input" id="restaurant-status"><option value="">Todos los estados</option>@foreach(var status in Enum.GetValues<RestaurantOrderStatus>()) { <option value="@status">@RestaurantLabels.Order(status)</option> }</select></label>
+<label>Canal<select class="input" id="restaurant-channel"><option value="">Todos</option>@foreach(var channel in Model.Orders.DistinctBy(x => x.ChannelId)) { <option value="@channel.ChannelId">@channel.ChannelName</option> }</select></label>
+<label>Servicio<select class="input" id="restaurant-service"><option value="">Todos</option>@foreach(var service in Enum.GetValues<RestaurantServiceType>()) { <option value="@service">@RestaurantLabels.Service(service)</option> }</select></label>
+<button type="button" class="button-secondary" id="restaurant-clear-filters">Limpiar</button></div>
+<div class="restaurant-table-scroll"><table class="data-table"><thead><tr><th>Pedido / fecha</th><th>Cliente</th><th>Canal / servicio</th><th>Estado</th><th class="restaurant-number">Total del pedido</th><th>Acción</th></tr></thead><tbody>
+@foreach(var order in Model.Orders) {
+<tr data-order-row data-status="@order.Status" data-channel="@order.ChannelId" data-service="@order.ServiceType">
+<td><strong>@order.Number</strong><small>@order.CreatedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</small></td>
+<td>@(string.IsNullOrWhiteSpace(order.CustomerName) ? "Sin nombre" : order.CustomerName)<small>@order.ExternalReference</small></td>
+<td>@order.ChannelName<small>@RestaurantLabels.Service(order.ServiceType)</small></td>
+<td><span class="restaurant-badge" data-state="@order.Status">@RestaurantLabels.Order(order.Status)</span></td>
+<td class="restaurant-number" data-money="@order.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">@order.Total.ToString("N2")</td>
+<td><a href="/restaurante/@order.Id" aria-label="Ver pedido @order.Number">Ver</a></td></tr>
+}
+</tbody></table></div>
+<div class="restaurant-empty" id="restaurant-no-results" hidden><strong>No hay pedidos para mostrar</strong><p>Crea el primer pedido o cambia los filtros de búsqueda.</p></div>
+</section></div>
+@section Scripts { <script src="~/js/restaurant.js" asp-append-version="true"></script> }
+

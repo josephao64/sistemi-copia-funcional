@@ -1,0 +1,217 @@
+@model SistemiPos.Web.Models.Sales.SaleDetailsViewModel
+@using SistemiPos.Domain.Sales
+@using SistemiPos.Application.Security
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Detalle de venta";
+    var sale = Model.Sale;
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var canReviewTransfers = permissions.Contains(PermissionCodes.TransfersVerify);
+    var canAuthorizeRefunds = permissions.Contains(PermissionCodes.SalesCancel) || permissions.Contains(PermissionCodes.SalesReturn);
+    var format = new System.Globalization.NumberFormatInfo { NumberDecimalSeparator = sale.DecimalSeparator, NumberGroupSeparator = sale.ThousandsSeparator };
+    string Money(decimal value) => sale.CurrencySymbolPosition == "Before"
+        ? $"{sale.CurrencySymbol} {value.ToString($"N{sale.CurrencyDecimals}", format)}"
+        : $"{value.ToString($"N{sale.CurrencyDecimals}", format)} {sale.CurrencySymbol}";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Punto de venta</p>
+        <h1>Venta @sale.Number</h1>
+        <p class="lead">@sale.CustomerName</p>
+    </div>
+    <div class="topbar-actions">
+        <a asp-action="Print" asp-route-id="@sale.Id" class="button-primary link-button" target="_blank">Imprimir comprobante</a>
+        <a asp-action="Ticket" asp-route-id="@sale.Id" class="button-secondary link-button">Ticket</a>
+        <a asp-action="Pdf" asp-route-id="@sale.Id" class="button-secondary link-button">PDF</a>
+    </div>
+</section>
+
+<div asp-validation-summary="ModelOnly" class="validation"></div>
+
+<div class="stats-grid">
+    <article class="stat-card"><span>Fecha</span><strong>@sale.SoldAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong></article>
+    <article class="stat-card"><span>Cajero</span><strong>@sale.CashierUserName</strong></article>
+    <article class="stat-card"><span>Pago</span><strong>@(sale.Payment.PaymentMethod == PaymentMethodType.Mixed ? "Pagos mixtos" : sale.Payment.PaymentMethod.ToString())</strong></article>
+    <article class="stat-card"><span>Estado</span><strong>@sale.Status</strong></article>
+    <article class="stat-card"><span>Total</span><strong>@Money(sale.Total)</strong></article>
+</div>
+
+@if (sale.TerminalCode is not null) { <p>Terminal: @sale.TerminalCode</p> }
+@if (sale.Payments?.Count > 1) { <div class="table-card"><h2>Detalle de pagos</h2><dl>@foreach (var payment in sale.Payments) { <dt>@(payment.DefinitionName ?? payment.PaymentMethod.ToString()) @(payment.AccountPartNumber.HasValue ? $"· Cuenta {payment.AccountPartNumber}" : "")</dt><dd>@Money(payment.TotalAmount) @if (payment.ChangeAmount > 0) { <span>· Cambio @Money(payment.ChangeAmount.Value)</span> }</dd> }</dl></div> }
+
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Cantidad</th>
+                <th>Precio</th>
+                <th>Descuento</th>
+                <th>Impuesto</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in sale.Items)
+        {
+            <tr>
+                <td>@item.ProductName @if(item.RecipeVersionNumber.HasValue){<small>Receta v@item.RecipeVersionNumber</small>}</td>
+                <td>@DisplayFormats.Quantity(item.Quantity)</td>
+                <td>@Money(item.UnitPrice)</td>
+                <td>@Money(item.DiscountAmount)</td>
+                <td>@Money(item.TaxAmount)</td>
+                <td>@Money(item.Subtotal)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="grid">
+    <article class="stat-card"><span>Subtotal</span><strong>@Money(sale.Subtotal)</strong></article>
+    <article class="stat-card"><span>Descuento</span><strong>@Money(sale.DiscountTotal)</strong></article>
+    <article class="stat-card"><span>Base imponible</span><strong>@Money(sale.TaxableBaseTotal)</strong></article>
+    <article class="stat-card"><span>Impuesto</span><strong>@Money(sale.TaxTotal)</strong></article>
+</div>
+
+@if (sale.DiscountTotal > 0)
+{
+    <div class="form-card">
+        <h2>Auditoría de descuento</h2>
+        <p><strong>Aplicado por:</strong> @sale.DiscountAppliedByUserName</p>
+        <p><strong>Fecha:</strong> @sale.DiscountAppliedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+        @if (!string.IsNullOrWhiteSpace(sale.DiscountReason))
+        {
+            <p><strong>Motivo:</strong> @sale.DiscountReason</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(sale.DiscountAuthorizedByUserName))
+        {
+            <p><strong>Autorizado por:</strong> @sale.DiscountAuthorizedByUserName</p>
+            <p><strong>Autorización:</strong> @sale.DiscountAuthorizedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+        }
+    </div>
+}
+
+@if (sale.Payment.PaymentMethod == PaymentMethodType.Transfer)
+{
+    <div class="grid">
+        <article class="form-card">
+            <h2>Transferencia</h2>
+            <p><strong>Remitente / titular:</strong> @(sale.Payment.TransferSenderName ?? "—")</p>
+            <p><strong>Banco origen:</strong> @(sale.Payment.TransferSourceBank ?? "—")</p>
+            <p><strong>Cuenta destino:</strong> @sale.Payment.TransferDestinationBank - @sale.Payment.TransferDestinationAccountName</p>
+            <p><strong>Referencia:</strong> @sale.Payment.TransferReference</p>
+            <p><strong>Estado:</strong> @sale.Payment.TransferStatus</p>
+        </article>
+
+        @if (canReviewTransfers)
+        {
+        <article class="form-card">
+            <h2>Revisión</h2>
+            <form asp-action="VerifyTransfer" method="post" class="form-grid" data-confirm="La transferencia quedará verificada para conciliación. ¿Desea continuar?" data-confirm-title="Verificar transferencia" data-confirm-text="Sí, verificar">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SaleId" value="@sale.Id" />
+                <div class="field"><label>Observación</label><input name="Observation" class="input" /></div>
+                <div class="action-row"><button type="submit" class="button-primary">Verificar</button></div>
+            </form>
+            <form asp-action="RejectTransfer" method="post" class="form-grid" data-confirm="La transferencia quedará rechazada. ¿Desea continuar?" data-confirm-title="Rechazar transferencia" data-confirm-text="Sí, rechazar">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SaleId" value="@sale.Id" />
+                <div class="field"><label>Observación</label><input name="Observation" class="input" /></div>
+                <div class="action-row"><button type="submit" class="button-secondary">Rechazar</button></div>
+            </form>
+        </article>
+        }
+    </div>
+}
+
+@if (canAuthorizeRefunds)
+{
+<div class="grid">
+    <article class="form-card">
+        <h2>Anular venta</h2>
+        <form asp-action="Cancel" method="post" class="form-grid" data-confirm="La venta será anulada y se revertirá el inventario cuando corresponda. ¿Desea continuar?" data-confirm-title="Anular venta" data-confirm-text="Sí, anular venta">
+            @Html.AntiForgeryToken()
+            <input asp-for="Cancellation.SaleId" type="hidden" />
+            <div class="field"><label asp-for="Cancellation.Reason">Motivo</label><input asp-for="Cancellation.Reason" class="input" /></div>
+            <div class="field"><label asp-for="Cancellation.AuthorizerUserName">Usuario autorizador</label><input asp-for="Cancellation.AuthorizerUserName" class="input" /></div>
+            <div class="field"><label asp-for="Cancellation.AuthorizerPassword">Contraseña autorizador</label><input asp-for="Cancellation.AuthorizerPassword" type="password" class="input" /></div>
+            <div class="action-row"><button type="submit" class="button-secondary">Anular</button></div>
+        </form>
+    </article>
+
+    <article class="form-card">
+        <h2>Registrar devolución</h2>
+        <form asp-action="Return" method="post" class="form-grid" data-confirm="Se registrará la devolución seleccionada y sus efectos no podrán eliminarse del historial. ¿Desea continuar?" data-confirm-title="Registrar devolución" data-confirm-text="Sí, registrar devolución">
+            @Html.AntiForgeryToken()
+            <input asp-for="Return.SaleId" type="hidden" />
+            <input asp-for="Return.OperationId" type="hidden" />
+            <div class="field full-span"><label asp-for="Return.Reason">Motivo</label><input asp-for="Return.Reason" class="input" /></div>
+            <div class="field"><label asp-for="Return.AuthorizerUserName">Usuario autorizador</label><input asp-for="Return.AuthorizerUserName" class="input" /></div>
+            <div class="field"><label asp-for="Return.AuthorizerPassword">Contraseña autorizador</label><input asp-for="Return.AuthorizerPassword" type="password" class="input" /></div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Vendido</th>
+                        <th>Devolver</th>
+                        <th>Recibido y apto para inventario</th><th>Lote original</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < Model.Return.Items.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            @Model.Return.Items[i].ProductName
+                            <input asp-for="Return.Items[@i].ProductId" type="hidden" />
+                            <input asp-for="Return.Items[@i].ProductName" type="hidden" />
+                            <input asp-for="Return.Items[@i].SoldQuantity" type="hidden" />
+                        </td>
+                        <td>@DisplayFormats.Quantity(Model.Return.Items[i].SoldQuantity)</td>
+                        <td><input asp-for="Return.Items[@i].Quantity" class="input" type="number" step="0.01" min="0" /></td>
+                        <td><input asp-for="Return.Items[@i].ReturnedToInventory" type="checkbox" /></td>
+                        <td><select asp-for="Return.Items[@i].LotId" asp-items="Model.Return.Items[i].AvailableLots" class="input"><option value="">Seleccionar lote si la devolución es parcial</option></select></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <div class="action-row"><button type="submit" class="button-primary">Guardar devolución</button></div>
+        </form>
+    </article>
+</div>
+
+<div class="form-card">
+    <h2>Registrar reembolso</h2>
+    <form asp-action="Refund" method="post" class="form-grid two-column-grid" data-confirm="El reembolso afectará el medio de devolución seleccionado y quedará registrado en el historial. ¿Desea continuar?" data-confirm-title="Registrar reembolso" data-confirm-text="Sí, registrar reembolso">
+        @Html.AntiForgeryToken()
+        <input asp-for="Refund.SaleId" type="hidden" />
+        <input asp-for="Refund.OperationId" type="hidden" />
+        <div class="field"><label asp-for="Refund.CashSessionId">Sesión de caja</label><select asp-for="Refund.CashSessionId" asp-items="Model.CashSessions" class="input"></select></div>
+        <div class="field"><label asp-for="Refund.Amount">Monto</label><input asp-for="Refund.Amount" class="input" type="number" step="0.01" min="0.01" /></div>
+        <div class="field">
+            <label asp-for="Refund.RefundMethod">Medio</label>
+            <label asp-for="Refund.PaymentId">Pago original</label>
+            <select asp-for="Refund.PaymentId" class="input"><option value="">Seleccionar pago</option>
+                @foreach (var payment in Model.Sale.Payments ?? [Model.Sale.Payment]) { <option value="@payment.Id">@payment.PaymentMethod · @payment.TotalAmount.ToString("N2")</option> }
+            </select>
+            <select asp-for="Refund.RefundMethod" class="input">
+                <option value="@RefundMethodType.Cash">Efectivo</option>
+                <option value="@RefundMethodType.Transfer">Transferencia</option>
+                <option value="@RefundMethodType.Pos">POS</option>
+                <option value="@RefundMethodType.Other">Otro medio original</option>
+            </select>
+        </div>
+        <div class="field"><label asp-for="Refund.AuthorizedByUserName">Usuario autorizador</label><input asp-for="Refund.AuthorizedByUserName" class="input" /></div>
+        <div class="field"><label asp-for="Refund.AuthorizerPassword">Contraseña autorizador</label><input asp-for="Refund.AuthorizerPassword" type="password" class="input" /></div>
+        <div class="field"><label asp-for="Refund.Reference">Referencia</label><input asp-for="Refund.Reference" class="input" /></div>
+        <div class="field full-span"><label asp-for="Refund.Reason">Motivo</label><input asp-for="Refund.Reason" class="input" /></div>
+        <div class="action-row full-span"><button type="submit" class="button-primary">Registrar reembolso</button></div>
+    </form>
+</div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

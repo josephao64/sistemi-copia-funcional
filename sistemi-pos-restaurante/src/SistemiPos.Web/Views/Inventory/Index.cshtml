@@ -1,0 +1,118 @@
+@model SistemiPos.Web.Models.Inventory.InventoryIndexViewModel
+@using SistemiPos.Application.Security
+@using SistemiPos.Web.Models.Inventory
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Inventario";
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var canAdjust = User.IsInRole(SecurityRoleNames.SuperAdministrator) || permissions.Contains(PermissionCodes.ProductsManage);
+    var title = Model.Filter switch
+    {
+        InventoryListFilter.LowStock => "Productos con existencia baja",
+        InventoryListFilter.OutOfStock => "Productos agotados",
+        InventoryListFilter.WithoutMovement => "Productos sin movimientos",
+        _ => "Existencias actuales"
+    };
+}
+
+<section class="page-header">
+    <div><p class="eyebrow">Inventario</p><h1>@title</h1></div>
+    <div class="action-row inventory-tabs" aria-label="Secciones de inventario">
+        <a asp-action="Index" asp-route-filter="@InventoryListFilter.All" asp-route-branchId="@Model.SelectedBranchId" asp-route-warehouseId="@Model.SelectedWarehouseId" class="@(Model.Filter == InventoryListFilter.All ? "button-primary" : "button-secondary") link-button">Todas</a>
+        <a asp-action="Index" asp-route-filter="@InventoryListFilter.LowStock" asp-route-branchId="@Model.SelectedBranchId" asp-route-warehouseId="@Model.SelectedWarehouseId" class="@(Model.Filter == InventoryListFilter.LowStock ? "button-primary" : "button-secondary") link-button">Existencia baja</a>
+        <a asp-action="Index" asp-route-filter="@InventoryListFilter.OutOfStock" asp-route-branchId="@Model.SelectedBranchId" asp-route-warehouseId="@Model.SelectedWarehouseId" class="@(Model.Filter == InventoryListFilter.OutOfStock ? "button-primary" : "button-secondary") link-button">Agotados</a>
+        <a asp-action="Index" asp-route-filter="@InventoryListFilter.WithoutMovement" asp-route-branchId="@Model.SelectedBranchId" asp-route-warehouseId="@Model.SelectedWarehouseId" class="@(Model.Filter == InventoryListFilter.WithoutMovement ? "button-primary" : "button-secondary") link-button">Sin movimientos</a>
+        @if (canAdjust) { <a asp-action="PhysicalCount" class="button-secondary link-button">Toma física</a> }
+        <a asp-action="Kardex" class="button-secondary link-button">Kardex</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success) { <div class="alert-success">@success</div> }
+@if (TempData["Error"] is string error) { <div class="alert-error">@error</div> }
+@if (TempData["Info"] is string info) { <div class="alert-info" style="margin-bottom: 1rem; padding: 0.75rem 1rem; background-color: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 6px;">@info</div> }
+
+<div class="table-card" data-filter-table>
+    <div class="table-toolbar">
+        <div>
+            <h2>@title</h2>
+            <p class="helper-text">Los estados usan las mismas reglas y configuración que el Dashboard.</p>
+        </div>
+        <a asp-action="Export" asp-route-filter="@Model.Filter" asp-route-branchId="@Model.SelectedBranchId" asp-route-warehouseId="@Model.SelectedWarehouseId" class="button-secondary link-button">Exportar a Excel</a>
+    </div>
+
+    <form method="get" asp-action="Index" class="filter-grid" style="display: flex; gap: 1rem; align-items: flex-end; padding: 0.75rem 1rem 0; flex-wrap: wrap;">
+        <input type="hidden" name="filter" value="@Model.Filter" />
+        <div style="flex: 1; min-width: 200px; max-width: 280px;">
+            <label class="form-label" for="branchSelect">Sucursal</label>
+            <select id="branchSelect" name="branchId" class="input" onchange="this.form.submit()">
+                <option value="">Todas las sucursales autorizadas</option>
+                @foreach (var b in Model.AvailableBranches)
+                {
+                    <option value="@b.Value" selected="@(b.Selected ? "selected" : null)">@b.Text</option>
+                }
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 200px; max-width: 280px;">
+            <label class="form-label" for="warehouseSelect">Bodega</label>
+            <select id="warehouseSelect" name="warehouseId" class="input" onchange="this.form.submit()">
+                <option value="">Todas las bodegas</option>
+                @foreach (var w in Model.AvailableWarehouses)
+                {
+                    <option value="@w.Value" selected="@(w.Selected ? "selected" : null)">@w.Text</option>
+                }
+            </select>
+        </div>
+        @if (Model.SelectedBranchId.HasValue || Model.SelectedWarehouseId.HasValue)
+        {
+            <div style="margin-bottom: 2px;">
+                <a asp-action="Index" asp-route-filter="@Model.Filter" class="button-ghost link-button" style="height: 38px; display: inline-flex; align-items: center;">Limpiar</a>
+            </div>
+        }
+    </form>
+
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por código, nombre, categoría, sucursal, bodega o estado" aria-label="Buscar existencias" /></div>
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Sucursal</th>
+                <th>Bodega</th>
+                <th>Existencia</th>
+                <th>Mínimo</th>
+                <th>Estado</th>
+                @if (Model.Filter == InventoryListFilter.WithoutMovement) { <th>Última venta</th><th>Días sin movimiento</th> }
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model.Stocks)
+        {
+            Model.NoMovementDetails.TryGetValue(item.ProductId, out var noMovement);
+            <tr>
+                <td>@item.InternalCode</td>
+                <td>@item.ProductName @if (item.ManagesLots && item.WarehouseId.HasValue) { <a asp-controller="InventoryLots" asp-action="Index" asp-route-productId="@item.ProductId" asp-route-warehouseId="@item.WarehouseId">Ver lotes</a> }</td>
+                <td>@item.CategoryName</td>
+                <td>@(item.BranchName ?? "—")</td>
+                <td>@(item.WarehouseName ?? "—")</td>
+                <td>@DisplayFormats.Quantity(item.CurrentStock)</td>
+                <td>@DisplayFormats.Quantity(item.MinimumStock)</td>
+                <td>
+                    @if (Model.Filter == InventoryListFilter.WithoutMovement) { <span class="status-badge status-warning">Sin movimiento</span> }
+                    else if (item.CurrentStock == 0) { <span class="status-badge status-danger">Agotado</span> }
+                    else if (item.IsLowStock) { <span class="status-badge status-warning">Existencia baja</span> }
+                    else { <span class="status-badge status-success">Normal</span> }
+                </td>
+                @if (Model.Filter == InventoryListFilter.WithoutMovement)
+                {
+                    <td>@(noMovement?.LastSaleAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy") ?? "Nunca")</td>
+                    <td>@noMovement?.DaysWithoutMovement de @noMovement?.ConfiguredDays días</td>
+                }
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="@(Model.Filter == InventoryListFilter.WithoutMovement ? 10 : 8)">No se encontraron productos.</td></tr>
+        </tbody>
+    </table>
+    </div>
+</div>

@@ -1,0 +1,71 @@
+@model SistemiPos.Web.Models.Suppliers.SupplierFormViewModel
+@using SistemiPos.Domain.Purchases
+@{
+    ViewData["Title"] = Model.Id is null ? "Nuevo proveedor" : "Editar proveedor";
+}
+
+<section class="page-header supplier-form-header">
+    <div><h1>@ViewData["Title"]</h1></div>
+</section>
+
+<div class="form-card supplier-form-card">
+    <form method="post" class="form-grid two-column-grid supplier-form" data-supplier-form>
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        <div class="field"><label asp-for="LegalName"></label><input asp-for="LegalName" class="input" maxlength="200" /><span asp-validation-for="LegalName" class="validation"></span></div>
+        <div class="field"><label asp-for="TradeName"></label><input asp-for="TradeName" class="input" maxlength="200" /></div>
+
+        <div class="field"><label asp-for="Nit"></label><input asp-for="Nit" class="input" maxlength="50" data-supplier-nit /><span asp-validation-for="Nit" class="validation"></span></div>
+        <div class="field"><label asp-for="Phone"></label><input asp-for="Phone" class="input" maxlength="50" /></div>
+
+        <div class="field"><label asp-for="Address"></label><input asp-for="Address" class="input" maxlength="500" /></div>
+        <div class="field"><label asp-for="Email"></label><input asp-for="Email" class="input" maxlength="200" /><span asp-validation-for="Email" class="validation"></span></div>
+
+        <div class="field"><label asp-for="ContactName"></label><input asp-for="ContactName" class="input" maxlength="200" /></div>
+        <div class="field"><label asp-for="ContactPosition"></label><input asp-for="ContactPosition" class="input" maxlength="150" /></div>
+
+        <div class="field"><label asp-for="ContactPhone"></label><input asp-for="ContactPhone" class="input" maxlength="50" /></div>
+        <div aria-hidden="true"></div>
+
+        <div class="field"><label asp-for="DefaultTerms"></label><select asp-for="DefaultTerms" class="input" data-supplier-terms><option value="1">Contado</option><option value="2">Crédito</option></select></div>
+        <div class="field" data-supplier-credit-days hidden="@(Model.DefaultTerms != PurchaseTermsType.Credit)"><label asp-for="DefaultCreditDays"></label><input asp-for="DefaultCreditDays" class="input" type="number" min="1" step="1" data-supplier-credit-days-input /><span asp-validation-for="DefaultCreditDays" class="validation"></span></div>
+
+        <div class="field full-span"><label asp-for="Notes"></label><textarea asp-for="Notes" class="input supplier-notes" rows="2" maxlength="1000"></textarea></div>
+        <label class="checkbox full-span"><input asp-for="IsActive" /><span>Proveedor activo</span></label>
+
+        <div class="action-row full-span"><button type="submit" class="button-primary">Guardar proveedor</button></div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+    (() => {
+        const form = document.querySelector('[data-supplier-form]');
+        if (!form) return;
+        const terms = form.querySelector('[data-supplier-terms]');
+        const field = form.querySelector('[data-supplier-credit-days]');
+        const days = form.querySelector('[data-supplier-credit-days-input]');
+        const nit = form.querySelector('[data-supplier-nit]');
+        const normalizeNit = value => value.replace(/[\s-]+/g, '');
+        const update = () => {
+            const credit = terms.value === '2';
+            field.hidden = !credit;
+            days.required = credit;
+            if (!credit) days.value = '';
+        };
+        terms.addEventListener('change', update);
+        nit?.addEventListener('input', () => { nit.value = normalizeNit(nit.value); });
+        form.addEventListener('submit', () => { if (nit) nit.value = normalizeNit(nit.value); });
+        update();
+        @if (ViewData["SupplierFormSaveError"] is string supplierFormSaveError)
+        {
+            <text>
+            window.showSystemToast?.('error', '@supplierFormSaveError');
+            form.querySelector('.input-validation-error')?.focus();
+            </text>
+        }
+    })();
+    </script>
+}

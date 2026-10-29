@@ -1,0 +1,20 @@
+<partial name="_ValidationScriptsPartial" />
+<script src="~/js/purchase-capture.js" asp-append-version="true"></script>
+<script src="~/js/purchase-presentation-modal.js" asp-append-version="true"></script>
+<script>
+(() => {
+    const branch = document.querySelector('[data-purchase-branch]');
+    const warehouse = document.querySelector('[data-purchase-warehouse]');
+    if (!branch || !warehouse) return;
+    const filter = () => {
+        [...warehouse.options].forEach(option => { if (option.value) option.hidden = option.dataset.branchId !== branch.value; });
+        if (warehouse.selectedOptions[0]?.hidden) warehouse.value = '';
+    };
+    branch.addEventListener('change', filter);
+    filter();
+})();
+</script>
+@if (ViewData["PurchaseCaptureSaveError"] is string purchaseCaptureSaveError)
+{
+    <script>window.showSystemToast?.('error', @Html.Raw(System.Text.Json.JsonSerializer.Serialize(purchaseCaptureSaveError)));</script>
+}

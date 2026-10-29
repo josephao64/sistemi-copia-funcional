@@ -1,0 +1,16 @@
+{
+  "name": "SISTEMI POS Restaurante",
+  "short_name": "SISTEMI POS Restaurante",
+  "start_url": "/pos",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#12263a",
+  "icons": [
+    {
+      "src": "/images/brand/sistemi-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

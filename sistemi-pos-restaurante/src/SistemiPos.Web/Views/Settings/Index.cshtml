@@ -1,0 +1,194 @@
+@model SistemiPos.Web.Models.Settings.SystemSettingFormViewModel
+@using SistemiPos.Domain.Configuration
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Configuración";
+    var currencies = ViewBag.Currencies as IReadOnlyList<CurrencyDefinition> ?? [];
+    var currencyJson = JsonSerializer.Serialize(currencies.Select(x => new { x.Id, x.Code, x.Name, x.Symbol, x.Decimals, x.DecimalSeparator, x.ThousandsSeparator, SymbolPosition = x.SymbolPosition.ToString() }));
+    var activeSettingsTab = ViewBag.ActiveSettingsTab as string ?? "company";
+}
+
+<section class="page-header settings-page-header">
+    <div>
+        <p class="eyebrow">Configuración</p>
+        <h1>Configuración</h1>
+    </div>
+</section>
+
+<div class="settings-tabs" data-settings-tabs>
+    <div class="settings-tab-list" role="tablist" aria-label="Secciones de configuración">
+        <button type="button" class="settings-tab is-active" role="tab" aria-selected="true" aria-controls="settings-company" data-settings-tab="company">Empresa</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-billing" data-settings-tab="billing">Facturación</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-operation" data-settings-tab="operation">Operación</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-cash" data-settings-tab="cash">Caja y pagos</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-sales" data-settings-tab="sales">Ventas</button>
+    </div>
+
+    <form method="post" class="settings-form" autocomplete="off">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="activeTab" value="@activeSettingsTab" data-settings-active-tab />
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+        <input asp-for="CurrencyCode" type="hidden"/><input asp-for="CurrencyName" type="hidden"/><input asp-for="CurrencySymbol" type="hidden"/><input asp-for="CurrencyDecimals" type="hidden"/><input asp-for="DecimalSeparator" type="hidden"/><input asp-for="ThousandsSeparator" type="hidden"/><input asp-for="CurrencySymbolPosition" type="hidden"/>
+
+        <section id="settings-company" class="form-card settings-tab-panel is-active" role="tabpanel" data-settings-panel="company">
+            <div class="settings-section-heading"><h2>Datos de la empresa</h2><p>Información general e identidad del negocio.</p></div>
+            <div class="form-grid settings-company-grid">
+                <div class="field settings-company-name"><label asp-for="BusinessName"></label><input asp-for="BusinessName" class="input" /><span asp-validation-for="BusinessName" class="validation"></span></div>
+                <div class="field settings-company-legal-name"><label asp-for="BusinessLegalName"></label><input asp-for="BusinessLegalName" class="input" /></div>
+                <div class="field settings-company-nit"><label asp-for="BusinessNit"></label><input asp-for="BusinessNit" class="input" /></div>
+                <div class="field settings-company-phone"><label asp-for="BusinessPhone"></label><input asp-for="BusinessPhone" class="input" /></div>
+                <div class="field settings-company-email"><label asp-for="BusinessEmail"></label><input asp-for="BusinessEmail" class="input" type="email" /></div>
+                <div class="field settings-company-address"><label asp-for="BusinessAddress"></label><textarea asp-for="BusinessAddress" class="input textarea settings-compact-textarea" rows="1"></textarea></div>
+                <div class="field settings-company-logo"><label asp-for="BusinessLogoUrl"></label><input asp-for="BusinessLogoUrl" class="input" /></div>
+                <div class="field settings-company-currency"><label asp-for="CurrencyId"></label><div class="catalog-picker"><select asp-for="CurrencyId" class="input" data-currency-select><option value="">Seleccione</option>@foreach(var currency in currencies){<option value="@currency.Id">@currency.Code · @currency.Name (@currency.Symbol)</option>}</select><button type="button" class="button-secondary" data-quick-create-open="currency-modal">+ Crear moneda</button></div><p class="helper-text" data-currency-summary></p><span asp-validation-for="CurrencyId" class="validation"></span></div>
+            </div>
+        </section>
+
+        <section id="settings-billing" class="form-card settings-tab-panel" role="tabpanel" data-settings-panel="billing" hidden>
+            <div class="settings-section-heading"><h2>Facturación FEL</h2><p>Preparación del emisor, integración INFILE y documento.</p></div>
+            <div class="billing-blocks">
+                <section class="settings-subsection">
+                    <div class="settings-subsection-title"><span>1</span><div><h3>Emisor</h3><p>Los datos generales se reutilizan desde Empresa.</p></div></div>
+                    <div class="issuer-summary">
+                        <div><small>Razón social / negocio</small><strong>@(string.IsNullOrWhiteSpace(Model.BusinessLegalName) ? Model.BusinessName : Model.BusinessLegalName)</strong></div>
+                        <div><small>NIT</small><strong>@(Model.BusinessNit ?? "Sin configurar")</strong></div>
+                        <div><small>Dirección fiscal</small><strong>@(Model.BusinessAddress ?? "Sin configurar")</strong></div>
+                        <div><small>Teléfono / correo</small><strong>@(string.Join(" · ", new[] { Model.BusinessPhone, Model.BusinessEmail }.Where(x => !string.IsNullOrWhiteSpace(x))))</strong></div>
+                        <div><small>Logo</small><strong>@(string.IsNullOrWhiteSpace(Model.BusinessLogoUrl) ? "Sin configurar" : "Configurado")</strong></div>
+                    </div>
+                    <div class="form-grid billing-two-columns">
+                        <div class="field"><label asp-for="EstablishmentName"></label><input asp-for="EstablishmentName" class="input" /></div>
+                        <div class="field"><label asp-for="EstablishmentCode"></label><input asp-for="EstablishmentCode" class="input" /></div>
+                    </div>
+                    <p class="helper-text">Para cambiar razón social, NIT, dirección, teléfono, correo o logo utilice la pestaña Empresa.</p>
+                </section>
+                <section class="settings-subsection">
+                    <div class="settings-subsection-title"><span>2</span><div><h3>FEL / INFILE</h3><p>Las credenciales se cifran y nunca se vuelven a mostrar.</p></div></div>
+                    <div class="fel-main-row">
+                        <label class="checkbox"><input asp-for="FelEnabled" /><span>Activar emisión FEL</span></label>
+                        <div class="field"><label>Proveedor certificador</label><input value="INFILE" class="input" readonly /></div>
+                        <div class="field"><label asp-for="FelEnvironment"></label><select asp-for="FelEnvironment" class="input"><option value="@FelEnvironmentType.Testing">Pruebas</option><option value="@FelEnvironmentType.Production">Producción</option></select></div>
+                    </div>
+                    <div class="form-grid billing-credentials" autocomplete="off">
+                        <div class="field"><label asp-for="InfileApiUser"></label><input asp-for="InfileApiUser" class="input" type="password" autocomplete="new-password" placeholder="@(Model.HasInfileApiUser ? "Configurado · escribir para reemplazar" : "Ingresar credencial")" /></div>
+                        <div class="field"><label asp-for="InfileApiKey"></label><input asp-for="InfileApiKey" class="input" type="password" autocomplete="new-password" placeholder="@(Model.HasInfileApiKey ? "Configurada · escribir para reemplazar" : "Ingresar credencial")" /></div>
+                        <div class="field"><label asp-for="InfileSignatureUser"></label><input asp-for="InfileSignatureUser" class="input" type="password" autocomplete="new-password" placeholder="@(Model.HasInfileSignatureUser ? "Configurado · escribir para reemplazar" : "Ingresar credencial")" /></div>
+                        <div class="field"><label asp-for="InfileSignatureKey"></label><input asp-for="InfileSignatureKey" class="input" type="password" autocomplete="new-password" placeholder="@(Model.HasInfileSignatureKey ? "Configurada · escribir para reemplazar" : "Ingresar credencial")" /></div>
+                    </div>
+                </section>
+                <section class="settings-subsection">
+                    <div class="settings-subsection-title"><span>3</span><div><h3>Documento</h3><p>Valores predeterminados enviados al certificador.</p></div></div>
+                    <div class="form-grid billing-document-grid">
+                        <div class="field"><label asp-for="DefaultFelDocumentType"></label><select asp-for="DefaultFelDocumentType" class="input"><option value="FACT">Factura (FACT)</option><option value="FCAM">Factura cambiaria (FCAM)</option><option value="FPEQ">Factura pequeño contribuyente (FPEQ)</option></select></div>
+                        <div class="field"><label>Establecimiento emisor</label><input value="@(string.IsNullOrWhiteSpace(Model.EstablishmentName) ? "Complete el bloque Emisor" : $"{Model.EstablishmentCode} · {Model.EstablishmentName}")" class="input" readonly /></div>
+                        <div class="field"><label>Moneda</label><input value="@Model.CurrencyCode · @Model.CurrencyName (@Model.CurrencySymbol)" class="input" readonly /></div>
+                        <div class="field compact-short"><label asp-for="TaxPercent"></label><input asp-for="TaxPercent" class="input" /></div>
+                        <label class="checkbox"><input asp-for="ShowTaxOnReceipt" /><span>Mostrar impuesto en comprobante</span></label>
+                        <div class="field full-span"><label asp-for="FelTaxPhrases"></label><textarea asp-for="FelTaxPhrases" class="input textarea settings-compact-textarea" rows="2" placeholder="Frases tributarias que correspondan al régimen del emisor"></textarea></div>
+                        <div class="field full-span"><label asp-for="ReceiptFooter"></label><textarea asp-for="ReceiptFooter" class="input textarea settings-compact-textarea" rows="2"></textarea></div>
+                        <div class="field compact-medium"><label asp-for="NitLookupProvider"></label><select asp-for="NitLookupProvider" class="input"><option value="@NitLookupProviderType.None">Consulta manual</option><option value="@NitLookupProviderType.Infile">INFILE</option><option value="@NitLookupProviderType.Other">Otro proveedor</option></select></div>
+                    </div>
+                    <p class="helper-text">Autorización, serie, número DTE, certificación, datos del certificador, QR y número de acceso se recibirán de INFILE por cada venta; no se generan localmente.</p>
+                </section>
+            </div>
+        </section>
+
+        <section id="settings-operation" class="form-card settings-tab-panel" role="tabpanel" data-settings-panel="operation" hidden>
+            <div class="settings-section-heading"><h2>Operación general</h2><p>Parámetros utilizados en la operación diaria.</p></div>
+            <input asp-for="ProductsWithoutMovementDays" type="hidden" /><p class="helper-text">Los días sin movimiento se definen en cada producto.</p>
+        </section>
+
+        <section id="settings-cash" class="form-card settings-tab-panel" role="tabpanel" data-settings-panel="cash" hidden>
+            <div class="settings-section-heading"><h2>Caja y pagos</h2><p>Medios de cobro y catálogos utilizados en caja.</p></div>
+            <div class="settings-option-grid" data-payment-options data-save-url="@Url.Action("SavePaymentOptions")"><label class="checkbox"><input asp-for="TransferPaymentsEnabled" /><span>Habilitar transferencia</span></label><label class="checkbox"><input asp-for="PosPaymentsEnabled" /><span>Habilitar POS</span></label><label class="checkbox"><input asp-for="CreditPaymentsEnabled" /><span>Habilitar crédito</span></label></div>
+            <div class="settings-link-grid"><a asp-action="BankAccounts" class="settings-link-card"><strong>Cuentas bancarias</strong><span>Administrar cuentas para transferencias.</span></a><a asp-action="CashConfiguration" class="settings-link-card"><strong>Denominaciones y formas de pago</strong><span>Administrar monedas, billetes, dispositivos POS y medios de cobro.</span></a><button type="button" class="settings-link-card" data-quick-create-open="currency-modal"><strong>Nueva moneda</strong><span>Agregar una moneda al catálogo.</span></button></div>
+        </section>
+
+        <section id="settings-sales" class="form-card settings-tab-panel" role="tabpanel" data-settings-panel="sales" hidden>
+            <div class="settings-section-heading"><h2>Ventas</h2><p>Descuentos, límites y autorizaciones comerciales.</p></div>
+            <div class="form-grid compact-form-grid"><label class="checkbox"><input asp-for="DiscountsEnabled" /><span>Habilitar descuentos</span></label><div class="field compact-short"><label asp-for="DefaultMaxDiscountPercent"></label><input asp-for="DefaultMaxDiscountPercent" class="input" /></div><div class="full-span"><a asp-action="Discounts" class="settings-link-card settings-single-link"><strong>Reglas y autorizaciones de descuentos</strong><span>Configurar límites por rol y por usuario.</span></a></div></div>
+        </section>
+
+        <div class="settings-save-row">
+            <button type="submit" class="button-primary">Guardar configuración</button>
+        </div>
+    </form>
+</div>
+
+<dialog id="currency-modal" class="quick-create-modal" data-quick-create data-endpoint="@Url.Action("CreateCurrency")" data-target="CurrencyId">
+    <form method="dialog" class="quick-create-panel" data-quick-create-form>@Html.AntiForgeryToken()<div class="modal-header"><h2>Nueva moneda</h2><button type="button" class="icon-button" aria-label="Cerrar" data-quick-create-cancel>×</button></div><div class="form-grid compact-form-grid"><div class="field compact-short"><label>Código</label><input name="code" maxlength="10" class="input" required /></div><div class="field"><label>Nombre</label><input name="name" class="input" required /></div><div class="field compact-short"><label>Símbolo</label><input name="symbol" maxlength="10" class="input" required /></div><div class="field compact-short"><label>Decimales</label><input name="decimals" type="number" min="0" max="6" value="2" class="input" required /></div><div class="field compact-short"><label>Separador decimal</label><input name="decimalSeparator" maxlength="5" value="." class="input" required /></div><div class="field compact-short"><label>Separador de miles</label><input name="thousandsSeparator" maxlength="5" value="," class="input" required /></div><div class="field"><label>Posición</label><select name="symbolPosition" class="input"><option value="@CurrencySymbolPosition.Before">Antes</option><option value="@CurrencySymbolPosition.After">Después</option></select></div></div><p class="validation" data-quick-create-error></p><div class="action-row"><button type="button" class="button-secondary" data-quick-create-cancel>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div></form>
+</dialog>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script type="application/json" data-currency-catalog>@Html.Raw(currencyJson)</script>
+    <script>
+        (() => {
+            const select = document.querySelector('[data-currency-select]');
+            const catalog = JSON.parse(document.querySelector('[data-currency-catalog]')?.textContent || '[]');
+            const summary = document.querySelector('[data-currency-summary]');
+            const sync = () => {
+                const item = catalog.find(x => String(x.Id).toLowerCase() === select?.value.toLowerCase());
+                if (!item) { if (summary) summary.textContent = ''; return; }
+                const values = { CurrencyCode:item.Code, CurrencyName:item.Name, CurrencySymbol:item.Symbol, CurrencyDecimals:item.Decimals, DecimalSeparator:item.DecimalSeparator, ThousandsSeparator:item.ThousandsSeparator, CurrencySymbolPosition:item.SymbolPosition };
+                Object.entries(values).forEach(([id,value]) => { const input = document.getElementById(id); if (input) input.value = value; });
+                if (summary) summary.textContent = `${item.Symbol} · ${item.Decimals} decimales · decimal “${item.DecimalSeparator}” · miles “${item.ThousandsSeparator}” · símbolo ${item.SymbolPosition === 'Before' ? 'antes' : 'después'}`;
+            };
+            document.getElementById('currency-modal')?.addEventListener('quickcreate:created', event => { catalog.push({ Id:event.detail.id, Code:event.detail.code, Name:event.detail.name, Symbol:event.detail.symbol, Decimals:event.detail.decimals, DecimalSeparator:event.detail.decimalSeparator, ThousandsSeparator:event.detail.thousandsSeparator, SymbolPosition:event.detail.symbolPosition }); sync(); });
+            select?.addEventListener('change', sync); sync();
+        })();
+        (() => {
+            const root = document.querySelector('[data-settings-tabs]');
+            if (!root) return;
+            const tabs = [...root.querySelectorAll('[data-settings-tab]')];
+            const panels = [...root.querySelectorAll('[data-settings-panel]')];
+            const activeTabInput = root.querySelector('[data-settings-active-tab]');
+            const activate = key => {
+                tabs.forEach(tab => { const active = tab.dataset.settingsTab === key; tab.classList.toggle('is-active', active); tab.setAttribute('aria-selected', String(active)); });
+                panels.forEach(panel => { const active = panel.dataset.settingsPanel === key; panel.classList.toggle('is-active', active); panel.hidden = !active; });
+                if (activeTabInput) activeTabInput.value = key;
+            };
+            tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.settingsTab)));
+            const invalidPanel = panels.find(panel => panel.querySelector('.input-validation-error, .field-validation-error:not(:empty)'));
+            activate(invalidPanel?.dataset.settingsPanel || activeTabInput?.value || 'company');
+        })();
+        (() => {
+            const options = document.querySelector('[data-payment-options]');
+            const transfer = document.getElementById('TransferPaymentsEnabled');
+            const pos = document.getElementById('PosPaymentsEnabled');
+            const credit = document.getElementById('CreditPaymentsEnabled');
+            const token = document.querySelector('.settings-form input[name="__RequestVerificationToken"]');
+            if (!options || !transfer || !pos || !credit || !token) return;
+
+            const save = async () => {
+                transfer.disabled = true;
+                pos.disabled = true;
+                credit.disabled = true;
+                try {
+                    const body = new FormData();
+                    body.append('__RequestVerificationToken', token.value);
+                    body.append('transferPaymentsEnabled', String(transfer.checked));
+                    body.append('posPaymentsEnabled', String(pos.checked));
+                    body.append('creditPaymentsEnabled', String(credit.checked));
+                    const response = await fetch(options.dataset.saveUrl, {
+                        method: 'POST', body, credentials: 'same-origin',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(payload.message || payload.detail || 'No fue posible actualizar las formas de pago.');
+                    window.showSystemToast?.('success', payload.message);
+                } catch (error) {
+                    window.showSystemToast?.('error', error.message || 'No fue posible actualizar las formas de pago.');
+                    window.location.reload();
+                } finally {
+                    transfer.disabled = false;
+                    pos.disabled = false;
+                    credit.disabled = false;
+                }
+            };
+            transfer.addEventListener('change', save);
+            pos.addEventListener('change', save);
+            credit.addEventListener('change', save);
+        })();
+    </script>
+}

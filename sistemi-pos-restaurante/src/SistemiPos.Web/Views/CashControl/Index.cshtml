@@ -1,0 +1,11 @@
+@model IReadOnlyList<SistemiPos.Application.Cash.CashSessionDto>
+@{ var isHistory = ViewBag.CashHistory is true; ViewData["Title"] = isHistory ? "Historial de cajas" : "Cajas activas"; var users = ViewBag.Users as IReadOnlyList<string> ?? Array.Empty<string>(); }
+<div class="table-card cash-control-list-card" data-filter-table>
+    <form method="get" asp-action="@(isHistory ? "History" : "Index")" class="form-grid compact-form-grid cash-control-filters" data-auto-filter-form>
+        <div class="field"><label>@(isHistory ? "Fecha de cierre" : "Fecha de apertura")</label><input name="date" type="date" value="@(((DateTime?)ViewBag.Date)?.ToString("yyyy-MM-dd"))" class="input" /></div>
+        <div class="field"><label>Usuario</label><input name="user" type="search" value="@ViewBag.User" list="cash-control-users" class="input" autocomplete="off" placeholder="Buscar usuario..." data-auto-filter-search /></div>
+        <datalist id="cash-control-users">@foreach (var user in users) { <option value="@user"></option> }</datalist>
+        <div class="action-row"><a asp-action="@(isHistory ? "History" : "Index")" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="table-responsive"><table class="data-table cash-control-table"><thead><tr><th>Usuario</th><th>Apertura</th><th>Cierre</th><th>Ventas</th><th>Efectivo</th><th>Diferencia</th><th>Revisión</th><th>Estado</th><th class="action-column">Acción</th></tr></thead><tbody>@foreach(var x in Model){<tr><td>@x.CashierUserName</td><td>@x.OpenedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@(x.ClosedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</td><td>@((x.TotalSold ?? 0).ToString("N2"))</td><td>@((x.TotalCashSales ?? 0).ToString("N2"))</td><td>@(x.Difference?.ToString("N2") ?? "—")</td><td>@(x.Status == SistemiPos.Domain.Cash.CashSessionStatus.Active ? "—" : x.Difference == 0 || x.ReconciledAtUtc is not null ? "Cuadrada" : "Pendiente")</td><td>@(x.Status==SistemiPos.Domain.Cash.CashSessionStatus.Active?"Abierta":"Cerrada")</td><td class="action-column"><a asp-action="Details" asp-route-id="@x.Id" class="button-ghost link-button">Detalle</a></td></tr>}</tbody></table></div>
+</div>

@@ -1,0 +1,19 @@
+@model SistemiPos.Web.Models.Orders.NewOrderViewModel
+@{ ViewData["Title"] = "Nuevo pedido"; }
+<section class="page-header compact-page-header"><h1>Nuevo pedido</h1></section>
+<form asp-action="Create" method="post" class="table-card" id="order-form">
+    <div asp-validation-summary="All" class="validation-summary-errors"></div>
+    <div class="field"><label asp-for="TerminalId">Terminal</label><select asp-for="TerminalId" class="input" required><option value="">Selecciona una terminal</option>@foreach (var terminal in Model.Terminals) { <option value="@terminal.Id">@terminal.Code · Caja @terminal.RegisterCode</option> }</select></div>
+    <p>La confirmación fijará precios, impuestos y recetas. El borrador no consume inventario.</p>
+    <div id="order-lines">
+    @for (var index = 0; index < Model.Lines.Count; index++)
+    {
+        <div class="form-grid compact-form-grid order-line">
+            <div class="field"><label for="product-@index">Producto</label><select id="product-@index" name="Lines[@index].ProductId" class="input" required><option value="">Selecciona un producto</option>@foreach (var product in Model.Products) { <option value="@product.Id" selected="@(Model.Lines[index].ProductId == product.Id)">@product.InternalCode · @(product.DisplayName ?? product.Name)</option> }</select></div>
+            <div class="field"><label for="quantity-@index">Cantidad</label><input id="quantity-@index" name="Lines[@index].Quantity" value="@Model.Lines[index].Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" type="number" min="0.01" step="0.01" class="input" required /></div>
+        </div>
+    }
+    </div>
+    <div class="action-row"><button type="button" id="add-order-line" class="button-secondary">Agregar producto</button><button type="submit" class="button-primary">Guardar borrador</button><a asp-action="Index" class="button-ghost link-button">Cancelar</a></div>
+</form>
+@section Scripts { <script src="~/js/orders.js" asp-append-version="true"></script> }

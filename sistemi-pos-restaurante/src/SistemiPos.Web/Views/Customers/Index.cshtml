@@ -1,0 +1,45 @@
+@model IReadOnlyList<SistemiPos.Application.Customers.CustomerDto>
+@{
+    ViewData["Title"] = "Clientes";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Clientes</p>
+        <h1>Clientes</h1>
+    </div>
+    <a asp-action="Create" class="button-primary link-button" data-crud-modal>+ Nuevo cliente</a>
+</section>
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por nombre, NIT, teléfono, correo o estado" aria-label="Buscar clientes" /></div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>NIT</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.Nit</td>
+                <td>@item.Phone</td>
+                <td>@item.Email</td>
+                <td>@(item.IsActive ? "Activo" : "Inactivo")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" data-crud-modal>Editar</a> |
+                    <a asp-action="History" asp-route-id="@item.Id">Historial</a>
+                </td>
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="6">No se encontraron clientes.</td></tr>
+        </tbody>
+    </table>
+</div>

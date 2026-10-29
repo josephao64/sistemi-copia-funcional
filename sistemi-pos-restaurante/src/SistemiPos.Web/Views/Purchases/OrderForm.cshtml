@@ -1,0 +1,280 @@
+@model SistemiPos.Web.Models.Purchases.PurchaseOrderFormViewModel
+@using SistemiPos.Domain.Purchases
+@{
+    var isEdit = Model.Id.HasValue;
+    var orderItems = Model.Items.Where(x => x.ProductId != Guid.Empty).ToList();
+    var defaultPresentationId = Model.Presentations.FirstOrDefault(x => x.Units == 1)?.Id
+        ?? Model.Presentations.FirstOrDefault()?.Id;
+    ViewData["Title"] = isEdit ? $"Editar orden {Model.Number}" : "Nueva orden";
+}
+
+@if (TempData["Error"] is string error) { <div class="alert-error">@error</div> }
+
+<div class="form-card purchase-order-form-card">
+<form asp-action="@(isEdit ? "EditOrder" : "CreateOrder")" method="post" class="form-grid purchase-order-form" data-order-form data-product-search-url="@Url.Action("SearchOrderProducts")" data-supplier-product-url="@Url.Action("SupplierProductInfo")" data-submission-lock novalidate>
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" /><input asp-for="Number" type="hidden" /><input asp-for="Status" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+    <p class="purchase-order-created-at"><strong>Fecha de creación:</strong> <time datetime="@Model.RequestedAtLocal.ToString("s")">@Model.RequestedAtLocal.ToString("dd/MM/yyyy HH:mm")</time></p>
+
+    <div class="field purchase-order-supplier-field">
+        <label asp-for="SupplierId"></label>
+        <input asp-for="SupplierId" type="hidden" data-order-supplier-id />
+        <div class="purchase-order-picker"><input class="input autocomplete-clean" value="@Model.SupplierName" list="order-suppliers" autocomplete="off" placeholder="Buscar proveedor..." required data-order-supplier-search /><a asp-controller="Suppliers" asp-action="Create" asp-route-returnSupplier="true" class="button-secondary link-button" data-crud-modal data-crud-created-event="purchase-order:supplier-created">+ Crear proveedor</a></div>
+    </div>
+    <datalist id="order-suppliers">@foreach (var option in Model.Suppliers) { <option value="@option.Text" data-id="@option.Value"></option> }</datalist>
+
+    <div class="field"><label asp-for="BranchId">Sucursal de destino</label><select asp-for="BranchId" asp-items="Model.Branches" class="input" required data-purchase-branch><option value="">Seleccione</option></select></div>
+    <div class="field"><label asp-for="WarehouseId">Bodega de destino</label><select asp-for="WarehouseId" class="input" required data-purchase-warehouse><option value="">Seleccione</option>@foreach (var warehouse in Model.Warehouses){<option value="@warehouse.Id" data-branch-id="@warehouse.BranchId" selected="@(warehouse.Id == Model.WarehouseId ? "selected" : null)">@warehouse.Name</option>}</select></div>
+
+    <section class="table-card purchase-order-products">
+        <div class="table-toolbar"><h2>Productos solicitados</h2></div>
+        <div class="table-responsive">
+            <table class="data-table purchase-order-items-table">
+                <thead><tr><th>Presentación</th><th class="quantity-column">Cantidad</th><th>Nombre</th><th>Equiv.</th><th>Nombre de proveedor</th><th class="action-column">Acción</th></tr></thead>
+                <tbody data-order-items>
+                @for (var index = 0; index < orderItems.Count; index++)
+                {
+                    var item = orderItems[index];
+                    <tr data-order-item-row>
+                        <td data-label="Presentación"><div class="inline-field-action" data-presentation-field><select name="Items[@index].PresentationId" class="input" required data-order-presentation data-presentation-catalog-select>@foreach (var presentation in Model.Presentations){<option value="@presentation.Id" data-units="@presentation.Units" data-factor="@((presentation.BaseFactor ?? presentation.Units).ToString(System.Globalization.CultureInfo.InvariantCulture))" data-product-id="@presentation.ProductId" selected="@(presentation.Id == item.PresentationId ? "selected" : null)">@presentation.Name (@(presentation.BaseFactor ?? presentation.Units) @presentation.BaseUnit)</option>}</select><button type="button" class="inline-field-link" data-open-presentation-modal>+ Nueva presentación</button></div></td>
+                        <td data-label="Cantidad"><input name="Items[@index].PackageQuantity" value="@item.PackageQuantity" class="input quantity-input" type="number" min="0.01" step="0.01" required data-order-quantity /></td>
+                        <td data-label="Nombre">
+                            <input name="Items[@index].ProductId" value="@item.ProductId" type="hidden" data-order-product-id />
+                            <strong data-order-product-name>@item.ProductName</strong>
+                            <small class="purchase-product-description" data-system-description hidden="@(string.IsNullOrWhiteSpace(item.SystemDescription) ? "hidden" : null)"><span>@item.SystemDescription</span></small>
+                        </td>
+                        <td class="number-column" data-label="Equiv." data-order-equivalent>@DisplayFormats.Quantity(item.EquivalentUnits)</td>
+                        <td data-label="Nombre de proveedor">
+                            <span data-supplier-name>@item.SupplierInvoiceName</span>
+                            <div data-supplier-missing hidden="@(!string.IsNullOrWhiteSpace(item.SupplierInvoiceName))">
+                                <span class="helper-text">Sin nombre de proveedor</span>
+                            </div>
+                            <small class="purchase-product-description" data-supplier-description hidden="@(string.IsNullOrWhiteSpace(item.SupplierDescription) ? "hidden" : null)"><strong>Descripción proveedor:</strong> <span>@item.SupplierDescription</span></small>
+                        </td>
+                        <td class="action-column" data-label="Acción"><button type="button" class="button-ghost" data-remove-order-item>Quitar</button></td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot><tr data-order-capture-row><td data-label="Presentación"><div class="inline-field-action" data-presentation-field><select class="input" data-capture-presentation data-presentation-catalog-select>@foreach (var presentation in Model.Presentations){<option value="@presentation.Id" data-units="@presentation.Units" data-factor="@((presentation.BaseFactor ?? presentation.Units).ToString(System.Globalization.CultureInfo.InvariantCulture))" data-product-id="@presentation.ProductId" selected="@(presentation.Id == defaultPresentationId ? "selected" : null)">@presentation.Name (@(presentation.BaseFactor ?? presentation.Units) @presentation.BaseUnit)</option>}</select><button type="button" class="inline-field-link" data-open-presentation-modal>+ Nueva presentación</button></div></td><td data-label="Cantidad"><input class="input quantity-input" type="number" min="0.01" step="0.01" placeholder="Cantidad" data-capture-quantity /></td><td data-label="Nombre"><div class="order-product-autocomplete"><input class="input" autocomplete="off" placeholder="Buscar por nombre..." role="combobox" aria-autocomplete="list" aria-controls="order-product-suggestions" aria-expanded="false" data-capture-product-search /><div id="order-product-suggestions" class="order-product-suggestions" role="listbox" hidden data-capture-product-suggestions></div><a asp-controller="Products" asp-action="Create" asp-route-returnProduct="true" class="inline-field-link" data-crud-modal data-crud-created-event="purchase-order:product-created">+ Crear producto</a></div></td><td class="number-column" data-label="Equiv." data-capture-equivalent>0</td><td data-label="Nombre de proveedor">—</td><td class="action-column" data-label="Acción"></td></tr></tfoot>
+            </table>
+        </div>
+    </section>
+
+    <div class="field purchase-order-comment"><label asp-for="Observations">Comentario</label><textarea asp-for="Observations" class="input" rows="3" maxlength="1000"></textarea></div>
+    <div class="action-row"><button class="button-secondary" name="intent" value="draft" type="submit">@(Model.Status == PurchaseOrderStatus.Requested ? "Guardar cambios" : "Guardar borrador")</button><button class="button-primary" name="intent" value="submit" type="submit">Guardar y solicitar</button><a asp-action="@(isEdit ? "OrderDetails" : "Index")" asp-route-id="@Model.Id" class="button-ghost link-button">Cancelar</a></div>
+</form>
+</div>
+<partial name="_PurchasePresentationModal" />
+
+<template data-order-item-template>
+<tr data-order-item-row>
+    <td data-label="Presentación"><div class="inline-field-action" data-presentation-field><select name="Items[__index__].PresentationId" class="input" required data-order-presentation data-presentation-catalog-select>@foreach (var presentation in Model.Presentations){<option value="@presentation.Id" data-units="@presentation.Units" data-factor="@((presentation.BaseFactor ?? presentation.Units).ToString(System.Globalization.CultureInfo.InvariantCulture))" data-product-id="@presentation.ProductId">@presentation.Name (@(presentation.BaseFactor ?? presentation.Units) @presentation.BaseUnit)</option>}</select><button type="button" class="inline-field-link" data-open-presentation-modal>+ Nueva presentación</button></div></td>
+    <td data-label="Cantidad"><input name="Items[__index__].PackageQuantity" class="input quantity-input" type="number" min="0.01" step="0.01" required data-order-quantity /></td>
+    <td data-label="Nombre"><input name="Items[__index__].ProductId" type="hidden" data-order-product-id /><strong data-order-product-name></strong><small class="purchase-product-description" data-system-description hidden><span></span></small></td>
+    <td class="number-column" data-label="Equiv." data-order-equivalent>0</td>
+    <td data-label="Nombre de proveedor"><span data-supplier-name></span><div data-supplier-missing><span class="helper-text">Sin nombre de proveedor</span></div><small class="purchase-product-description" data-supplier-description hidden><strong>Descripción de proveedor:</strong> <span></span></small></td>
+    <td class="action-column" data-label="Acción"><button type="button" class="button-ghost" data-remove-order-item>Quitar</button></td>
+</tr>
+</template>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+(() => {
+    const form = document.querySelector('[data-order-form]');
+    const body = document.querySelector('[data-order-items]');
+    const template = document.querySelector('[data-order-item-template]');
+    const supplierList = document.querySelector('#order-suppliers');
+    const supplierId = document.querySelector('[data-order-supplier-id]');
+    const supplierSearch = document.querySelector('[data-order-supplier-search]');
+    const normalize = value => (value || '').trim().toLocaleLowerCase('es');
+    const quantity = input => Number(input?.value) || 0;
+    const presentationUnits = select => Number(select?.selectedOptions[0]?.dataset.factor) || 0;
+    const branch = form.querySelector('[data-purchase-branch]');
+    const warehouse = form.querySelector('[data-purchase-warehouse]');
+    const filterWarehouses = () => {
+        if (!branch || !warehouse) return;
+        [...warehouse.options].forEach(option => { if (option.value) option.hidden = option.dataset.branchId !== branch.value; });
+        if (warehouse.selectedOptions[0]?.hidden) warehouse.value = '';
+    };
+    branch?.addEventListener('change', filterWarehouses);
+    filterWarehouses();
+    const displayQuantity = value => Number.isInteger(value) ? value.toString() : value.toFixed(2);
+    const updateEquivalent = row => {
+        const value = quantity(row.querySelector('[data-order-quantity]')) * presentationUnits(row.querySelector('[data-order-presentation]'));
+        const target = row.querySelector('[data-order-equivalent]');
+        if (target) target.textContent = displayQuantity(value);
+    };
+    const filterPresentations = (select, productId) => {
+        [...select.options].forEach(option => option.hidden = !!option.dataset.productId && option.dataset.productId !== productId);
+        if (select.selectedOptions[0]?.hidden) {
+            const preferred = [...select.options].find(option => option.dataset.productId === productId)
+                ?? [...select.options].find(option => !option.dataset.productId);
+            select.value = preferred?.value || '';
+        }
+    };
+    const renumber = () => body.querySelectorAll('tr').forEach((row, index) => row.querySelectorAll('[name]').forEach(input => input.name = input.name.replace(/Items\[\d+\]/, `Items[${index}]`)));
+    const setOptionalText = (element, value) => { if (!element) return; const target = element.querySelector('span') || element; target.textContent = value || ''; element.hidden = !value; };
+    const updateSupplierName = (row, value) => {
+        setOptionalText(row.querySelector('[data-supplier-name]'), value);
+        const missing = row.querySelector('[data-supplier-missing]');
+        if (missing) missing.hidden = !!value;
+    };
+    const loadSupplierProduct = async row => {
+        const productId = row.querySelector('[data-order-product-id]')?.value;
+        if (!productId || !supplierId.value) return;
+        try {
+            const response = await fetch(`${form.dataset.supplierProductUrl}?productId=${encodeURIComponent(productId)}&supplierId=${encodeURIComponent(supplierId.value)}`);
+            if (!response.ok) return;
+            const relation = await response.json();
+            updateSupplierName(row, relation?.supplierProductName || '');
+        } catch { window.showSystemToast?.('error', 'No fue posible cargar el nombre del producto para este proveedor.'); }
+    };
+    const bindRow = row => {
+        filterPresentations(row.querySelector('[data-order-presentation]'), row.querySelector('[data-order-product-id]')?.value);
+        row.querySelector('[data-order-quantity]')?.addEventListener('input', () => updateEquivalent(row));
+        row.querySelector('[data-order-presentation]')?.addEventListener('change', () => updateEquivalent(row));
+        updateEquivalent(row);
+    };
+    const capture = document.querySelector('[data-order-capture-row]');
+    const captureQuantity = capture.querySelector('[data-capture-quantity]');
+    const captureSearch = capture.querySelector('[data-capture-product-search]');
+    const capturePresentation = capture.querySelector('[data-capture-presentation]');
+    const captureSuggestions = capture.querySelector('[data-capture-product-suggestions]');
+    const resetCapturePresentation = () => {
+        const defaultOption = [...capturePresentation.options].find(option => option.dataset.units === '1')
+            ?? [...capturePresentation.options].find(option => option.value);
+        capturePresentation.value = defaultOption?.value || '';
+    };
+    const updateCaptureEquivalent = () => {
+        capture.querySelector('[data-capture-equivalent]').textContent = displayQuantity(quantity(captureQuantity) * presentationUnits(capturePresentation));
+    };
+    const populateCapturedItem = (row, product, quantity) => {
+        row.querySelector('[data-order-product-id]').value = product.id;
+        row.querySelector('[data-order-quantity]').value = quantity;
+        row.querySelector('[data-order-presentation]').value = capturePresentation.value;
+        row.querySelector('[data-order-product-name]').textContent = product.systemName;
+        updateSupplierName(row, product.supplierName);
+        setOptionalText(row.querySelector('[data-system-description]'), product.systemDescription);
+        setOptionalText(row.querySelector('[data-supplier-description]'), product.supplierDescription);
+        loadSupplierProduct(row);
+        updateEquivalent(row);
+    };
+    let selectedProduct = null;
+    let searchResults = [];
+    let productSearchRequest = null;
+    const hideCaptureSuggestions = () => {
+        captureSuggestions.hidden = true;
+        captureSearch.setAttribute('aria-expanded', 'false');
+    };
+    const selectCaptureProduct = product => {
+        selectedProduct = product;
+        captureSearch.value = product.systemName;
+        filterPresentations(capturePresentation, product.id);
+        hideCaptureSuggestions();
+        updateCaptureEquivalent();
+        addCapturedItem();
+    };
+    const renderCaptureSuggestions = products => {
+        captureSuggestions.replaceChildren(...products.map((product, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'order-product-suggestion';
+            button.dataset.productResult = index;
+            button.setAttribute('role', 'option');
+            button.textContent = product.suggestionLabel || product.systemName;
+            return button;
+        }));
+        captureSuggestions.hidden = products.length === 0;
+        captureSearch.setAttribute('aria-expanded', (!captureSuggestions.hidden).toString());
+    };
+    const addCapturedItem = () => {
+        const quantity = Number(captureQuantity.value);
+        if (!selectedProduct || !capturePresentation.value || !Number.isFinite(quantity) || quantity <= 0) return false;
+        const duplicate = [...body.querySelectorAll('[data-order-product-id]')].find(input => input.value === selectedProduct.id);
+        if (duplicate) {
+            window.showSystemToast?.('warning', 'El producto ya forma parte de la orden. Modifique la cantidad en la línea existente.');
+            captureQuantity.value = '';
+            captureSearch.value = '';
+            selectedProduct = null;
+            captureQuantity.focus();
+            return false;
+        }
+        body.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__index__', body.children.length));
+        populateCapturedItem(body.lastElementChild, selectedProduct, quantity);
+        captureQuantity.value = '';
+        captureSearch.value = '';
+        resetCapturePresentation();
+        selectedProduct = null;
+        hideCaptureSuggestions();
+        updateCaptureEquivalent();
+        capturePresentation.focus();
+        return true;
+    };
+    const searchProducts = async () => {
+        selectedProduct = null;
+        const term = captureSearch.value.trim();
+        productSearchRequest?.abort();
+        if (!term) { searchResults = []; hideCaptureSuggestions(); return; }
+        productSearchRequest = new AbortController();
+        try {
+            const response = await fetch(`${form.dataset.productSearchUrl}?query=${encodeURIComponent(term)}`, { signal: productSearchRequest.signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            searchResults = await response.json();
+            renderCaptureSuggestions(searchResults);
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            searchResults = [];
+            hideCaptureSuggestions();
+            window.showSystemToast?.('error', 'No fue posible buscar productos.');
+        }
+    };
+    captureQuantity.addEventListener('input', () => { updateCaptureEquivalent(); addCapturedItem(); });
+    captureSearch.addEventListener('input', searchProducts);
+    capturePresentation.addEventListener('change', () => { updateCaptureEquivalent(); addCapturedItem(); });
+    captureSuggestions.addEventListener('pointerdown', event => {
+        const button = event.target.closest('[data-product-result]');
+        if (!button) return;
+        event.preventDefault();
+        const product = searchResults[Number(button.dataset.productResult)];
+        if (product) selectCaptureProduct(product);
+    });
+    captureSearch.addEventListener('blur', () => window.setTimeout(hideCaptureSuggestions, 150));
+    const syncSupplier = () => { const option = [...supplierList.options].find(value => normalize(value.value) === normalize(supplierSearch.value)); supplierId.value = option?.dataset.id || ''; body.querySelectorAll('[data-order-item-row]').forEach(loadSupplierProduct); };
+    supplierSearch?.addEventListener('input', syncSupplier);
+    supplierSearch?.addEventListener('change', syncSupplier);
+    document.addEventListener('purchase-order:supplier-created', event => { const option = document.createElement('option'); option.value = event.detail.text; option.dataset.id = event.detail.id; supplierList.appendChild(option); supplierSearch.value = option.value; supplierId.value = option.dataset.id; });
+    body?.addEventListener('click', event => { const button = event.target.closest('[data-remove-order-item]'); if (!button) return; button.closest('tr').remove(); renumber(); });
+    document.addEventListener('purchase-order:product-created', event => {
+        selectCaptureProduct({
+            id: event.detail.id,
+            systemName: event.detail.systemName,
+            supplierName: event.detail.supplierName || '',
+            systemDescription: event.detail.systemDescription || '',
+            supplierDescription: event.detail.supplierDescription || '',
+            suggestionLabel: [event.detail.systemName, event.detail.supplierName, event.detail.systemDescription, event.detail.supplierDescription].filter(Boolean).join(' · ')
+        });
+    });
+    form?.addEventListener('submit', event => {
+        syncSupplier();
+        const messages = [];
+        if (!supplierId.value) messages.push('Seleccione un proveedor desde las sugerencias.');
+        const captureStarted = captureSearch.value.trim() || captureQuantity.value.trim();
+        if (captureStarted) messages.push('Complete producto y cantidad en la fila de captura antes de guardar.');
+        if (!body.querySelector('[data-order-item-row]')) messages.push('Agregue al menos un producto a la orden.');
+        if ([...body.querySelectorAll('[data-order-quantity]')].some(input => !Number.isFinite(Number(input.value)) || Number(input.value) <= 0)) messages.push('Ingrese una cantidad mayor a cero para cada producto.');
+        if ([...body.querySelectorAll('[data-order-presentation]')].some(select => !select.value)) messages.push('Seleccione una presentación para cada producto.');
+        if (messages.length) {
+            event.preventDefault();
+            window.showSystemToast?.('warning', messages);
+            form.querySelector(':invalid, [data-order-quantity][value="0"]')?.focus();
+        }
+    });
+    body.querySelectorAll('[data-order-item-row]').forEach(bindRow);
+    updateCaptureEquivalent();
+})();
+</script>
+<script src="~/js/purchase-presentation-modal.js" asp-append-version="true"></script>
+}

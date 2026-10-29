@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMI POS — Informe Técnico: Configuración General de Empresa</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.8cm 1.5cm 1.8cm 1.5cm;
+            @bottom-right {
+                content: counter(page);
+            }
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.55;
+            color: #1e293b;
+            background: #ffffff;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .header-card {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #bfdbfe;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 11.5pt;
+            color: #64748b;
+            margin: 0 0 16px 0;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 9pt;
+        }
+
+        .meta-item strong {
+            display: block;
+            color: #475569;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            font-size: 7.5pt;
+            letter-spacing: 0.04em;
+        }
+
+        .meta-item span {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #1e293b;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin: 24px 0 12px 0;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #334155;
+            margin: 16px 0 8px 0;
+        }
+
+        p {
+            margin: 0 0 10px 0;
+        }
+
+        .callout {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            border-radius: 0 6px 6px 0;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 9.5pt;
+        }
+
+        .callout-title {
+            font-weight: 700;
+            color: #1d4ed8;
+            margin-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin: 14px 0 20px 0;
+        }
+
+        th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            text-align: left;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+        }
+
+        td {
+            padding: 7px 12px;
+            border: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) td {
+            background: #f8fafc;
+        }
+
+        .badge-success {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            font-size: 8pt;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #86efac;
+        }
+
+        .badge-primary {
+            display: inline-block;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 8pt;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #bfdbfe;
+        }
+
+        .badge-secondary {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 8pt;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 8.5pt;
+            background: #f1f5f9;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #0f172a;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 8.5pt;
+            overflow-x: auto;
+            line-height: 1.45;
+        }
+
+        ul {
+            margin: 0 0 12px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <div class="header-badge">Arquitectura Empresarial • Fase 1 (ORG-09)</div>
+        <h1>SISTEMI POS Restaurante</h1>
+        <div class="subtitle">Documentación Técnica: Configuración General de Empresa y Resolución Jerárquica</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <strong>Rama Git</strong>
+                <span>development-joseph</span>
+            </div>
+            <div class="meta-item">
+                <strong>Unidades</strong>
+                <span>ORG-09A y ORG-09B</span>
+            </div>
+            <div class="meta-item">
+                <strong>Fecha</strong>
+                <span>29 de Septiembre, 2026</span>
+            </div>
+            <div class="meta-item">
+                <strong>Estado de Pruebas</strong>
+                <span class="badge-success">100% Exitoso (191 tests)</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>1. Resumen Ejecutivo</h2>
+    <p>
+        La <strong>Configuración General de Empresa</strong> implementa la separación limpia de parámetros entre niveles organizacionales. Anteriormente el sistema contaba con un único registro <code>SystemSetting</code>. Con este desarrollo, cada empresa posee su configuración integral propia, y cada sucursal puede definir excepciones operativas específicas que prevalecen localmente sin afectar a otras sedes ni a los valores institucionales.
+    </p>
+
+    <div class="callout">
+        <div class="callout-title">Regla de Precedencia y Resolución</div>
+        <strong>Valor Efectivo = Excepción de Sucursal ?? Valor de Empresa ?? Fallback de Sistema</strong><br>
+        Cada parámetro retornado expone su origen exacto (<code>SettingOrigin.Branch</code>, <code>SettingOrigin.Company</code> o <code>SettingOrigin.System</code>) para permitir que la interfaz de usuario muestre indicadores visuales sobre la procedencia de cada ajuste.
+    </div>
+
+    <h2>2. Clasificación de Parámetros por Nivel Organizacional</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nivel</th>
+                <th>Entidad / Modelo</th>
+                <th>Campos Administrados</th>
+                <th>Justificación de Negocio</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge-primary">Empresa</span></td>
+                <td><code>CompanySetting</code></td>
+                <td>
+                    Razón Social, Nombre Comercial, NIT, Dirección, Teléfono, Correo, Logo.<br>
+                    Moneda (Código, Símbolo, Decimales, Separadores).<br>
+                    Impuestos (Tasa IVA), Límites de Descuento.<br>
+                    Credenciales FEL / INFILE (Usuario, firmas y API keys).
+                </td>
+                <td>Gobierno legal, fiscal y tributario que rige a toda la personería jurídica ante la SAT. Aplica como plantilla predeterminada a todas las sucursales.</td>
+            </tr>
+            <tr>
+                <td><span class="badge-success">Sucursal</span></td>
+                <td><code>BranchSetting</code></td>
+                <td>
+                    Código de Establecimiento SAT.<br>
+                    Nombre del Establecimiento.<br>
+                    Pie de Comprobante / Recibo (<code>ReceiptFooter</code>).<br>
+                    Métodos de Pago diferenciados (Efectivo, POS, Transferencia, Crédito).
+                </td>
+                <td>Ajustes operativos particulares. Permite que puntos de venta express o kioscos restrinjan crédito o transferencias, o tengan un mensaje de pie de recibo particular.</td>
+            </tr>
+            <tr>
+                <td><span class="badge-secondary">Sistema</span></td>
+                <td><code>SystemSetting</code></td>
+                <td>Registro global único persistente.</td>
+                <td>Garantiza retrocompatibilidad y fallback ante consultas históricas previas a la migración multisucursal.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Componentes Implementados en el Código</h2>
+
+    <h3>3.1. Capa de Dominio (Domain)</h3>
+    <ul>
+        <li><code>src/SistemiPos.Domain/Organizations/SettingOrigin.cs</code>: Enumeración para trazabilidad (<code>System = 1, Company = 2, Branch = 3</code>).</li>
+        <li><code>src/SistemiPos.Domain/Organizations/CompanySetting.cs</code>: Entidad 1:1 con <code>Company</code>, protegiendo invariantes de separadores numéricos, porcentajes no negativos y validación de credenciales fiscales.</li>
+        <li><code>src/SistemiPos.Domain/Organizations/BranchSetting.cs</code>: Entidad 1:1 con <code>Branch</code>, conteniendo excepciones y control diferenciado de métodos de pago.</li>
+        <li><code>src/SistemiPos.Domain/Organizations/Branch.cs</code>: Se agregó la propiedad de navegación <code>Setting</code>.</li>
+    </ul>
+
+    <h3>3.2. Capa de Aplicación (Application)</h3>
+    <ul>
+        <li><code>src/SistemiPos.Application/Organizations/EnterpriseSettingsDtos.cs</code>:
+            <ul>
+                <li><code>EffectiveValue&lt;T&gt;(T Value, SettingOrigin Origin)</code>: Estructura fuertemente tipada que expone el valor resuelto y su procedencia.</li>
+                <li><code>EffectiveEnterpriseSettingsDto</code>: DTO completo consumible por vistas, reportes y módulo POS.</li>
+                <li><code>BranchSettingDto</code> y <code>SaveBranchSettingRequest</code>: Modelos para gestión de excepciones.</li>
+            </ul>
+        </li>
+        <li><code>src/SistemiPos.Application/Organizations/IEnterpriseSettingsResolver.cs</code> y <code>EnterpriseSettingsResolver.cs</code>:
+            <ul>
+                <li>Centraliza la lógica de precedencia jerárquica.</li>
+                <li>Valida la pertenencia de la sucursal a la empresa (rechaza cruces inválidos entre empresas distintas).</li>
+                <li>Asegura el aislamiento estricto entre sucursales.</li>
+            </ul>
+        </li>
+        <li><code>src/SistemiPos.Application/Organizations/ICompanySettingsRepository.cs</code> e <code>IBranchSettingsRepository.cs</code>: Contratos de repositorios desacoplados.</li>
+    </ul>
+
+    <h3>3.3. Capa de Infraestructura y Base de Datos (Infrastructure)</h3>
+    <ul>
+        <li><code>src/SistemiPos.Infrastructure/Persistence/Configurations/CompanySettingConfiguration.cs</code>: Mapeo de tabla <code>CompanySettings</code> con índice único en <code>CompanyId</code>.</li>
+        <li><code>src/SistemiPos.Infrastructure/Persistence/Configurations/BranchSettingConfiguration.cs</code>: Mapeo de tabla <code>BranchSettings</code> con índice único en <code>BranchId</code> y eliminación restringida (<code>Restrict</code>).</li>
+        <li><code>src/SistemiPos.Infrastructure/Persistence/AppDbContext.cs</code>: Registrados <code>DbSet&lt;CompanySetting&gt;</code> y <code>DbSet&lt;BranchSetting&gt;</code>.</li>
+        <li><code>src/SistemiPos.Infrastructure/DependencyInjection.cs</code>: Inyección de repositorios y del resolvedor jerárquico.</li>
+        <li><strong>Migraciones PostgreSQL generadas y aplicadas:</strong>
+            <ul>
+                <li><code>20260930023930_AddCompanySettingsTable</code></li>
+                <li><code>20260930025313_AddBranchSettingsTable</code></li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2>4. Resumen de Pruebas Automatizadas</h2>
+    <p>Se crearon pruebas unitarias especializadas en el proyecto <code>tests/SistemiPos.UnitTests/Organizations/</code>:</p>
+    <ul>
+        <li><code>CompanySettingTests.cs</code>: Pruebas unitarias de invariantes del modelo de empresa.</li>
+        <li><code>BranchSettingTests.cs</code>: Pruebas de inicialización y actualización de excepciones de sucursal.</li>
+        <li><code>EnterpriseSettingsResolverTests.cs</code>:
+            <ul>
+                <li><strong>Herencia:</strong> Sucursal sin excepción adopta valores de la empresa con <code>SettingOrigin.Company</code>.</li>
+                <li><strong>Sobreescritura:</strong> Sucursal con excepción adopta valores propios con <code>SettingOrigin.Branch</code>.</li>
+                <li><strong>Aislamiento:</strong> Modificar Sucursal A no altera Sucursal B ni a la Empresa.</li>
+                <li><strong>Seguridad Multitenant:</strong> Sucursal perteneciente a Empresa 2 consultada en Empresa 1 es rechazada (<code>DomainRuleException</code>).</li>
+            </ul>
+        </li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-title">Resultado de Verificación</div>
+        Suite completa de la solución: <strong>140 UnitTests, 44 FunctionalTests, 7 IntegrationTests aprobados (100%)</strong>.
+    </div>
+
+    <h2>5. Hoja de Ruta para Cierre de Historia</h2>
+    <ol>
+        <li><strong>Commit y Push de ORG-09B:</strong> Publicar en rama remota <code>origin/development-joseph</code>.</li>
+        <li><strong>Unidad ORG-09C (Pantalla y Seguridad):</strong> Adaptar el controlador <code>SettingsController</code> y las vistas Razor para soportar selección de empresa/sucursal y visualización de badges de origen.</li>
+        <li><strong>Unidad ORG-09D (Auditoría y Endurecimiento):</strong> Enmascarar credenciales sensibles y tokens en <code>AuditSaveChangesInterceptor</code> y <code>ChangesJson</code>.</li>
+    </ol>
+
+    <h2>6. Verificación de Criterios de Aceptación (Checklist)</h2>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+        <h3 style="color: #1e293b; margin-top: 0;">✅ 1. El sistema manejará una empresa con múltiples sucursales</h3>
+        <p><strong>Cumplimiento en código:</strong> <code>Company.cs</code> mantiene la relación 1 a muchos <code>IReadOnlyCollection&lt;Branch&gt; Branches</code>. Cada sucursal almacena <code>CompanyId</code> con restricción referencial en PostgreSQL (<code>FK_Branches_Companies_CompanyId</code>). El servicio <code>EnterpriseSettingsResolver</code> valida la pertenencia y bloquea accesos cruzados entre empresas distintas.</p>
+
+        <h3 style="color: #1e293b;">✅ 2. Los parámetros generales funcionan como valores por defecto cuando no exista una configuración específica por sucursal</h3>
+        <p><strong>Cumplimiento en código:</strong> <code>CompanySetting</code> actúa como plantilla general predeterminada (Moneda, IVA, Pie de recibo, Pagos y FEL). <code>BranchSetting</code> modela exclusivamente excepciones locales. El resolvedor <code>EnterpriseSettingsResolver</code> resuelve jerárquicamente: <em>Excepción Sucursal ?? Valor Empresa ?? Fallback Sistema</em>, retornando cada valor con su origen identificado (<code>SettingOrigin.Company</code> o <code>SettingOrigin.Branch</code>).</p>
+
+        <h3 style="color: #1e293b;">✅ 3. Los cambios de configuración sensibles deben quedar auditados</h3>
+        <p><strong>Cumplimiento en código:</strong> Tanto <code>CompanySetting</code> como <code>BranchSetting</code> heredan de <code>AuditableEntity</code> (registrando <code>CreatedAtUtc</code>, <code>CreatedBy</code>, <code>ModifiedAtUtc</code>, <code>ModifiedBy</code>). <code>AuditSaveChangesInterceptor</code> registra todas las mutaciones en la tabla <code>AuditLogs</code> de manera atómica y transaccional con la base de datos. Las credenciales FEL se almacenan cifradas mediante <code>IDataProtectionProvider</code>.</p>
+    </div>
+
+</body>
+</html>

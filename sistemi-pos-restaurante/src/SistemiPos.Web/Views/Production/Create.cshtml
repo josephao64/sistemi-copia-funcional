@@ -1,0 +1,14 @@
+@model SistemiPos.Web.Models.Recipes.ProductionFormViewModel
+@{ ViewData["Title"] = "Nueva producción"; }
+<section class="page-header compact-page-header"><h1>Nueva producción</h1><a asp-action="Index">Volver</a></section>
+<form method="post" class="form-card form-grid">
+<div asp-validation-summary="All" class="validation"></div><input asp-for="OperationId" type="hidden" />
+<div class="field"><label asp-for="RecipeId">Receta</label><select asp-for="RecipeId" class="input" required><option value="">Seleccione</option>@foreach(var r in Model.Recipes){<option value="@r.Id">@r.ProductName · v@r.Revision · rinde @DisplayFormats.Quantity(r.YieldQuantity) @r.YieldUnitCode</option>}</select><span class="helper-text">La receta debe estar configurada para producir existencias.</span></div>
+<div class="field"><label asp-for="PlannedQuantity">Cantidad teórica a producir</label><input asp-for="PlannedQuantity" type="number" step="0.000001" min="0.000001" class="input" required /></div>
+<div class="field"><label asp-for="OriginWarehouseId">Bodega de consumo</label><select asp-for="OriginWarehouseId" class="input" required><option value="">Seleccione</option>@foreach(var w in Model.Warehouses){<option value="@w.Id">@w.Name</option>}</select></div>
+<div class="field"><label asp-for="DestinationWarehouseId">Bodega de producto elaborado</label><select asp-for="DestinationWarehouseId" class="input" required><option value="">Seleccione</option>@foreach(var w in Model.Warehouses){<option value="@w.Id">@w.Name</option>}</select></div>
+<div class="field"><label asp-for="LotNumber">Lote de producción</label><input asp-for="LotNumber" class="input" maxlength="100" required /></div>
+<div class="field"><label asp-for="ScheduledAt">Fecha prevista (Guatemala)</label><input asp-for="ScheduledAt" type="datetime-local" class="input" required /></div>
+<div class="field"><label asp-for="ExpiryDate">Vencimiento del lote</label><input asp-for="ExpiryDate" type="date" class="input" /></div>
+<p class="helper-text full-span">El responsable será el usuario conectado. El inventario se afecta al confirmar el rendimiento real.</p>
+<div class="action-row"><button class="button-primary" type="submit">Crear orden</button></div></form>

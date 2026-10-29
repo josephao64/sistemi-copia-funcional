@@ -1,0 +1,28 @@
+@model SistemiPos.Application.Recipes.RecipeDto
+@using SistemiPos.Application.Security
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = $"Receta · {Model.ProductName}";
+    var canManage = (await NavigationPermissions.GetPermissionCodesAsync()).Contains(PermissionCodes.RecipesManage);
+}
+<section class="page-header compact-page-header"><div><h1>@ViewData["Title"]</h1></div>@if (canManage){<a asp-action="Edit" asp-route-id="@Model.Id" class="button-secondary link-button" data-crud-modal>Editar receta</a>}</section>
+<div class="action-row"><a class="button-secondary link-button" asp-controller="RecipeHistory" asp-action="Index" asp-route-id="@Model.Id">Versiones, costos y disponibilidad</a><a class="button-secondary link-button" asp-controller="Production" asp-action="Index">Producción</a></div>
+<p>Versión @Model.Revision · @(Model.ConsumptionMode == SistemiPos.Domain.Recipes.RecipeConsumptionMode.OnSale ? "Descuenta componentes al vender" : "Consume existencias producidas")</p>
+<div class="stats-grid">
+    <article class="stat-card"><span>Producto</span><strong>@Model.ProductCode</strong></article>
+    <article class="stat-card"><span>Rendimiento por elaboración</span><strong>@Model.YieldQuantity.ToString("0.######") @Model.YieldUnitCode</strong></article>
+    <article class="stat-card"><span>Estado</span><strong>@(Model.IsActive ? "Activa" : "Inactiva")</strong></article>
+</div>
+<section class="table-card">
+    <div class="table-toolbar"><h2>Ingredientes y subrecetas</h2></div>
+    <div class="table-responsive"><table class="data-table"><thead><tr><th>Componente</th><th>Tipo</th><th>Cantidad por elaboración</th><th>Equivalente en unidad base</th><th>Cantidad base por unidad de rendimiento</th></tr></thead><tbody>
+    @foreach (var item in Model.Ingredients)
+    {
+        <tr><td>@item.ProductCode · @item.ProductName</td><td>@if (item.SubrecipeId.HasValue){<a asp-action="Details" asp-route-id="@item.SubrecipeId">Subreceta</a>}else{<span>Ingrediente</span>}</td><td>@item.Quantity.ToString("0.######") @item.UnitCode</td><td>@item.BaseQuantity.ToString("0.######") @item.BaseUnitCode</td><td>@((item.BaseQuantity / Model.YieldQuantity).ToString("0.######")) @item.BaseUnitCode / @Model.YieldUnitCode</td></tr>
+    }
+    </tbody></table></div>
+</section>
+@if (!string.IsNullOrWhiteSpace(Model.Instructions))
+{
+    <div class="form-card"><div class="field"><label>Instrucciones de preparación</label><p style="white-space:pre-wrap">@Model.Instructions</p></div></div>
+}

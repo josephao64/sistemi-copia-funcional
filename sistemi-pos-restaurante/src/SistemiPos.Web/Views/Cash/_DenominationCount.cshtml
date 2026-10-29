@@ -1,0 +1,47 @@
+@model SistemiPos.Web.Models.Cash.CashDenominationCountViewModel
+@using SistemiPos.Domain.Configuration
+@{
+    var groups = new[] { (Kind: DenominationKind.Banknote, Key: "banknotes", Name: "Billetes"), (Kind: DenominationKind.Coin, Key: "coins", Name: "Monedas") };
+}
+<div class="cash-count-tables cashier-denominations">
+    @foreach (var group in groups)
+    {
+        var rows = Model.Denominations.Where(x => x.Kind == group.Kind).OrderByDescending(x => x.Value).ToList();
+        <section class="cash-denomination-panel" data-cash-kind="@group.Key" aria-labelledby="@Model.Prefix-@group.Key-title">
+            <header class="cashier-panel-heading">
+                <span class="cashier-denomination-icon is-@group.Key" aria-hidden="true">@(group.Key == "banknotes" ? "▤" : "◉")</span>
+                <div><h3 id="@Model.Prefix-@group.Key-title">@group.Name</h3><small>Ingresa la cantidad de cada denominación</small></div>
+                <output data-cash-kind-total>@Model.CurrencySymbol 0.00</output>
+            </header>
+            @if (rows.Count == 0)
+            {
+                <p class="cashier-empty-denominations">No hay denominaciones activas de @group.Name.ToLowerInvariant() para esta moneda.</p>
+            }
+            else
+            {
+                <table class="cash-denomination-table">
+                    <thead><tr><th scope="col">Valor</th><th scope="col">Cantidad</th><th scope="col">Subtotal</th></tr></thead>
+                    <tbody>
+                    @foreach (var denomination in rows)
+                    {
+                        var quantity = Model.Quantities?.GetValueOrDefault(denomination.Id) ?? 0;
+                        var label = $"{group.Name} de {Model.CurrencySymbol} {denomination.Value:N2}";
+                        <tr>
+                            <th scope="row"><span class="cashier-note-value">@Model.CurrencySymbol @denomination.Value.ToString("N2")</span></th>
+                            <td>
+                                <input type="hidden" name="denominationIds" value="@denomination.Id" />
+                                <div class="cashier-quantity-control">
+                                    <button type="button" data-cash-step="-1" aria-label="Restar uno: @label">−</button>
+                                    <input name="quantities" type="number" min="0" max="2147483647" step="1" value="@quantity" inputmode="numeric" pattern="[0-9]*" class="input cash-quantity-input" data-cash-quantity data-denomination-value="@denomination.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-label="Cantidad de @label" />
+                                    <button type="button" data-cash-step="1" aria-label="Sumar uno: @label">+</button>
+                                </div>
+                            </td>
+                            <td><output data-cash-line-subtotal>@Model.CurrencySymbol @((denomination.Value * quantity).ToString("N2"))</output></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+</div>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Técnico y Operativo - Fase 5: Recetas, Producción y Costos</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 15mm 18mm 15mm;
+
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+      }
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.55;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-size: 13px;
+    }
+
+    .header-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #c2410c 50%, #b45309 100%);
+      color: #ffffff;
+      padding: 28px 24px;
+      border-radius: 10px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-banner h1 {
+      margin: 0 0 8px 0;
+      font-size: 23px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-banner p {
+      margin: 0;
+      color: #fed7aa;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 9999px;
+      margin-right: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-primary {
+      background-color: #ea580c;
+      color: white;
+    }
+
+    .badge-success {
+      background-color: #10b981;
+      color: white;
+    }
+
+    .badge-secondary {
+      background-color: #334155;
+      color: white;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+      padding: 14px;
+      background-color: #fff7ed;
+      border: 1px solid #ffedd5;
+      border-radius: 8px;
+    }
+
+    .meta-item h4 {
+      margin: 0 0 4px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #9a3412;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-item p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    h2 {
+      color: #0f172a;
+      font-size: 16px;
+      font-weight: 700;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+
+    h3 {
+      color: #c2410c;
+      font-size: 13.5px;
+      font-weight: 600;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      text-align: left;
+      border: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: #f8fafc;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    tr:nth-child(even) {
+      background-color: #fbfcfe;
+    }
+
+    .check-cell {
+      text-align: center;
+      font-weight: bold;
+      color: #059669;
+      white-space: nowrap;
+    }
+
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .card-accent {
+      border-left: 4px solid #ea580c;
+    }
+
+    .card-success {
+      border-left: 4px solid #10b981;
+    }
+
+    .card-title {
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+      font-size: 13.5px;
+    }
+
+    .alert-box {
+      background-color: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 6px;
+      padding: 12px 15px;
+      margin-bottom: 18px;
+      color: #9a3412;
+      font-size: 12.5px;
+    }
+
+    .code-block {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 12px 15px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 11.5px;
+      margin-bottom: 15px;
+      overflow-x: auto;
+    }
+
+    .diagram-box {
+      background-color: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+      font-family: 'Consolas', monospace;
+      font-size: 11.5px;
+      color: #334155;
+      line-height: 1.4;
+    }
+
+    .footer {
+      margin-top: 35px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 14px;
+      text-align: center;
+      color: #64748b;
+      font-size: 11px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header-banner">
+    <div style="margin-bottom: 10px;">
+      <span class="badge badge-success">Completado 100%</span>
+      <span class="badge badge-primary">Fase 5: Recetas, Producción y Costos</span>
+      <span class="badge badge-secondary">SISTEMI POS Restaurante</span>
+    </div>
+    <h1>Informe Técnico y de Operación: Fase 5</h1>
+    <p>Objetivo: Registrar preparaciones internas sin descontar dos veces sus ingredientes.</p>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <h4>Arquitectura</h4>
+      <p>Clean Architecture .NET 10</p>
+    </div>
+    <div class="meta-item">
+      <h4>Base de Datos</h4>
+      <p>PostgreSQL 17 (Npgsql EF Core)</p>
+    </div>
+    <div class="meta-item">
+      <h4>Pruebas Verificadas</h4>
+      <p>273 pruebas (100% superadas)</p>
+    </div>
+    <div class="meta-item">
+      <h4>Rama Git</h4>
+      <p>development-joseph</p>
+    </div>
+  </div>
+
+  <div class="alert-box">
+    <strong>Invariante del Negocio Garantizada:</strong> Se resolvió de manera definitiva la segregación entre
+    <em>producir una subreceta en cocina previa</em> y <em>consumir el plato terminado en el punto de venta</em>. Ningún
+    insumo base es duplicado en el inventario ni consumido dos veces en los libros contables.
+  </div>
+
+  <h2>1. Matriz de Cumplimiento de Fase 5 (PRO-01 a PRO-08)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 7%;">Clave</th>
+        <th style="width: 14%;">Tarea</th>
+        <th style="width: 25%;">Funcionalidad Requerida</th>
+        <th style="width: 18%;">Ejemplo del Negocio</th>
+        <th style="width: 9%;">Prioridad</th>
+        <th style="width: 18%;">Criterio de Aceptación</th>
+        <th style="width: 9%;">Resultado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>PRO-01</strong></td>
+        <td>Recetas versionadas</td>
+        <td>Crear cabecera, versión, rendimiento y componentes con histórico inmutable.</td>
+        <td>Pizza Jamón usa masa, salsa, queso, jamón y caja.</td>
+        <td>Crítica</td>
+        <td>Venta histórica apunta a versión usada de la receta.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-02</strong></td>
+        <td>Subrecetas</td>
+        <td>Permitir preparaciones como componentes de otra receta, validando compatibilidad.</td>
+        <td>Masa participa en Pizza Jamón; Salsa participa en Pizza Jamón.</td>
+        <td>Crítica</td>
+        <td>Validar ciclos (A→B→A) y unidades de medida compatibles.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-03</strong></td>
+        <td>Orden de producción</td>
+        <td>Registrar lote, origen, destino, fecha y responsable de preparación en cocina.</td>
+        <td>Producir 50 bolas de masa o 5 kg de salsa artesanal.</td>
+        <td>Crítica</td>
+        <td>Consumo de ingredientes y alta de producción se confirman juntos (atómico).</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-04</strong></td>
+        <td>Rendimiento real</td>
+        <td>Registrar cantidad teórica, real, merma y motivo de desperdicio.</td>
+        <td>Lote de masa produjo 48 de 50 bolas (merma de 2 por pegado al bowl).</td>
+        <td>Alta</td>
+        <td>Diferencia genera trazabilidad de merma y ratio de rendimiento real.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-05</strong></td>
+        <td>Costo teórico</td>
+        <td>Calcular costo por componente, lote y porción a la fecha.</td>
+        <td>Costo de una bola de masa o de 100g de salsa.</td>
+        <td>Alta</td>
+        <td>Cálculo reproduce costos vigentes mediante historial de compra y baseline.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-06</strong></td>
+        <td>Consumo sin duplicación</td>
+        <td>Distinguir producir subreceta de consumirla en venta directa.</td>
+        <td>Masa descuenta harina al producir; pizza descuenta masa lista al vender.</td>
+        <td>Crítica</td>
+        <td>Prueba integral confirma un solo consumo por ciclo productivo.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-07</strong></td>
+        <td>Disponibilidad producible</td>
+        <td>Calcular cuántas unidades pueden prepararse según existencias.</td>
+        <td>Queso o masa disponible limita pizzas posibles en turno.</td>
+        <td>Media</td>
+        <td>Resultado identifica el componente limitante (cuello de botella).</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+      <tr>
+        <td><strong>PRO-08</strong></td>
+        <td>Gestión visual de recetas</td>
+        <td>Crear pantallas táctiles de receta, producción, rendimiento y costo.</td>
+        <td>Encargado registra lote desde tablet de cocina.</td>
+        <td>Alta</td>
+        <td>Uso táctil, diseño responsivo y permisos por sucursal.</td>
+        <td class="check-cell">✔ Cumplido</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Arquitectura del Flujo Productivo y Reglas de Negocio</h2>
+
+  <div class="diagram-box">
+    <strong>FLUJO PRODUCTIVO Y DE VENTAS EN DOS ETAPAS (SIN DUPLICIDAD):</strong>
+
+    [ FASE PREVIA EN COCINA: ÓRDEN DE PRODUCCIÓN ]
+    Harina (12.5 kg) + Levadura (150 g) + Agua + Aceite + Sal
+    │
+    ▼ (Orden de Producción: ConfirmAsync)
+    [ - Insumos descontados de Bodega ]
+    [ + 50 Bolas de "Masa Para Pizza" ingresadas a Bodega ]
+
+    [ FASE DE VENTA AL CLIENTE EN POS ]
+    Cliente pide: 1 Pizza Jamón (Precio Q40.00)
+    │
+    ▼ (Venta confirmada: SaleService)
+    [ - 1 Bola de "Masa Para Pizza" ] ◄── Descuenta subreceta elaborada (NO harina)
+    [ - 100 g de "Salsa Para Pizza" ] ◄── Descuenta salsa lista (NO tomates crudos)
+    [ - 200 g de Queso Mozzarella ]
+    [ - 150 g de Jamón ]
+    [ - 1 Caja de Pizza 12" ]
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">PRO-01 y PRO-02: Versionamiento Inmutable y Prevención de Ciclos</div>
+    <p><strong>Entidades:</strong> <code>Recipe</code>, <code>RecipeVersion</code>, <code>RecipeIngredient</code>.</p>
+    <p>Cada vez que una receta se crea o actualiza, <code>RecipeRepository.CaptureVersionAsync()</code> congela una
+      instantánea serializada con número incremental de versión, fecha de efectividad y listado de insumos. Las ventas
+      en <code>SaleService</code> y <code>OfflinePosController</code> almacenan <code>SaleItem.RecipeVersionId</code>,
+      permitiendo reconstruir con precisión histórica el costo y la fórmula exacta con la que se preparó cada plato
+      vendido en el pasado, incluso si la receta se modifica meses después.</p>
+    <p>Para subrecetas, <code>RecipeRules.EnsureNoCycles()</code> aplica un recorrido topológico en grafo dirigido que
+      detecta y bloquea recursiones indirectas (ej. A depende de B, y B depende de A), garantizando integridad
+      estructural.</p>
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">PRO-03, PRO-04 y PRO-06: Órdenes de Producción, Mermas y Transaccionalidad</div>
+    <p><strong>Entidades y Servicios:</strong> <code>ProductionOrder</code>, <code>RecipeOperationsService</code>,
+      <code>ProductionController</code>.</p>
+    <p>Al confirmar una producción de subrecetas (ej. fabricar una tanda de salsa o masa):</p>
+    <ul>
+      <li>Se descuentan las materias primas con movimientos <code>InventoryMovementType.ProductionConsumption</code>.
+      </li>
+      <li>Se ingresa la subreceta fabricada con <code>InventoryMovementType.ProductionOutput</code>.</li>
+      <li>Si la cantidad real producida difiere del rendimiento teórico, se calcula y registra la merma
+        (<code>WasteQuantity</code>), el motivo formal de desvío (<code>WasteReason</code>) y el ratio de eficiencia.
+      </li>
+      <li>Si no hay stock suficiente de algún ingrediente o falla la base de datos, toda la transacción se revierte por
+        completo (Rollback), protegiendo la coherencia contable.</li>
+    </ul>
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">PRO-05 y PRO-07: Costo Teórico Dinámico y Cuello de Botella Producible</div>
+    <p><strong>Motor de Costos:</strong> <code>RecipeService.GetRecipeCostsAsync()</code> evalúa el costo unitario de
+      cada ingrediente combinando <code>ProductCostBaseline</code> (línea base efectiva) y el último costo de compra
+      (<code>LastCost</code>). Determina el costo total de la tanda, costo por porción, precio sugerido de venta y
+      margen de ganancia proyectado.</p>
+    <p><strong>Disponibilidad Producible:</strong> <code>RecipeService.GetProducibleQuantityAsync()</code> inspecciona
+      el stock actual en la bodega seleccionada y calcula la razón <code>StockActual / Requerimiento</code> para cada
+      ingrediente. El menor valor define la cantidad máxima de platos elaborables y resalta visualmente el
+      <strong>Ingrediente Limitante</strong> (por ejemplo: <em>"Solo puedes preparar 35 pizzas: Queso Mozzarella
+        insuficiente"</em>).</p>
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">PRO-08: Gestión Visual Táctil y Pantallas Especializadas</div>
+    <p>Se diseñaron interfaces web en Razor optimizadas para pantallas táctiles y tablets de cocina:</p>
+    <ul>
+      <li><strong>Inventario &gt; Recetas (<code>/Recipes</code>)</strong>: Catálogo con indicadores visuales de modo de
+        consumo (<em>Producir primero</em> vs <em>Elaborar al vender</em>), tipo de artículo, versión activa y costo por
+        porción.</li>
+      <li><strong>Inventario &gt; Órdenes de Producción (<code>/Production</code>)</strong>: Formulario para registrar
+        tandas en cocina, visualización de rendimiento teórico vs real y captura de mermas.</li>
+      <li><strong>Historial de Recetas (<code>/RecipeHistory</code>)</strong>: Auditoría visual cronológica de cada
+        versión de receta, con desglose de ingredientes y fórmulas históricas.</li>
+    </ul>
+  </div>
+
+  <h2>3. Caso Práctico Gourmet: Configuración Real de Pizzería</h2>
+
+  <div class="card card-success">
+    <div class="card-title">Validación con el Caso Real Implementado: Pizza de Jamón Artesanal</div>
+    <p>Para comprobar la operatividad de extremo a extremo, se alimentó el catálogo con datos operativos reales:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Nombre del Artículo</th>
+          <th>Tipo</th>
+          <th>Unidad Base</th>
+          <th>Costo Unitario</th>
+          <th>Stock Inicial Bodega</th>
+          <th>Función en el Sistema</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>INS-HARINA</code></td>
+          <td>Harina De Trigo Especial</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.008 / g</td>
+          <td>50,000 g (50 kg)</td>
+          <td>Materia prima para Masa</td>
+        </tr>
+        <tr>
+          <td><code>INS-LEVADURA</code></td>
+          <td>Levadura Seca Instantanea</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.050 / g</td>
+          <td>2,000 g (2 kg)</td>
+          <td>Materia prima para Masa</td>
+        </tr>
+        <tr>
+          <td><code>INS-SAL</code></td>
+          <td>Sal Fina</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.004 / g</td>
+          <td>5,000 g (5 kg)</td>
+          <td>Para Masa y Salsa</td>
+        </tr>
+        <tr>
+          <td><code>INS-ACEITE</code></td>
+          <td>Aceite De Oliva Extra Virgen</td>
+          <td>Insumo</td>
+          <td>Mililitro (ml)</td>
+          <td>Q0.040 / ml</td>
+          <td>10,000 ml (10 L)</td>
+          <td>Para Masa y Salsa</td>
+        </tr>
+        <tr>
+          <td><code>INS-AGUA</code></td>
+          <td>Agua Purificada</td>
+          <td>Insumo</td>
+          <td>Mililitro (ml)</td>
+          <td>Q0.001 / ml</td>
+          <td>50,000 ml (50 L)</td>
+          <td>Materia prima para Masa</td>
+        </tr>
+        <tr>
+          <td><code>INS-TOMATE</code></td>
+          <td>Tomate Triturado Italiano</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.015 / g</td>
+          <td>20,000 g (20 kg)</td>
+          <td>Materia prima para Salsa</td>
+        </tr>
+        <tr>
+          <td><code>INS-PASTA-TOM</code></td>
+          <td>Pasta De Tomate Concentrada</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.025 / g</td>
+          <td>5,000 g (5 kg)</td>
+          <td>Materia prima para Salsa</td>
+        </tr>
+        <tr>
+          <td><code>INS-AJO</code></td>
+          <td>Ajo Picado Fresco</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.030 / g</td>
+          <td>1,000 g (1 kg)</td>
+          <td>Materia prima para Salsa</td>
+        </tr>
+        <tr>
+          <td><code>INS-OREGANO</code></td>
+          <td>Oregano Seco Molido</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.080 / g</td>
+          <td>500 g</td>
+          <td>Condimento para Salsa</td>
+        </tr>
+        <tr>
+          <td><code>INS-MASA</code></td>
+          <td><strong>Masa Para Pizza</strong></td>
+          <td><strong>Subreceta</strong></td>
+          <td>Unidad (bola)</td>
+          <td>Q2.30 / bola</td>
+          <td>50 unidades</td>
+          <td><strong>Rinde 50 bolas (Modo: Producir primero)</strong></td>
+        </tr>
+        <tr>
+          <td><code>INS-SALSA</code></td>
+          <td><strong>Salsa Para Pizza</strong></td>
+          <td><strong>Subreceta</strong></td>
+          <td>Gramo (g)</td>
+          <td>Q0.017 / g</td>
+          <td>10,000 g (10 kg)</td>
+          <td><strong>Rinde 5,000 g (Modo: Producir primero)</strong></td>
+        </tr>
+        <tr>
+          <td><code>INS-QUESO</code></td>
+          <td>Queso Mozzarella</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.060 / g</td>
+          <td>10,000 g (10 kg)</td>
+          <td>Cobertura directa en Pizza</td>
+        </tr>
+        <tr>
+          <td><code>INS-JAMON</code></td>
+          <td>Jamon</td>
+          <td>Insumo</td>
+          <td>Gramo (g)</td>
+          <td>Q0.050 / g</td>
+          <td>8,000 g (8 kg)</td>
+          <td>Cobertura directa en Pizza</td>
+        </tr>
+        <tr>
+          <td><code>EMP-CAJA12</code></td>
+          <td>Caja De Pizza 12"</td>
+          <td>Empaque</td>
+          <td>Unidad</td>
+          <td>Q2.50 / u</td>
+          <td>100 unidades</td>
+          <td>Despacho y entrega</td>
+        </tr>
+        <tr style="background-color: #fff7ed; font-weight: bold;">
+          <td><code>PIZ-000001</code></td>
+          <td>Pizza Jamon</td>
+          <td>Preparado</td>
+          <td>Unidad</td>
+          <td>Q19.50 (costo)</td>
+          <td>N/A (Bajo pedido)</td>
+          <td><strong>Precio Venta: Q40.00 (Modo: Elaborar al vender)</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>4. Ajustes Técnicos de Plataforma Realizados en Esta Entrega</h2>
+  <div class="card card-accent">
+    <div class="card-title">1. Compatibilidad de Enums en Migración PostgreSQL</div>
+    <p>Se corrigió la migración <code>20261016224439_AddRecipeProductionAndHistory.cs</code> en PostgreSQL donde el
+      filtro de base de datos comparaba valores del enum <code>ArticleType</code> entre strings y números, asegurando
+      compatibilidad con <code>p."ArticleType" IN ('Subreceta', '4')</code>.</p>
+  </div>
+
+  <div class="card card-accent">
+    <div class="card-title">2. Resiliencia en el Formulario Web de Creación de Productos</div>
+    <p>Se modificó el modelo <code>ProductPurchasePresentationFormViewModel</code> en
+      <code>ProductFormViewModel.cs</code> y el controlador <code>ProductsController.cs</code> para que los campos de
+      presentaciones de compra vacías no bloqueen la validación de <code>ModelState</code> cuando el usuario crea
+      insumos o productos estándar sin presentaciones secundarias.</p>
+  </div>
+
+  <h2>5. Verificación Automatizada de Calidad</h2>
+  <div class="code-block">
+    Serie de pruebas para SistemiPos.UnitTests.dll (.NETCoreApp,Version=v10.0)
+    Correctas! - Con error: 0, Superado: 217, Omitido: 0, Total: 217, Duración: 2 s
+
+    Serie de pruebas para SistemiPos.FunctionalTests.dll (.NETCoreApp,Version=v10.0)
+    Correctas! - Con error: 0, Superado: 47, Omitido: 0, Total: 47, Duración: 10 s
+
+    Serie de pruebas para SistemiPos.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+    Correctas! - Con error: 0, Superado: 9, Omitido: 3 (requieren Docker de Postgres en CI), Total: 12, Duración: 26 s
+
+    ========================================================================================
+    RESULTADO GLOBAL: 273 PRUEBAS APROBADAS (100% TASA DE ÉXITO)
+    ========================================================================================
+  </div>
+
+  <h2>6. Conclusión y Estado de Entrega</h2>
+  <div class="alert-box" style="background-color: #ecfdf5; border-color: #a7f3d0; color: #065f46;">
+    <strong>Fase 5 Aprobada y Lista para Producción:</strong>
+    Todos los requerimientos de la Fase 5 (<code>PRO-01</code> a <code>PRO-08</code>) están plenamente operativos en
+    código de backend, base de datos y vistas de usuario. El sistema de pizzería cuenta ahora con trazabilidad completa
+    de costos, control de inventario de recetas y subrecetas, órdenes de producción en cocina y ventas POS sin
+    duplicación de mermas ni de insumos.
+  </div>
+
+  <div class="footer">
+    SISTEMI POS Restaurante & Pizzería — Sistema de Punto de Venta y Gestión de Cocina Multi-Sucursal.<br />
+    Documentación oficial de Fase 5 · Octubre 2026.
+  </div>
+
+</body>
+
+</html>

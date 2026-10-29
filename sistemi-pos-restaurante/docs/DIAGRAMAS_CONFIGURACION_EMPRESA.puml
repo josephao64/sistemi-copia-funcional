@@ -1,0 +1,214 @@
+@startuml Diagrama_Clases_Configuracion_Empresarial
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam handwritten false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+
+title SISTEMI POS — Arquitectura y Modelo de Configuración General de Empresa
+
+enum SettingOrigin <<enumeration>> {
+  System = 1
+  Company = 2
+  Branch = 3
+}
+
+package "Domain Layer (SistemiPos.Domain.Organizations)" {
+  
+  class Company {
+    + Guid Id
+    + Guid BusinessGroupId
+    + string Code
+    + string TradeName
+    + string LegalName
+    + string Nit
+    + string Address
+    + string Phone
+    + string Email
+    + bool IsActive
+    + CompanySetting Setting
+    + IReadOnlyCollection<Branch> Branches
+  }
+
+  class CompanySetting {
+    + Guid Id
+    + Guid CompanyId
+    + string BusinessName
+    + string BusinessLegalName
+    + string BusinessNit
+    + string BusinessAddress
+    + string CurrencyCode
+    + string CurrencySymbol
+    + decimal TaxPercent
+    + bool ShowTaxOnReceipt
+    + string ReceiptFooter
+    + bool CashPaymentsEnabled
+    + bool TransferPaymentsEnabled
+    + bool PosPaymentsEnabled
+    + bool CreditPaymentsEnabled
+    + bool FelEnabled
+    + string InfileApiKeyProtected
+    + void Update(...)
+    + void ConfigurePaymentMethods(...)
+  }
+
+  class Branch {
+    + Guid Id
+    + Guid CompanyId
+    + string Code
+    + string Name
+    + string Address
+    + string Phone
+    + string EstablishmentCode
+    + bool IsActive
+    + BranchSetting Setting
+    + IReadOnlyCollection<Warehouse> Warehouses
+  }
+
+  class BranchSetting {
+    + Guid Id
+    + Guid BranchId
+    + string EstablishmentCode
+    + string EstablishmentName
+    + string ReceiptFooter
+    + bool OverridePaymentMethods
+    + bool CashPaymentsEnabled
+    + bool TransferPaymentsEnabled
+    + bool PosPaymentsEnabled
+    + bool CreditPaymentsEnabled
+    + void Update(...)
+    + void ConfigurePaymentMethods(...)
+  }
+
+  Company "1" *-- "0..1" CompanySetting : tiene
+  Company "1" *-- "1..*" Branch : pertenece a
+  Branch "1" *-- "0..1" BranchSetting : sobreescribe con
+}
+
+package "Application Layer (SistemiPos.Application.Organizations)" {
+
+  class "EffectiveValue<T>" as EffectiveValue {
+    + T Value
+    + SettingOrigin Origin
+  }
+
+  class EffectiveEnterpriseSettingsDto {
+    + Guid CompanyId
+    + Guid? BranchId
+    + EffectiveValue<string> BusinessName
+    + EffectiveValue<string> BusinessNit
+    + EffectiveValue<string> EstablishmentCode
+    + EffectiveValue<string> EstablishmentName
+    + EffectiveValue<string> ReceiptFooter
+    + EffectiveValue<string> CurrencyCode
+    + EffectiveValue<decimal> TaxPercent
+    + EffectiveValue<bool> CashPaymentsEnabled
+    + EffectiveValue<bool> TransferPaymentsEnabled
+    + EffectiveValue<bool> PosPaymentsEnabled
+    + EffectiveValue<bool> CreditPaymentsEnabled
+    + EffectiveValue<bool> FelEnabled
+    + bool HasInfileCredentials
+  }
+
+  interface IEnterpriseSettingsResolver {
+    + ResolveEffectiveSettingsAsync(companyId: Guid, branchId: Guid?): Task<EffectiveEnterpriseSettingsDto>
+    + GetBranchSettingAsync(branchId: Guid): Task<BranchSettingDto?>
+    + SaveBranchSettingAsync(companyId: Guid, branchId: Guid, req: SaveBranchSettingRequest): Task
+  }
+
+  class EnterpriseSettingsResolver {
+    - IOrganizationRepository _orgRepo
+    - ICompanySettingsRepository _compSettingsRepo
+    - IBranchSettingsRepository _branchSettingsRepo
+    + ResolveEffectiveSettingsAsync(...)
+    + GetBranchSettingAsync(...)
+    + SaveBranchSettingAsync(...)
+  }
+
+  interface ICompanySettingsRepository {
+    + GetByCompanyIdAsync(companyId: Guid): Task<CompanySetting?>
+    + AddAsync(setting: CompanySetting): Task
+    + UpdateAsync(setting: CompanySetting): Task
+  }
+
+  interface IBranchSettingsRepository {
+    + GetByBranchIdAsync(branchId: Guid): Task<BranchSetting?>
+    + AddAsync(setting: BranchSetting): Task
+    + UpdateAsync(setting: BranchSetting): Task
+  }
+
+  IEnterpriseSettingsResolver <|.. EnterpriseSettingsResolver
+  EnterpriseSettingsResolver ..> EffectiveEnterpriseSettingsDto : produce
+  EffectiveEnterpriseSettingsDto *-- EffectiveValue : contiene
+  EffectiveValue --> SettingOrigin : trazabilidad
+  EnterpriseSettingsResolver --> ICompanySettingsRepository : consulta
+  EnterpriseSettingsResolver --> IBranchSettingsRepository : consulta
+}
+
+package "Infrastructure Layer (SistemiPos.Infrastructure)" {
+  class CompanySettingsRepository
+  class BranchSettingsRepository
+  class AppDbContext
+
+  ICompanySettingsRepository <|.. CompanySettingsRepository
+  IBranchSettingsRepository <|.. BranchSettingsRepository
+  CompanySettingsRepository --> AppDbContext
+  BranchSettingsRepository --> AppDbContext
+}
+
+@enduml
+
+@startuml Diagrama_Secuencia_Resolucion_Jerarquica
+!theme plain
+autonumber
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam shadowing false
+
+title Flujo de Resolución Jerárquica: Branch ?? Company ?? System
+
+actor "Cliente / POS / Web" as Client
+participant "EnterpriseSettingsResolver" as Resolver
+participant "IOrganizationRepository" as OrgRepo
+participant "ICompanySettingsRepository" as CompRepo
+participant "IBranchSettingsRepository" as BranchRepo
+
+Client -> Resolver: ResolveEffectiveSettingsAsync(companyId, branchId)
+activate Resolver
+
+Resolver -> OrgRepo: GetCompanyByIdAsync(companyId)
+alt Empresa no encontrada
+    Resolver --> Client: throw DomainRuleException("La empresa no existe")
+end
+
+opt branchId provisto
+    Resolver -> OrgRepo: GetBranchByIdAsync(branchId)
+    alt branch.CompanyId != companyId
+        Resolver --> Client: throw DomainRuleException("Cruce inválido: la sucursal no pertenece a la empresa")
+    end
+end
+
+Resolver -> CompRepo: GetByCompanyIdAsync(companyId)
+note right of Resolver
+  Carga configuración de la empresa.
+  Fallback a SystemSetting si no existe.
+end note
+
+opt branchId provisto
+    Resolver -> BranchRepo: GetByBranchIdAsync(branchId)
+    note right of Resolver
+      Evalúa excepciones de sucursal:
+      - ReceiptFooter: Branch ?? Company
+      - EstablishmentCode / Name: Branch ?? Company
+      - Pagos: si OverridePaymentMethods = true usa Branch; sino Company
+    end note
+end
+
+Resolver -> Resolver: Construye EffectiveEnterpriseSettingsDto\n(asigna SettingOrigin por cada campo)
+Resolver --> Client: Retorna EffectiveEnterpriseSettingsDto
+deactivate Resolver
+
+@enduml

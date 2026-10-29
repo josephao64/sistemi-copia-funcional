@@ -1,0 +1,88 @@
+@model SistemiPos.Web.Models.Inventory.PhysicalInventoryCountIndexViewModel
+@using SistemiPos.Domain.Inventory
+@{ ViewData["Title"] = "Tomas físicas de inventario"; }
+
+<section class="page-header">
+    <div><p class="eyebrow">Inventario</p><h1>Tomas físicas de inventario</h1><p class="lead">Crea una sesión, continúa conteos pendientes o consulta tomas finalizadas.</p></div>
+    <div class="action-row inventory-tabs" aria-label="Secciones de inventario">
+        <a asp-action="Index" class="button-secondary link-button">Existencias</a>
+        <a asp-action="PhysicalCount" class="button-primary link-button">Toma física</a>
+        <a asp-action="Kardex" class="button-secondary link-button">Kardex</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success) { <div class="alert-success">@success</div> }
+@if (TempData["Error"] is string error) { <div class="alert-error">@error</div> }
+
+<div class="form-card physical-count-create-card">
+    <div class="table-toolbar"><div><h2>Nueva toma de inventario</h2><p class="helper-text">Los productos quedan definidos al crear la toma. Las operaciones normales del inventario continúan sin bloquearse.</p></div></div>
+    <form asp-action="CreatePhysicalCount" method="post" class="form-grid" data-physical-count-create>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="validation full-span"></div>
+        <label class="field full-span"><span>Nombre de la toma</span><input class="input" name="Name" value="@Model.Create.Name" maxlength="200" placeholder="Ej. Inventario General Septiembre 2026" required /></label>
+        <fieldset class="field full-span physical-scope-fieldset">
+            <legend>Alcance</legend>
+            <label class="choice-row"><input type="radio" name="Scope" value="@((int)PhysicalInventoryCountScope.AllInventory)" checked="@(Model.Create.Scope == PhysicalInventoryCountScope.AllInventory)" /> <span>Todo el inventario</span></label>
+            <label class="choice-row"><input type="radio" name="Scope" value="@((int)PhysicalInventoryCountScope.Categories)" checked="@(Model.Create.Scope == PhysicalInventoryCountScope.Categories)" /> <span>Una o varias categorías</span></label>
+        </fieldset>
+        <div class="field full-span physical-category-picker" data-category-picker>
+            <span>Categorías incluidas</span>
+            <div class="category-choice-grid">
+                @foreach (var category in Model.Categories)
+                {
+                    <label class="choice-row"><input type="checkbox" name="CategoryIds" value="@category.Id" checked="@Model.Create.CategoryIds.Contains(category.Id)" /> <span>@category.Name</span></label>
+                }
+            </div>
+            <span class="helper-text">Seleccione al menos una cuando el alcance sea por categorías.</span>
+        </div>
+        <div class="action-row full-span"><button type="submit" class="button-primary">Crear e iniciar conteo</button></div>
+    </form>
+</div>
+
+<div class="table-card">
+    <div class="table-toolbar"><div><h2>Historial de tomas</h2><p class="helper-text">Las tomas en proceso pueden continuarse; las finalizadas permanecen disponibles para consulta y exportación.</p></div></div>
+    @if (Model.Counts.Count == 0)
+    {
+        <p class="empty-state">Todavía no hay tomas físicas registradas.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>Nombre</th><th>Creación</th><th>Alcance</th><th>Categorías</th><th>Total</th><th>Contados</th><th>Pendientes</th><th>Estado</th><th>Usuario</th><th>Acciones</th></tr></thead>
+                <tbody>
+                @foreach (var count in Model.Counts)
+                {
+                    <tr>
+                        <td><strong>@count.Name</strong></td>
+                        <td>@count.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@(count.Scope == PhysicalInventoryCountScope.AllInventory ? "Todo el inventario" : "Categorías")</td>
+                        <td>@(count.Categories.Count == 0 ? "Todas" : string.Join(", ", count.Categories))</td>
+                        <td>@count.TotalProducts</td><td>@count.CountedProducts</td><td>@count.PendingProducts</td>
+                        <td><span class="status-badge @(count.Status == PhysicalInventoryCountStatus.InProgress ? "status-warning" : "status-success")">@(count.Status == PhysicalInventoryCountStatus.InProgress ? "En proceso" : "Finalizada")</span></td>
+                        <td>@count.CreatedBy</td>
+                        <td><div class="action-row compact-actions"><a asp-action="PhysicalCount" asp-route-id="@count.Id" class="button-secondary link-button">@(count.Status == PhysicalInventoryCountStatus.InProgress ? "Continuar" : "Ver")</a>@if (count.Status == PhysicalInventoryCountStatus.Finalized){<a asp-action="ExportPhysicalCount" asp-route-id="@count.Id" class="button-secondary link-button">Excel</a>}</div></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const form = document.querySelector('[data-physical-count-create]');
+    if (!form) return;
+    const picker = form.querySelector('[data-category-picker]');
+    const syncScope = () => {
+        const categories = form.querySelector('input[name="Scope"]:checked')?.value === '@((int)PhysicalInventoryCountScope.Categories)';
+        picker.hidden = !categories;
+        picker.querySelectorAll('input').forEach(input => input.disabled = !categories);
+    };
+    form.querySelectorAll('input[name="Scope"]').forEach(input => input.addEventListener('change', syncScope));
+    syncScope();
+})();
+</script>
+}

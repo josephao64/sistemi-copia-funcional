@@ -1,0 +1,13 @@
+@model SistemiPos.Web.Models.Reports.CashReportViewModel
+@{
+    ViewData["Title"] = "Reporte de caja";
+}
+
+<section class="page-header"><div><p class="eyebrow">Reportes</p><h1>Caja</h1></div></section>
+<div class="topbar-actions">
+    <a asp-action="Sales" class="button-secondary link-button">Ventas</a>
+    <a asp-action="Inventory" class="button-secondary link-button">Inventario</a>
+    <a asp-action="Products" class="button-secondary link-button">Productos</a>
+    <a asp-action="Purchases" class="button-secondary link-button">Compras</a>
+</div>
+<div class="table-card"><table class="data-table"><thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Cierre</th><th>Ventas</th><th>Efectivo</th><th>Transferencia</th><th>POS</th><th>Otros ingresos</th><th>Egresos</th><th>Reemb. efectivo</th><th>Esperado</th><th>Diferencia</th></tr></thead><tbody>@foreach (var item in Model.Rows){<tr><td>@item.RegisterCode</td><td>@item.CashierUserName</td><td>@item.OpenedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@item.ClosedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@(item.TotalSold is null ? "-" : $"Q {item.TotalSold.Value:N2}")</td><td>@(item.TotalCashSales is null ? "-" : $"Q {item.TotalCashSales.Value:N2}")</td><td>@(item.TotalTransferSales is null ? "-" : $"Q {item.TotalTransferSales.Value:N2}")</td><td>@(item.TotalPosSales is null ? "-" : $"Q {item.TotalPosSales.Value:N2}")</td><td>@(item.OtherIncomeTotal is null ? "-" : $"Q {item.OtherIncomeTotal.Value:N2}")</td><td>@(item.ExpenseTotal is null ? "-" : $"Q {item.ExpenseTotal.Value:N2}")</td><td>@(item.TotalCashRefunds is null ? "-" : $"Q {item.TotalCashRefunds.Value:N2}")</td><td>@(item.ExpectedCash is null ? "-" : $"Q {item.ExpectedCash.Value:N2}")</td><td>@(item.Difference is null ? "-" : $"Q {item.Difference.Value:N2}")</td></tr>}</tbody></table></div>

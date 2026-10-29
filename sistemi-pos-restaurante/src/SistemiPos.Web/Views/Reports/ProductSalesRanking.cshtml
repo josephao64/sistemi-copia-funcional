@@ -1,0 +1,62 @@
+@model SistemiPos.Web.Models.Reports.ProductSalesRankingViewModel
+@using SistemiPos.Domain.Configuration
+@{
+    var title = Model.IsMostSold ? "Productos más vendidos" : "Productos menos vendidos";
+    ViewData["Title"] = title;
+    var sort = Model.IsMostSold ? "most" : "least";
+    var returnUrl = Model.ReturnUrl;
+    string Money(decimal amount) => Model.CurrencySymbolPosition == CurrencySymbolPosition.After
+        ? $"{amount.ToString($"N{Model.CurrencyDecimals}")} {Model.CurrencySymbol}"
+        : $"{Model.CurrencySymbol} {amount.ToString($"N{Model.CurrencyDecimals}")}";
+}
+
+<section class="page-header ranking-page-header"><div><h1>@title</h1></div></section>
+
+<div class="table-card">
+    <form method="get" class="form-grid compact-form-grid" data-auto-filter-form>
+        <input type="hidden" name="sort" value="@sort" />
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <div class="field">
+            <label for="ranking-product">Nombre</label>
+            <select id="ranking-product" name="productId" class="input">
+                <option value="">Todos</option>
+                @foreach (var product in Model.Products)
+                {
+                    <option value="@product.Value" selected="@(product.Value == Model.ProductId?.ToString())">@product.Text</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="ranking-category">Categoría</label>
+            <select id="ranking-category" name="categoryId" class="input">
+                <option value="">Todas</option>
+                @foreach (var category in Model.Categories)
+                {
+                    <option value="@category.Value" selected="@(category.Value == Model.CategoryId?.ToString())">@category.Text</option>
+                }
+            </select>
+        </div>
+        <div class="field"><label for="ranking-from">Desde</label><input id="ranking-from" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="input" type="date" /></div>
+        <div class="field"><label for="ranking-to">Hasta</label><input id="ranking-to" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="input" type="date" /></div>
+        <div class="action-row"><a asp-action="ProductSalesRanking" asp-route-sort="@sort" asp-route-returnUrl="@returnUrl" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+</div>
+
+<div class="table-card product-ranking-table-card">
+    <div class="table-toolbar"><div><h2>@title</h2><p class="helper-text">@Model.Rows.Count registros</p></div></div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidades vendidas</th><th>Total vendido</th></tr></thead>
+            <tbody>
+                @foreach (var item in Model.Rows)
+                {
+                    <tr><td>@item.ProductName</td><td>@item.CategoryName</td><td>@DisplayFormats.Quantity(item.UnitsSold)</td><td class="money">@Money(item.TotalSold)</td></tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="4">No hay productos vendidos para los filtros seleccionados.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,15 @@
+@model SistemiPos.Web.Models.Orders.TerminalFormViewModel
+@{ ViewData["Title"] = Model.Id.HasValue ? "Editar terminal" : "Nueva terminal"; }
+<section class="page-header compact-page-header"><h1>@ViewData["Title"]</h1></section>
+<p class="lead">Una terminal es un puesto de venta, como Caja 01. Vincúlala con la caja física y la bodega de la sucursal actual antes de abrir el turno.</p>
+@if (Model.Id.HasValue) { <p>Para cambiar la caja o bodega, completa o cancela los pedidos pendientes y cierra los turnos de las cajas involucradas.</p> }
+<form asp-action="@(Model.Id.HasValue ? "EditTerminal" : "Terminal")" asp-route-id="@Model.Id" method="post" class="table-card">
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="All" class="validation-summary-errors"></div>
+    <div class="form-grid compact-form-grid">
+        <div class="field"><label asp-for="Code">Código de terminal</label><input asp-for="Code" maxlength="50" required class="input" /></div>
+        <div class="field"><label asp-for="RegisterCode">Código de caja física</label><input asp-for="RegisterCode" maxlength="50" required class="input" /><small>Identifica la caja que se abrirá desde este puesto. Si ya existe un turno abierto, utiliza su mismo código.</small></div>
+        <div class="field"><label asp-for="WarehouseId">Bodega de consumo</label><select asp-for="WarehouseId" required class="input"><option value="">Selecciona una bodega</option>@foreach (var warehouse in Model.Warehouses) { <option value="@warehouse.Id" selected="@(warehouse.Id == Model.WarehouseId)" disabled="@(!warehouse.IsActive)">@warehouse.Name@(!warehouse.IsActive ? " (inactiva)" : "")</option> }</select></div>
+    </div>
+    <div class="action-row"><button type="submit" class="button-primary">Guardar</button><a asp-action="Terminals" class="button-ghost link-button">Volver a terminales</a></div>
+</form>

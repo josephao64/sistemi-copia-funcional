@@ -1,0 +1,23 @@
+@model SistemiPos.Domain.Recipes.ProductionOrder
+@using SistemiPos.Domain.Recipes
+@using SistemiPos.Domain.Organizations
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@inject SistemiPos.Application.Settings.ISettingsService Settings
+@{ ViewData["Title"] = "Detalle de producción"; var recipe=Model.RecipeVersion.Read(); var permissions=await NavigationPermissions.GetPermissionCodesAsync(); var warehouses=(IReadOnlyList<Warehouse>)ViewBag.Warehouses; var settings=await Settings.GetSystemSettingAsync(); }
+<section class="page-header compact-page-header"><h1>@recipe.ProductName · lote @Model.LotNumber</h1><a asp-action="Index">Volver</a></section>
+<p>@Model.Number · Receta v@Model.RecipeVersion.Number · Responsable: @Model.ResponsibleUser</p>
+<p>Origen: @warehouses.First(x=>x.Id==Model.OriginWarehouseId).Name · Destino: @warehouses.First(x=>x.Id==Model.DestinationWarehouseId).Name</p>
+<p>Fecha prevista: @Model.ScheduledAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm") · Vencimiento: @(Model.ExpiryDate?.ToString("dd/MM/yyyy") ?? "No aplica")</p>
+<div class="stats-grid"><article class="stat-card"><span>Rendimiento teórico</span><strong>@DisplayFormats.Quantity(Model.PlannedQuantity) @recipe.YieldUnitCode</strong></article><article class="stat-card"><span>Rendimiento real</span><strong>@(Model.ActualQuantity?.ToString("0.######") ?? "Pendiente")</strong></article><article class="stat-card"><span>Merma</span><strong>@DisplayFormats.Quantity(Model.WasteQuantity) @recipe.YieldUnitCode</strong></article></div>
+<a class="button-secondary link-button" asp-controller="RecipeHistory" asp-action="Index" asp-route-id="@Model.RecipeVersion.RecipeId" asp-route-versionId="@Model.RecipeVersionId" asp-route-warehouseId="@Model.OriginWarehouseId" asp-route-quantity="@Model.PlannedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">Consultar receta, costo y disponibilidad</a>
+@if(Model.Status == ProductionStatus.Draft && permissions.Contains(PermissionCodes.ProductionConfirm)){
+<form asp-action="Confirm" asp-route-id="@Model.Id" method="post" class="form-card form-grid"><input name="version" type="hidden" value="@Model.Version" />
+<div class="field"><label for="actual">Cantidad real obtenida</label><input id="actual" name="actualQuantity" type="number" step="0.000001" min="0" value="@Model.PlannedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" class="input" required /></div>
+<div class="field"><label for="reason">Motivo de diferencia o merma</label><textarea id="reason" name="reason" maxlength="500" class="input"></textarea></div>
+<p class="helper-text full-span">Se consumen los componentes de la cantidad teórica. La entrada usa únicamente la cantidad real. Si todo se perdió, registra cero y el motivo.</p><div class="action-row"><button type="submit" class="button-primary">Confirmar producción e inventario</button></div></form>
+}
+@if(Model.Status == ProductionStatus.Confirmed){
+<p>Confirmada por @Model.ConfirmedBy el @Model.ConfirmedAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm"). Motivo: @(Model.VarianceReason ?? "Sin diferencia")</p>
+<p>Costo del lote: @Model.TotalCost.ToString("N6") @settings.CurrencyCode · Costo por unidad real: @(Model.UnitCost?.ToString("N6") ?? "Sin unidades obtenidas") @settings.CurrencyCode</p>
+<div class="table-card table-responsive"><table class="data-table"><thead><tr><th>Componente consumido</th><th>Cantidad</th><th>Costo unitario (@settings.CurrencyCode)</th><th>Origen del costo</th></tr></thead><tbody>@foreach(var c in Model.ReadConsumption()){<tr><td>@c.Name</td><td>@DisplayFormats.Quantity(c.Quantity) @c.UnitCode</td><td>@c.UnitCost.ToString("N6")</td><td>@c.CostSource</td></tr>}</tbody></table></div>
+}

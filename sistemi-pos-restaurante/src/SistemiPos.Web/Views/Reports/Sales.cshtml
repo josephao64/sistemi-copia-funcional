@@ -1,0 +1,197 @@
+@model SistemiPos.Web.Models.Reports.SalesReportViewModel
+@using SistemiPos.Domain.Configuration
+@{
+    ViewData["Title"] = "Análisis comercial";
+    string Money(decimal number) => Model.CurrencySymbolPosition == CurrencySymbolPosition.After
+        ? $"{number.ToString($"N{Model.CurrencyDecimals}")} {Model.CurrencySymbol}"
+        : $"{Model.CurrencySymbol} {number.ToString($"N{Model.CurrencyDecimals}")}";
+    string PeriodClass(string period) => Model.Period.Equals(period, StringComparison.OrdinalIgnoreCase)
+        ? "button-secondary link-button is-selected"
+        : "button-secondary link-button";
+    var indicatorSummary = Model.IndicatorSummary;
+    (string Key, string Label, string Value, string Description)[] availableIndicators =
+    [
+        ("total-sold", "Ventas totales", Money(indicatorSummary.TotalSold), "Total pagado por los clientes, incluyendo impuestos."),
+        ("sales-without-taxes", "Ventas sin impuestos", Money(indicatorSummary.SalesWithoutTaxes), "Total vendido antes de impuestos."),
+        ("taxes", "Impuestos en ventas", Money(indicatorSummary.Taxes), "Total de impuestos incluidos o cobrados en las ventas."),
+        ("gross-profit", "Ganancia bruta", Money(indicatorSummary.GrossProfit), "Ventas sin impuestos menos el costo de los productos vendidos."),
+        ("cost-of-sales", "Costo de ventas", Money(indicatorSummary.CostOfSales), "Costo total de los productos que fueron vendidos."),
+        ("margin-percent", "Porcentaje de ganancia", $"{indicatorSummary.ProfitPercentage:N2}%", "Porcentaje que representa la ganancia bruta sobre las ventas sin impuestos."),
+        ("sales-count", "Cantidad de ventas", indicatorSummary.SalesCount.ToString("N0"), "Número total de ventas realizadas en el período."),
+        ("average-ticket", "Ticket promedio", Money(indicatorSummary.AverageTicket), "Promedio vendido por cada venta realizada."),
+        ("units-sold", "Unidades vendidas", DisplayFormats.Quantity(indicatorSummary.UnitsSold), "Cantidad total de unidades de productos vendidas."),
+        ("discounts", "Total de descuentos", Money(indicatorSummary.Discounts), "Monto total otorgado en descuentos durante el período."),
+        ("returns-cancellations", "Devoluciones/anulaciones", indicatorSummary.ReturnsAndCancellations.ToString("N0"), "Cantidad de ventas devueltas o anuladas durante el período."),
+        ("cash", "Ventas en efectivo", Money(indicatorSummary.CashSales), "Monto total cobrado mediante efectivo."),
+        ("transfers", "Ventas por transferencia", Money(indicatorSummary.TransferSales), "Monto total cobrado mediante transferencia."),
+        ("pos", "Ventas con tarjeta/POS", Money(indicatorSummary.PosSales), "Monto total cobrado mediante tarjeta o terminal POS."),
+        ("credit-sales", "Ventas a crédito", Money(indicatorSummary.CreditSales), "Monto total vendido a crédito durante el período.")
+    ];
+    var defaultIndicators = availableIndicators.Take(8).ToList();
+    var preferenceOwner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+        ?? User.Identity?.Name
+        ?? "usuario";
+    var fromDateValue = Model.FromDate?.ToString("yyyy-MM-dd");
+    var toDateValue = Model.ToDate?.ToString("yyyy-MM-dd");
+    var analysisReturnUrl = Url.Action("Sales", "Reports", new
+    {
+        period = Model.Period,
+        fromDate = fromDateValue,
+        toDate = toDateValue,
+        cashierUserName = Model.CashierUserName,
+        productId = Model.ProductId,
+        categoryId = Model.CategoryId,
+        paymentMethod = Model.PaymentMethod,
+        latestTransactionsLimit = Model.LatestTransactionsLimit
+    });
+    var dailySalesJson = System.Text.Json.JsonSerializer.Serialize(Model.DailySalesHistory);
+    var historyDefaultFrom = $"{Model.CurrentYear}-{Model.CurrentMonth:00}-01";
+    var historyDefaultTo = $"{Model.CurrentYear}-{Model.CurrentMonth:00}-{Model.CurrentDay:00}";
+}
+
+<div class="reports-sales-top">
+    <section class="page-header reports-sales-header">
+        <div><h1>Análisis comercial</h1></div>
+    </section>
+
+    <nav class="topbar-actions period-selector" aria-label="Período del análisis">
+        <a class="@PeriodClass("today")" asp-action="Sales" asp-route-period="today" asp-route-latestTransactionsLimit="@Model.LatestTransactionsLimit" data-period-option="today">Hoy</a>
+        <a class="@PeriodClass("week")" asp-action="Sales" asp-route-period="week" asp-route-latestTransactionsLimit="@Model.LatestTransactionsLimit" data-period-option="week">Semana</a>
+        <a class="@PeriodClass("month")" asp-action="Sales" asp-route-period="month" asp-route-latestTransactionsLimit="@Model.LatestTransactionsLimit" data-period-option="month">Mes</a>
+        <a class="@PeriodClass("year")" asp-action="Sales" asp-route-period="year" asp-route-latestTransactionsLimit="@Model.LatestTransactionsLimit" data-period-option="year">Año</a>
+        <a class="@PeriodClass("custom")" asp-action="Sales" asp-route-period="custom" asp-route-fromDate="@fromDateValue" asp-route-toDate="@toDateValue" asp-route-latestTransactionsLimit="@Model.LatestTransactionsLimit" data-period-option="custom">Personalizado</a>
+    </nav>
+
+    @if (Model.Period.Equals("custom", StringComparison.OrdinalIgnoreCase))
+    {
+        <div class="custom-period-filter" data-custom-period-fields>
+            <form method="get" class="custom-period-form" data-custom-period-form novalidate>
+                <input type="hidden" name="period" value="custom" />
+                <input type="hidden" name="latestTransactionsLimit" value="@Model.LatestTransactionsLimit" data-table-limit-field />
+                <div class="field"><label asp-for="FromDate">Fecha inicial</label><input asp-for="FromDate" class="input" type="date" required data-custom-from /></div>
+                <div class="field"><label asp-for="ToDate">Fecha final</label><input asp-for="ToDate" class="input" type="date" required data-custom-to /></div>
+                @if (string.IsNullOrWhiteSpace(Model.CustomRangeError))
+                {
+                    <p class="validation custom-period-validation" data-custom-period-error hidden></p>
+                }
+                else
+                {
+                    <p class="validation custom-period-validation" data-custom-period-error role="alert">@Model.CustomRangeError</p>
+                }
+            </form>
+        </div>
+    }
+</div>
+
+<section class="stats-grid configurable-sales-stats"
+         aria-label="Indicadores configurables"
+         data-sales-indicators
+         data-preference-key="sistemi-pos-restaurante:sales-indicators:@preferenceOwner">
+    @for (var index = 0; index < defaultIndicators.Count; index++)
+    {
+        var selectedIndicator = defaultIndicators[index];
+        <article class="stat-card configurable-stat-card" data-indicator-card>
+            <strong data-indicator-value>@selectedIndicator.Value</strong>
+            <label class="visually-hidden" for="sales-indicator-@index">Indicador de la tarjeta @(index + 1)</label>
+            <select id="sales-indicator-@index" class="indicator-select" data-indicator-select aria-label="Indicador de la tarjeta @(index + 1)" title="@selectedIndicator.Description">
+                @foreach (var indicator in availableIndicators)
+                {
+                    <option value="@indicator.Key" data-display-value="@indicator.Value" data-description="@indicator.Description" title="@indicator.Description" selected="@(indicator.Key == selectedIndicator.Key)">@indicator.Label</option>
+                }
+            </select>
+            <button type="button" class="indicator-help" data-indicator-help data-tooltip="@selectedIndicator.Description" aria-label="Ayuda: @selectedIndicator.Description">ⓘ</button>
+        </article>
+    }
+</section>
+
+<section class="product-ranking-access" aria-label="Historial de productos vendidos">
+    <a asp-action="ProductSalesRanking" asp-route-sort="most" asp-route-fromDate="@fromDateValue" asp-route-toDate="@toDateValue" asp-route-returnUrl="@analysisReturnUrl" class="table-card product-ranking-link">
+        <span>Productos más vendidos</span>
+        <small>Ver historial completo</small>
+    </a>
+    <a asp-action="ProductSalesRanking" asp-route-sort="least" asp-route-fromDate="@fromDateValue" asp-route-toDate="@toDateValue" asp-route-returnUrl="@analysisReturnUrl" class="table-card product-ranking-link">
+        <span>Productos menos vendidos</span>
+        <small>Ver historial completo</small>
+    </a>
+    <a asp-action="CashierSales" asp-route-fromDate="@fromDateValue" asp-route-toDate="@toDateValue" asp-route-returnUrl="@analysisReturnUrl" class="table-card product-ranking-link">
+        <span>Ventas por cajero</span>
+        <small>Ver resumen por usuario</small>
+    </a>
+</section>
+
+<div class="table-card sales-period-card">
+    <div class="table-toolbar sales-period-toolbar">
+        <h2>Ventas por período</h2>
+        <div class="sales-history-controls" aria-label="Configuración de la gráfica histórica">
+            <label class="visually-hidden" for="sales-history-mode">Vista histórica</label>
+            <select id="sales-history-mode" class="input sales-history-select" data-sales-history-mode>
+                <option value="rolling">Últimos 12 meses</option>
+                <option value="year">Año específico</option>
+                <option value="compare">Comparar mes</option>
+                <option value="custom">Rango personalizado</option>
+            </select>
+            <label class="sales-history-filter" data-sales-history-year-filter hidden>
+                <span>Año</span>
+                <select class="input sales-history-select sales-history-year-select" data-sales-history-year></select>
+            </label>
+            <label class="sales-history-filter" data-sales-history-month-filter hidden>
+                <span>Mes</span>
+                <select class="input sales-history-select sales-history-month-select" data-sales-history-month></select>
+            </label>
+            <div class="sales-history-custom-filter" data-sales-history-custom-filter hidden>
+                <label class="sales-history-filter"><span>Desde</span><input class="input sales-history-select" type="date" value="@historyDefaultFrom" data-sales-history-from /></label>
+                <label class="sales-history-filter"><span>Hasta</span><input class="input sales-history-select" type="date" value="@historyDefaultTo" data-sales-history-to /></label>
+                <label class="sales-history-filter"><span>Agrupar por</span><select class="input sales-history-select" data-sales-history-group><option value="days">Días</option><option value="months">Meses</option></select></label>
+            </div>
+            <span class="validation sales-history-range-error" data-sales-history-range-error hidden></span>
+        </div>
+    </div>
+    <div class="sales-period-chart sales-period-history-chart"
+         role="img"
+         aria-label="Ventas de los últimos 12 meses"
+         data-sales-history-chart
+         data-current-year="@Model.CurrentYear"
+         data-current-month="@Model.CurrentMonth"
+         data-current-day="@Model.CurrentDay"
+         data-currency-symbol="@Model.CurrencySymbol"
+         data-currency-decimals="@Model.CurrencyDecimals"
+         data-currency-position="@Model.CurrencySymbolPosition"></div>
+    <script type="application/json" data-daily-sales-history>@Html.Raw(dailySalesJson)</script>
+</div>
+
+<div class="table-card" data-filter-table>
+    <div class="table-toolbar">
+        <div><h2>Últimas transacciones</h2><p class="helper-text">@Model.Rows.Count registros</p></div>
+        <div class="latest-transactions-actions">
+            <label for="latest-transactions-limit">Mostrar
+                <select id="latest-transactions-limit" name="latestTransactionsLimit" class="input table-limit-select" data-table-limit data-default-table-limit="@Model.LatestTransactionsLimit" aria-label="Cantidad de transacciones a mostrar">
+                    @foreach (var limit in new[] { 10, 20, 30, 50 })
+                    {
+                        if (limit == Model.LatestTransactionsLimit)
+                        {
+                            <option value="@limit" selected="selected">@limit</option>
+                        }
+                        else
+                        {
+                            <option value="@limit">@limit</option>
+                        }
+                    }
+                </select>
+            </label>
+            <input type="search" class="input table-search" data-table-search placeholder="Buscar" />
+        </div>
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Número</th><th>Fecha</th><th>Cajero</th><th>Cliente</th><th>Total</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var item in Model.Rows.Take(50))
+            {
+                <tr><td>@item.Number</td><td>@item.SoldAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@item.CashierUserName</td><td>@item.CustomerName</td><td>@Money(item.Total)</td><td><a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleId" asp-route-returnUrl="@analysisReturnUrl">Ver detalle</a></td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="~/js/sales-report-indicators.js" asp-append-version="true"></script>
+}

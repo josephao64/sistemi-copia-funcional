@@ -1,0 +1,305 @@
+@model SistemiPos.Web.Models.Sales.SaleFormViewModel
+@using SistemiPos.Domain.Sales
+@using System.Text.Json
+@inject SistemiPos.Application.Abstractions.IOperationContextAccessor PosContext
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Punto de venta";
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var categories = Model.ProductCatalog.GroupBy(x => new { x.CategoryId, x.CategoryName })
+        .OrderBy(x => x.Key.CategoryName).ToList();
+    var moneyFormat = "N" + Model.CurrencyDecimals;
+    var posUserKey = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+        ?? User.Identity?.Name
+        ?? "sesion";
+}
+
+<section class="form-card empty-state" data-pos-tab-blocked hidden>
+    <h2>Punto de Venta abierto</h2>
+    <p>Ya tienes el Punto de Venta abierto en otra pestaña.</p>
+</section>
+
+<div class="pos-page pos-sales-workspace" data-pos data-pos-tab-lock data-pos-user-key="@posUserKey" data-currency-symbol="@Model.CurrencySymbol" data-currency-decimals="@Model.CurrencyDecimals"
+     data-discount-approval-status-url="@Url.Action("Status", "DiscountApprovals")" data-cash-state-url="/pos/caja/estado" data-current-register-code="@Model.CurrentCashRegisterCode" data-cash-validated="false" hidden>
+    <header class="pos-sales-heading" data-pos-sale-heading hidden>
+        <div class="cashier-counter-heading">
+            <span class="cashier-counter-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16v-7H4zM7 13V4h10v9M10 7h4M10 10h4M7 17h2M15 17h2" /></svg></span>
+            <div class="pos-sales-heading-copy"><p>CAJERO / MOSTRADOR</p><h1>Punto de venta</h1><span>@PosContext.CurrentBranchName · Selecciona, revisa y cobra</span></div>
+        </div>
+        <button type="button" class="pos-heading-cash-link" data-cash-summary-open><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h17v14H3zM3 6l13-3v3M14 11h7v5h-7zM17 13.5h.01" /></svg>Mi caja y arqueos <span aria-hidden="true">↗</span></button>
+    </header>
+    <section class="form-card pos-opening-stage" data-pos-opening-stage aria-label="Apertura de caja">
+        <div data-pos-open-intro><p class="eyebrow">INICIO DEL TURNO</p><h1>Apertura de caja</h1><p>Selecciona tu puesto de venta y abre la caja para comenzar a vender.</p></div>
+        <div class="pos-opening-selection">
+            <div class="field pos-terminal-field"><label asp-for="TerminalId">Puesto de venta (terminal)</label><select asp-for="TerminalId" asp-items="Model.Terminals" form="pos-sale-form" class="input" data-pos-terminal aria-describedby="pos-terminal-help"><option value="">@(Model.Terminals.Count == 0 ? "Sin terminales disponibles" : "Seleccionar puesto de venta")</option></select><small id="pos-terminal-help" class="pos-terminal-help">Relaciona este puesto con su caja y bodega.</small></div>
+            <button type="button" class="button-primary" data-cash-open hidden>Abrir caja</button>
+        </div>
+        <p class="pos-opening-message" data-pos-opening-message role="status">Consultando el estado de caja…</p>
+        @if (Model.Terminals.Count == 0)
+        {
+            <div class="pos-cash-payment-warning" role="status">
+                @if (!string.IsNullOrWhiteSpace(Model.CurrentCashRegisterCode))
+                {
+                    <strong>Tu caja actual no tiene una terminal compatible.</strong>
+                    <p>Tienes abierta la caja <strong>@Model.CurrentCashRegisterCode</strong>. Consulta y cierra ese turno; después vuelve a Ventas, selecciona el puesto de esta sucursal y abre su caja con tu usuario.</p>
+                    @if (permissions.Contains(PermissionCodes.CashView)) { <a asp-controller="Cash" asp-action="Details" asp-route-id="@Model.CashSessionId" class="button-secondary link-button">Consultar mi caja actual</a> }
+                }
+                else
+                {
+                    <strong>Falta configurar un puesto de venta disponible.</strong>
+                    <p>Administración debe revisar las terminales de esta sucursal y su relación con la caja y la bodega. Después, actualiza esta pantalla para seleccionar el puesto y abrir caja.</p>
+                }
+                @if (permissions.Contains(PermissionCodes.PosTerminalsManage) && permissions.Contains(PermissionCodes.OrdersView))
+                {
+                    <a asp-controller="Orders" asp-action="Terminal" class="button-secondary link-button" data-crud-modal>Configurar terminal</a>
+                }
+            </div>
+        }
+    </section>
+    <partial name="_PosCash" model="Model" />
+    <form id="product-search-form" autocomplete="off" data-product-search-form></form>
+    <form id="pos-sale-form" method="post" class="pos-layout" data-server-sale data-submission-lock data-pos-sale-panel hidden>
+        @Html.AntiForgeryToken()
+        <input asp-for="CashSessionId" type="hidden" />
+        <input asp-for="OperationId" type="hidden" />
+        <input asp-for="ExpectedTotal" type="hidden" data-expected-total />
+        <input asp-for="CustomerId" type="hidden" data-customer-id-input />
+        <input asp-for="DiscountApprovalRequestId" type="hidden" data-discount-approval-id />
+
+        <section class="product-browser form-card" aria-label="Catálogo de productos">
+            <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+            <div class="catalog-toolbar">
+                <div><p class="cashier-section-eyebrow">01 / SELECCIONAR</p><h2>Catálogo de productos</h2><p class="pos-catalog-caption">Busca, escanea o elige una categoría.</p></div>
+            </div>
+
+            <label class="interactive-product-search">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <span class="visually-hidden">Buscar productos</span>
+                <input value="" class="input" type="search" form="product-search-form" placeholder="Buscar producto o escanear código de barras" autocomplete="off" data-product-filter aria-keyshortcuts="F2" />
+                <kbd>F2</kbd>
+            </label>
+
+            <nav class="pos-category-tabs" aria-label="Filtrar productos por categoría">
+                <button type="button" class="pos-category-tab is-active" data-product-category-filter="" aria-pressed="true">Todos <span>@Model.ProductCatalog.Count</span></button>
+                @foreach (var category in categories)
+                {
+                    <button type="button" class="pos-category-tab" data-product-category-filter="@category.Key.CategoryId" aria-pressed="false">@category.Key.CategoryName <span>@category.Count()</span></button>
+                }
+            </nav>
+            <div class="pos-catalog-viewbar">
+                <span class="catalog-result-count" data-product-result-count role="status">@Model.ProductCatalog.Count productos</span>
+                <div class="pos-view-switch" role="group" aria-label="Presentación del catálogo">
+                    <button type="button" data-catalog-view="grid" aria-pressed="true" aria-label="Ver tarjetas" title="Ver tarjetas"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+                    <button type="button" data-catalog-view="list" aria-pressed="false" aria-label="Ver lista" title="Ver lista"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5h13M8 12h13M8 19h13M3 5h1M3 12h1M3 19h1"/></svg></button>
+                </div>
+            </div>
+
+            <div class="pos-visual-catalog" data-product-list data-catalog-layout="grid">
+                @foreach (var product in Model.ProductCatalog)
+                {
+                    <article class="pos-product-card @(product.CurrentStock <= 0 ? "is-unavailable" : string.Empty)"
+                         aria-disabled="@(product.CurrentStock <= 0 ? "true" : "false")"
+                         data-product-id="@product.Id" data-product-name="@(product.DisplayName ?? product.Name)" data-product-code="@product.InternalCode"
+                         data-product-category="@product.CategoryId" data-product-category-name="@product.CategoryName"
+                         data-product-barcode="@product.Barcode" data-product-description="@product.Description"
+                          data-product-image="@product.ImageUrl"
+                          data-product-price="@product.SalePrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                          data-product-minimum-stock="@product.MinimumStock.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                          data-multi-price-enabled="@product.MultiPriceEnabled.ToString().ToLowerInvariant()" data-multi-price-mode="@product.MultiPriceMode"
+                         data-price-rules="@JsonSerializer.Serialize(product.PriceRules ?? [])"
+                         data-product-stock="@product.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                        <button type="button" class="pos-product-select" data-add-product disabled="@(product.CurrentStock <= 0)" aria-label="Agregar @(product.DisplayName ?? product.Name) al pedido">
+                            <span class="pos-product-image">
+                                <span class="pos-product-placeholder"><svg aria-hidden="true" viewBox="0 0 64 64"><path d="M12 51h40M17 43a15 15 0 0 1 30 0M11 43h42M29 22h6M32 22v6"/><circle cx="46" cy="16" r="5"/></svg><span>Sin fotografía</span></span>
+                                @if (!string.IsNullOrWhiteSpace(product.ImageUrl)) { <img src="@product.ImageUrl" alt="" loading="lazy" decoding="async" data-catalog-image /> }
+                            </span>
+                            <span class="pos-product-copy"><span class="pos-product-category">@product.CategoryName</span><strong class="pos-product-name">@(product.DisplayName ?? product.Name)</strong><span class="pos-product-price">@Model.CurrencySymbol @product.SalePrice.ToString(moneyFormat)</span></span>
+                            <span class="pos-product-cta"><span aria-hidden="true">＋</span> @(product.CurrentStock <= 0 ? "Agotado" : "Agregar")</span>
+                        </button>
+                        <div class="pos-product-footer"><span class="product-stock @(product.CurrentStock <= 0 ? "is-out" : product.CurrentStock <= product.MinimumStock ? "is-low" : "is-normal")">@(product.CurrentStock <= 0 ? "Agotado" : $"Existencia: {DisplayFormats.Quantity(product.CurrentStock)}")</span><button type="button" class="pos-product-detail" data-product-detail aria-label="Ver detalle de @(product.DisplayName ?? product.Name)">Detalle <span aria-hidden="true">↗</span></button></div>
+                    </article>
+                }
+                <div class="empty-state product-filter-empty" data-product-filter-empty hidden>
+                    <div><h3>Sin productos para mostrar</h3><p>Prueba con otro nombre, código o categoría.</p><button type="button" class="button-secondary" data-clear-catalog-filters>Ver todos los productos</button></div>
+                </div>
+            </div>
+
+        </section>
+
+        <aside class="pos-checkout" aria-label="Venta actual">
+            <section class="form-card checkout-card">
+                <div class="checkout-header">
+                    <div><p class="eyebrow">02 / REVISAR Y COBRAR</p><h2>Pedido actual</h2></div>
+                    <div class="pos-order-tools"><span class="line-count" data-line-count>0</span><button type="button" class="button-secondary" data-clear-cart disabled>Limpiar</button></div>
+                </div>
+                <div class="pos-order-columns" aria-hidden="true"><span>Producto</span><span>Cantidad / Total</span></div>
+
+                <div class="checkout-lines" data-cart-lines>
+                    @for (var i = 0; i < Model.Items.Count; i++)
+                    {
+                        var product = Model.ProductCatalog.FirstOrDefault(x => x.Id == Model.Items[i].ProductId);
+                        if (product is not null)
+                        {
+                            <div class="sale-line" data-sale-line data-product-price="@product.SalePrice.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                <input asp-for="Items[@i].ProductId" type="hidden" data-line-product />
+                                <input asp-for="Items[@i].DiscountPercent" type="hidden" data-line-discount-percent />
+                                <input asp-for="Items[@i].DiscountType" type="hidden" data-line-discount-type />
+                                <input asp-for="Items[@i].DiscountValue" type="hidden" data-line-discount-value />
+                                <input asp-for="Items[@i].DiscountComment" type="hidden" data-line-discount-comment />
+                                <div class="sale-line-copy">
+                                    <strong>@(product.DisplayName ?? product.Name)</strong>
+                                    <span data-line-meta>@Model.CurrencySymbol @product.SalePrice.ToString(moneyFormat) c/u</span>
+                                    <button type="button" class="line-discount-link" data-apply-line-discount>Aplicar descuento</button>
+                                    <div class="line-discount-summary" data-line-discount-summary hidden><span data-line-discount-copy></span><span aria-hidden="true">·</span><button type="button" data-change-line-discount>Cambiar</button><span aria-hidden="true">·</span><button type="button" data-remove-line-discount>Quitar</button></div>
+                                </div>
+                                <div class="line-quantity-controls"><button type="button" data-decrease aria-label="Disminuir cantidad">−</button><input asp-for="Items[@i].Quantity" type="number" step="0.01" min="0.01" data-line-quantity aria-label="Cantidad" /><button type="button" data-increase aria-label="Aumentar cantidad">+</button></div>
+                                <strong class="sale-line-total" data-line-total></strong><button type="button" class="icon-button remove-line" data-remove-line aria-label="Eliminar producto">×</button>
+                            </div>
+                        }
+                    }
+                    <div class="cart-empty pos-cart-empty" data-cart-empty hidden="@(Model.Items.Count > 0)"><svg aria-hidden="true" viewBox="0 0 48 48"><path d="M9 10h5l5 23h19l5-17H16M22 40h.01M35 40h.01"/></svg><strong>Tu pedido empieza aquí</strong><span>Selecciona productos del catálogo<br />o escanea un código de barras.</span></div>
+                </div>
+                <template id="sale-line-template"><div class="sale-line" data-sale-line><input type="hidden" name="Items[__index__].ProductId" data-line-product /><input type="hidden" name="Items[__index__].DiscountPercent" value="0" data-line-discount-percent /><input type="hidden" name="Items[__index__].DiscountType" value="0" data-line-discount-type /><input type="hidden" name="Items[__index__].DiscountValue" value="0" data-line-discount-value /><input type="hidden" name="Items[__index__].DiscountComment" value="" data-line-discount-comment /><div class="sale-line-copy"><strong data-line-name></strong><span data-line-meta></span><button type="button" class="line-discount-link" data-apply-line-discount>Aplicar descuento</button><div class="line-discount-summary" data-line-discount-summary hidden><span data-line-discount-copy></span><span aria-hidden="true">·</span><button type="button" data-change-line-discount>Cambiar</button><span aria-hidden="true">·</span><button type="button" data-remove-line-discount>Quitar</button></div></div><div class="line-quantity-controls"><button type="button" data-decrease aria-label="Disminuir cantidad">−</button><input name="Items[__index__].Quantity" value="1" type="number" step="0.01" min="0.01" data-line-quantity aria-label="Cantidad" /><button type="button" data-increase aria-label="Aumentar cantidad">+</button></div><strong class="sale-line-total" data-line-total></strong><button type="button" class="icon-button remove-line" data-remove-line aria-label="Eliminar producto">×</button></div></template>
+
+                <div class="checkout-total">
+                    <div class="total-row"><span>Subtotal</span><strong data-sale-subtotal>@Model.CurrencySymbol 0.00</strong></div>
+                    <div class="total-row"><span>Descuento</span><strong data-sale-discount>@Model.CurrencySymbol 0.00</strong></div>
+                    <div class="total-row total"><span>Total a cobrar</span><strong data-sale-total>@Model.CurrencySymbol 0.00</strong></div>
+                </div>
+                <div class="checkout-actions checkout-primary-action">
+                    <button type="button" class="button-primary" data-open-checkout disabled="@(Model.Items.Count == 0)"><span data-open-checkout-label>Cobrar pedido</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6" /></svg></button>
+                    <div class="pos-quick-payments" role="group" aria-label="Cobrar con una forma de pago">
+                        @if (Model.CashPaymentsEnabled) { <button type="button" class="button-secondary" data-quick-payment="@PaymentMethodType.Cash" disabled="@(Model.Items.Count == 0)"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg>Efectivo</button> }
+                        @if (Model.PosPaymentsEnabled) { <button type="button" class="button-secondary" data-quick-payment="@PaymentMethodType.Pos" disabled="@(Model.Items.Count == 0)"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20M6 15h4"/></svg>Tarjeta / POS</button> }
+                        @if (Model.TransferPaymentsEnabled) { <button type="button" class="button-secondary" data-quick-payment="@PaymentMethodType.Transfer" disabled="@(Model.Items.Count == 0)"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7h17l-4-4M21 17H4l4 4M20 7l-4 4M4 17l4-4"/></svg>Transferencia</button> }
+                    </div>
+                    <button type="button" class="button-secondary pos-proforma-button" data-generate-proforma data-proforma-url="@Url.Action("GenerateProforma")">Generar proforma</button>
+                    <p class="pos-checkout-hint">Pagos mixtos y división de cuenta disponibles al abrir el cobro.</p>
+                </div>
+            </section>
+            <section class="form-card pos-shift-summary" data-cash-shift-summary hidden aria-labelledby="pos-shift-summary-title">
+                <h2 id="pos-shift-summary-title">Resumen del turno</h2>
+                <div class="pos-cash-summary-row"><span>Ventas cobradas</span><strong data-cash-shift-sales>—</strong></div>
+                <div class="pos-cash-summary-row"><span>Efectivo esperado</span><strong data-cash-shift-expected>—</strong></div>
+                <p data-cash-shift-note>Incluye fondo inicial y movimientos.</p>
+            </section>
+        </aside>
+
+        <dialog class="checkout-dialog" data-checkout-dialog aria-labelledby="checkout-dialog-title">
+            <div class="dialog-header">
+                <div><p class="eyebrow">Finalizar venta</p><h2 id="checkout-dialog-title">Datos de cobro</h2></div>
+                <button type="button" class="icon-button" data-close-checkout aria-label="Cerrar cobro">×</button>
+            </div>
+            <div class="checkout-dialog-body">
+                <p class="pos-cash-payment-warning" data-cash-payment-warning role="status" hidden></p>
+                <div class="discount-approval-state" data-discount-approval-state hidden role="status" aria-live="polite">
+                    <span class="discount-approval-indicator" aria-hidden="true"></span>
+                    <div>
+                        <strong data-discount-approval-title>Descuento pendiente de aprobación</strong>
+                        <p data-discount-approval-message>La solicitud fue enviada a un superior. Esta ventana continuará automáticamente cuando sea aprobada.</p>
+                    </div>
+                </div>
+                <div class="field" data-nit-lookup>
+                    <label>Datos del cliente</label>
+                    <div class="nit-lookup-row"><input asp-for="CustomerNit" class="input" data-customer-nit-input placeholder="NIT" autocomplete="off" /><button type="button" class="button-secondary" data-customer-nit-search>Consultar</button></div>
+                    <input asp-for="CustomerName" class="input" data-customer-name-input placeholder="Nombre o razón social" />
+                    <input asp-for="CustomerAddress" class="input" data-customer-address-input placeholder="Ciudad" />
+                    <div class="form-grid two-column-grid customer-optional-data"><input asp-for="CustomerPhone" class="input" data-customer-phone-input placeholder="Teléfono / WhatsApp" autocomplete="off" /><input asp-for="CustomerVisitOrigin" class="input" data-customer-visit-origin-input placeholder="¿De dónde nos visita?" list="sale-visit-origins" autocomplete="off" /></div>
+                    <datalist id="sale-visit-origins">@foreach (var origin in Model.CustomerCatalog.Select(x => x.VisitOrigin).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x)){<option value="@origin"></option>}</datalist>
+                    <span asp-validation-for="CustomerNit" class="validation"></span><span asp-validation-for="CustomerName" class="validation"></span>
+                    <p class="helper-text" data-customer-nit-status>Busca primero en clientes; si no existe podrás completar los datos manualmente.</p>
+                </div>
+
+                <div class="field">
+                    <label>Forma de pago</label>
+                    <select asp-for="PaymentMethod" class="input visually-hidden" data-payment-select aria-label="Forma de pago">
+                        @if (Model.CashPaymentsEnabled) { <option value="@PaymentMethodType.Cash">Efectivo</option> }
+                        @if (Model.TransferPaymentsEnabled) { <option value="@PaymentMethodType.Transfer">Transferencia</option> }
+                        @if (Model.PosPaymentsEnabled) { <option value="@PaymentMethodType.Pos">Tarjeta / POS</option> }
+                        @if (Model.CreditPaymentsEnabled) { <option value="@PaymentMethodType.Credit">Crédito</option> }
+                    </select>
+                    <div class="payment-tabs" role="group" aria-label="Seleccionar forma de pago">
+                        @if (Model.CashPaymentsEnabled) { <button type="button" class="payment-tab" data-payment-tab data-payment-value="@PaymentMethodType.Cash">Efectivo</button> }
+                        @if (Model.TransferPaymentsEnabled) { <button type="button" class="payment-tab" data-payment-tab data-payment-value="@PaymentMethodType.Transfer">Transferencia</button> }
+                        @if (Model.PosPaymentsEnabled) { <button type="button" class="payment-tab" data-payment-tab data-payment-value="@PaymentMethodType.Pos">Tarjeta / POS</button> }
+                        @if (Model.CreditPaymentsEnabled) { <button type="button" class="payment-tab" data-payment-tab data-payment-value="@PaymentMethodType.Credit">Crédito</button> }
+                    </div>
+                </div>
+
+            </div>
+            <div class="checkout-dialog-footer checkout-payment-footer">
+                <div class="checkout-payment-summary">
+                    <div class="checkout-payment-row"><span>Total a cobrar</span><strong data-checkout-dialog-total>@Model.CurrencySymbol 0.00</strong></div>
+                    <div class="payment-panel checkout-cash-summary" data-payment-panel="@PaymentMethodType.Cash">
+                        <label for="ReceivedAmount">Monto recibido</label>
+                        <input asp-for="ReceivedAmount" class="input" type="text" inputmode="decimal" placeholder="0.00" data-received-amount />
+                        <span>Vuelto</span><strong data-change-amount>@Model.CurrencySymbol 0.00</strong>
+                    </div>
+                    <button type="submit" class="button-primary" data-checkout-button>CONFIRMAR COBRO</button>
+                    <button type="button" class="button-secondary" data-open-extended-checkout>Pagos mixtos / dividir cuenta</button>
+                </div>
+            </div>
+        </dialog>
+
+        <dialog class="checkout-dialog payment-detail-dialog" data-payment-detail-dialog="@PaymentMethodType.Transfer" aria-labelledby="transfer-payment-title">
+            <div class="dialog-header"><div><p class="eyebrow">Forma de pago</p><h2 id="transfer-payment-title">Datos de transferencia</h2></div><button type="button" class="icon-button" data-close-payment-detail aria-label="Cerrar">×</button></div>
+            <div class="checkout-dialog-body"><div class="form-grid payment-transfer-fields">
+                <div class="field"><label asp-for="TransferSenderName">Nombre del remitente / titular</label><input asp-for="TransferSenderName" class="input" autocomplete="off" /></div>
+                <div class="field"><label asp-for="TransferSourceBank">Banco de origen <span class="optional-label">(opcional)</span></label><div class="catalog-picker compact-catalog-picker"><select asp-for="TransferSourceBank" asp-items="Model.OriginBanks" class="input"><option value="">Seleccionar banco</option></select><button type="button" class="button-secondary" data-quick-create-open="origin-bank-modal">Nuevo</button></div></div>
+                <div class="field"><label asp-for="TransferBankAccountId">Cuenta de destino</label><select asp-for="TransferBankAccountId" asp-items="Model.BankAccounts" class="input"><option value="">Seleccionar cuenta</option></select></div>
+                <div class="field"><label asp-for="TransferReference">Referencia / No. de transacción</label><input asp-for="TransferReference" class="input" autocomplete="off" /></div>
+                <div class="field"><label asp-for="TransferAmount">Monto</label><input asp-for="TransferAmount" class="input" type="text" inputmode="decimal" placeholder="0.00" readonly data-transfer-amount /></div>
+                <div class="field"><label for="transfer-date-display">Fecha de transferencia</label><input id="transfer-date-display" class="input date-picker-only" type="date" data-transfer-date-display /><input asp-for="TransferDateLocal" type="hidden" data-transfer-date /></div>
+            </div></div>
+            <div class="checkout-dialog-footer payment-detail-footer"><button type="button" class="button-primary" data-close-payment-detail>Aceptar</button></div>
+        </dialog>
+
+        <dialog class="checkout-dialog payment-detail-dialog" data-payment-detail-dialog="@PaymentMethodType.Pos" aria-labelledby="pos-payment-title">
+            <div class="dialog-header"><div><p class="eyebrow">Forma de pago</p><h2 id="pos-payment-title">Datos de Tarjeta / POS</h2></div><button type="button" class="icon-button" data-close-payment-detail aria-label="Cerrar">×</button></div>
+            <div class="checkout-dialog-body"><div class="field"><label asp-for="PosDeviceId">Dispositivo POS</label><select asp-for="PosDeviceId" asp-items="Model.PosDevices" class="input"><option value="">Seleccionar POS</option></select></div><div class="form-grid payment-pos-fields"><div class="field"><label asp-for="CardType">Tipo de tarjeta</label><select asp-for="CardType" class="input"><option value="@CardType.Debit">Débito</option><option value="@CardType.Credit">Crédito</option></select></div><div class="field"><label asp-for="CardAuthorizationNumber">Autorización</label><input asp-for="CardAuthorizationNumber" class="input" /></div><div class="field"><label asp-for="CardVoucherReference">Voucher / referencia</label><input asp-for="CardVoucherReference" class="input" /></div><div class="field"><label asp-for="CardAmount">Monto</label><input asp-for="CardAmount" class="input" type="text" inputmode="decimal" placeholder="0.00" /></div></div></div>
+            <div class="checkout-dialog-footer payment-detail-footer"><button type="button" class="button-primary" data-close-payment-detail>Aceptar</button></div>
+        </dialog>
+    </form>
+
+    <dialog id="origin-bank-modal" class="quick-create-modal" data-quick-create data-endpoint="@Url.Action("CreateOriginBank")" data-target="TransferSourceBank">
+        <form method="dialog" class="quick-create-panel" data-quick-create-form>@Html.AntiForgeryToken()<div class="modal-header"><h2>Nuevo banco de origen</h2><button type="button" class="icon-button" aria-label="Cerrar" data-quick-create-cancel>×</button></div><div class="field"><label for="origin-bank-name">Nombre del banco</label><input id="origin-bank-name" name="name" class="input" required autocomplete="off" /></div><p class="validation" data-quick-create-error></p><div class="action-row"><button type="button" class="button-secondary" data-quick-create-cancel>Cancelar</button><button type="submit" class="button-primary">Guardar</button></div></form>
+    </dialog>
+
+    <dialog class="checkout-dialog line-discount-dialog" data-line-discount-dialog aria-labelledby="line-discount-dialog-title">
+        <div class="dialog-header">
+            <div><p class="eyebrow">Producto seleccionado</p><h2 id="line-discount-dialog-title" data-line-discount-dialog-title>Aplicar descuento</h2><p class="line-discount-product" data-line-discount-product></p></div>
+            <button type="button" class="icon-button" data-close-line-discount aria-label="Cerrar descuento">×</button>
+        </div>
+        <div class="checkout-dialog-body">
+            <div class="line-discount-fields" data-line-discount-fields>
+                <div class="field"><label for="line-discount-type">Tipo de descuento</label><select id="line-discount-type" class="input" data-discount-type><option value="@SaleDiscountType.Percentage">Porcentaje (%)</option><option value="@SaleDiscountType.FixedAmount">Monto fijo (@Model.CurrencySymbol)</option></select></div>
+                <div class="field"><label for="line-discount-value" data-discount-value-label>Porcentaje</label><input id="line-discount-value" class="input" type="number" min="0" step="0.01" inputmode="decimal" data-discount-value /></div>
+                <p class="helper-text" data-line-discount-available></p>
+            </div>
+            <div class="field"><label for="line-discount-comment">Comentario</label><textarea id="line-discount-comment" class="input textarea" maxlength="500" rows="2" placeholder="Detalle u observación del descuento" data-discount-comment></textarea></div>
+            <p class="authorization-notice">Al cobrar, el descuento se enviará a un superior para aprobación.</p>
+            <p class="validation" data-line-discount-error role="alert"></p>
+        </div>
+        <div class="checkout-dialog-footer line-discount-dialog-footer"><span></span><div><button type="button" class="button-secondary" data-close-line-discount>Cancelar</button><button type="button" class="button-primary" data-confirm-line-discount>Aplicar descuento</button></div></div>
+    </dialog>
+
+    <dialog class="product-detail-dialog" data-product-detail-dialog aria-labelledby="product-detail-title">
+        <button type="button" class="icon-button dialog-close-button" data-close-product-detail aria-label="Cerrar detalle">×</button>
+        <div class="product-detail-image"><img alt="" data-detail-image hidden /><span data-detail-image-empty>Sin imagen disponible</span></div>
+        <div class="product-detail-content">
+            <div class="product-detail-heading"><p class="eyebrow">Detalle del producto</p><span>Código: <strong data-detail-code></strong></span></div>
+            <h2 id="product-detail-title" data-detail-name></h2><p class="product-detail-description" data-detail-description></p>
+            <dl class="product-detail-data"><div><dt>Precio</dt><dd data-detail-price></dd></div><div><dt>Existencia</dt><dd data-detail-stock></dd></div></dl>
+        </div>
+    </dialog>
+</div>
+
+@section Scripts {
+    <script src="~/js/product-pricing.js" asp-append-version="true"></script>
+    <script src="~/js/pos-sync.js" asp-append-version="true"></script>
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/pos-tab-lock.js" asp-append-version="true"></script>
+    <script src="~/js/checkout.js" asp-append-version="true"></script>
+    <script src="~/js/pos-cash.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,63 @@
+@model SistemiPos.Application.Orders.OrderDto
+@using SistemiPos.Domain.Orders
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@{
+    ViewData["Title"] = "Detalle del pedido";
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var products = ViewBag.OrderProducts as IReadOnlyList<SistemiPos.Application.Catalog.ProductDto> ?? [];
+}
+<section class="page-header compact-page-header"><h1>Pedido @Model.Id.ToString("N")[..8]</h1><a asp-action="Index" class="button-ghost link-button">Volver</a></section>
+@if (TempData["OrderError"] is string error) { <div role="alert" class="validation-summary-errors">@error</div> }
+<div class="table-card">
+<p>Estado: @(Model.IsConfirmed ? "Confirmado" : "Borrador") · Revisión @Model.Revision</p>
+@if (Model.IsConfirmed && permissions.Contains(PermissionCodes.SalesManage)) { <a asp-controller="Checkout" asp-action="Order" asp-route-id="@Model.Id" class="button-primary link-button">Cobrar / dividir cuenta</a> }
+@if (!Model.IsConfirmed && permissions.Contains(PermissionCodes.OrdersUpdate))
+{
+    <form asp-action="Apply" asp-route-id="@Model.Id" method="post"><input type="hidden" name="Type" value="@OrderEventType.Confirm" /><input type="hidden" name="OperationId" value="@Guid.NewGuid()" /><button class="button-primary" type="submit">Confirmar pedido</button></form>
+}
+<div class="table-responsive"><table class="data-table"><thead><tr><th>Producto</th><th>Cantidad</th><th>Pendiente</th><th>Preparando</th><th>Preparado</th><th>Despachado</th><th>Cancelado</th><th>Receta</th><th>Operación</th></tr></thead><tbody>
+@foreach (var line in Model.Lines)
+{
+    <tr><td>@line.ProductName</td><td>@line.Quantity</td><td>@line.Pending</td><td>@line.Preparing</td><td>@line.Prepared</td><td>@line.Dispatched</td><td>@line.Cancelled</td><td>@(line.RecipeRevision.HasValue ? $"Revisión {line.RecipeRevision}" : "Reventa")</td><td>
+    @if (Model.IsConfirmed)
+    {
+        <form asp-action="Apply" asp-route-id="@Model.Id" method="post" class="form-grid compact-form-grid order-action">
+            <input type="hidden" name="LineId" value="@line.Id" /><input type="hidden" name="OperationId" value="@Guid.NewGuid()" />
+            <select name="Type" class="input" aria-label="Operación" required>
+                <option value="">Selecciona una operación</option>
+                @if (line.RequiresPreparation && permissions.Contains(PermissionCodes.KitchenOrdersStatus)) { <option value="@OrderEventType.StartPreparation">Iniciar preparación</option><option value="@OrderEventType.FinishPreparation">Marcar preparado</option> }
+                @if (permissions.Contains(PermissionCodes.OrdersDispatch)) { <option value="@OrderEventType.Dispatch">Despachar</option> }
+                @if (permissions.Contains(PermissionCodes.OrdersCancel)) { <option value="@OrderEventType.Cancel">Cancelar cantidad</option> }
+            </select>
+            <input name="Quantity" type="number" min="0.01" max="@line.Quantity" step="0.01" value="1" class="input" aria-label="Cantidad" required />
+            <input name="Reason" maxlength="500" class="input" aria-label="Motivo" placeholder="Motivo obligatorio al cancelar" />
+            <div data-extra-packaging hidden><label>Empaque adicional al despachar</label><select name="ExtraPackaging[0].ProductId" class="input"><option value="@Guid.Empty">Sin empaque adicional</option>@foreach (var product in products.Where(x => x.IsActive && x.ArticleType == SistemiPos.Domain.Catalog.ArticleType.Empaque)) { <option value="@product.Id">@product.Name</option> }</select><input name="ExtraPackaging[0].Quantity" type="number" min="0" step="0.000001" value="0" class="input" aria-label="Cantidad de empaque adicional" /></div>
+            <button type="submit" class="button-secondary">Aplicar</button>
+        </form>
+        @if (line.Pending == line.Quantity && line.Sold == 0 && permissions.Contains(PermissionCodes.OrdersUpdate))
+        {
+            var source = products.FirstOrDefault(x => x.Id == line.ProductId);
+            <form asp-action="Revise" asp-route-id="@Model.Id" asp-route-lineId="@line.Id" method="post" class="form-grid compact-form-grid">
+                <input name="OperationId" type="hidden" value="@Guid.NewGuid()" />
+                <select name="ProductId" class="input" aria-label="Variante configurada">
+                @foreach (var candidate in products.Where(x => x.IsActive && (x.Id == line.ProductId || source?.ParentProductId.HasValue == true && x.ParentProductId == source.ParentProductId))) { <option value="@candidate.Id" selected="@(candidate.Id == line.ProductId)">@(candidate.DisplayName ?? candidate.Name)</option> }
+                </select>
+                <input name="Quantity" value="@line.Quantity" type="number" min="0.01" step="0.01" required class="input" aria-label="Nueva cantidad" />
+                <input name="Reason" maxlength="500" required class="input" placeholder="Motivo de la revisión" aria-label="Motivo de la revisión" />
+                <button class="button-secondary" type="submit">Crear revisión</button>
+            </form>
+        }
+        <small>Cobrado: @line.Sold · Disponible para cobrar: @line.Sellable</small>
+    }
+    </td></tr>
+}
+</tbody></table></div>
+</div>
+<div class="table-card"><h2>Historial</h2><div class="table-responsive"><table class="data-table"><thead><tr><th>Fecha UTC</th><th>Usuario</th><th>Operación</th><th>Cantidad</th><th>Motivo</th></tr></thead><tbody>
+@foreach (var entry in Model.Events)
+{
+    var label = entry.Type switch { OrderEventType.Confirm => "Confirmación", OrderEventType.StartPreparation => "Inicio de preparación", OrderEventType.FinishPreparation => "Preparado", OrderEventType.Dispatch => "Despacho", OrderEventType.Cancel => "Cancelación", _ => "Operación" };
+    <tr><td>@entry.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td><td>@entry.UserName</td><td>@label</td><td>@entry.Quantity</td><td>@entry.Reason</td></tr>
+}
+</tbody></table></div></div>
+@section Scripts { <script src="~/js/orders.js" asp-append-version="true"></script> }

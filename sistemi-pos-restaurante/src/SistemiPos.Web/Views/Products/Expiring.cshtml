@@ -1,0 +1,20 @@
+@model SistemiPos.Web.Models.Catalog.ExpiringProductsViewModel
+@{
+    ViewData["Title"] = "Por caducar";
+    var products = ViewBag.Products as IReadOnlyList<SistemiPos.Application.Catalog.ProductDto> ?? [];
+    var categories = ViewBag.Categories as List<string> ?? [];
+}
+
+<section class="page-header expiry-page-header"><div><h1>Productos por caducar</h1></div></section>
+
+<div class="table-card expiry-table-card">
+    <form method="get" class="form-grid compact-form-grid expiry-filters" data-auto-filter-form>
+        <div class="field"><label>Nombre</label><select name="productId" class="input"><option value="">Todos</option>@foreach(var product in products.Where(x => x.ManagesExpiry)){<option value="@product.Id" selected="@(Model.ProductId == product.Id)">@product.DisplayName</option>}</select></div>
+        <div class="field"><label>Categoría</label><select name="category" class="input"><option value="">Todas</option>@foreach(var item in categories){<option selected="@(Model.Category == item)">@item</option>}</select></div>
+        <div class="field"><label>Estado</label><select name="status" class="input"><option value="">Todos</option><option selected="@(Model.Status == "Próximo a caducar")">Próximo a caducar</option><option selected="@(Model.Status == "Caduca hoy")">Caduca hoy</option><option selected="@(Model.Status == "Caducado")">Caducado</option></select></div>
+        <div class="field"><label>Desde</label><input name="from" value="@Model.From?.ToString("yyyy-MM-dd")" type="date" class="input" /></div>
+        <div class="field"><label>Hasta</label><input name="to" value="@Model.To?.ToString("yyyy-MM-dd")" type="date" class="input" /></div>
+        <div class="action-row"><a asp-action="Expiring" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="table-responsive"><table class="data-table expiry-table"><thead><tr><th>Nombre</th><th>Categoría</th><th>Lote</th><th>Bodega</th><th>Cantidad disponible</th><th>Fecha de caducidad</th><th>Días restantes</th><th>Estado</th></tr></thead><tbody>@foreach(var item in Model.Lots){var statusClass = item.Status == "Caducado" ? "status-danger" : item.Status == "Caduca hoy" ? "status-warning" : "status-info";<tr><td>@item.ProductName</td><td>@item.CategoryName</td><td>@item.LotNumber</td><td>@(item.WarehouseName ?? "Sin bodega asignada")</td><td>@DisplayFormats.Quantity(item.AvailableQuantity)</td><td>@item.ExpiryDate.ToString("dd/MM/yyyy")</td><td>@item.DaysRemaining</td><td><span class="status-badge @statusClass">@item.Status</span></td></tr>}@if(!Model.Lots.Any()){<tr><td colspan="8">No hay productos por caducar con los filtros seleccionados.</td></tr>}</tbody></table></div>
+</div>

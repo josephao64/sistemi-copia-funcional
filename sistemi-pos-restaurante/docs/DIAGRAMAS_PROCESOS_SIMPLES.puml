@@ -1,0 +1,120 @@
+@startuml Estructura_Organizacional_Completa
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam roundcorner 10
+skinparam shadowing false
+
+title Estructura Organizacional Completa de SISTEMI POS
+
+rectangle "1. GRUPO EMPRESARIAL (Corporativo)\n• Representa el consorcio o grupo de negocios\n• Visión global de todas las empresas" as Grupo #EDE7F6
+
+rectangle "2. EMPRESA (Persona Jurídica)\n• Razón Social y NIT legal ante SAT\n• Moneda (Q) e Impuestos (IVA)\n• Credenciales de Factura Electrónica (FEL)\n• Configuración predeterminada institucional" as Empresa #E3F2FD
+
+rectangle "3. SUCURSAL A (Restaurante Zona 10)\n• Código de establecimiento SAT: 001\n• Puntos de Venta (POS) y Cajas\n• Reglas y excepciones de pago locales" as SucursalA #E8F5E9
+
+rectangle "3. SUCURSAL B (Kiosko Express)\n• Código de establecimiento SAT: 002\n• Puntos de Venta (POS) y Cajas\n• Excepción: Solo cobro Efectivo y Tarjeta" as SucursalB #FFF3E0
+
+rectangle "4. BODEGA PRINCIPAL\n(Insumos generales y compras)" as BodegaA1 #F1F8E9
+rectangle "4. BODEGA COCINA\n(Insumos del día para preparación)" as BodegaA2 #F1F8E9
+
+rectangle "4. BODEGA KIOSKO\n(Bebidas y snacks listos)" as BodegaB1 #FFFDE7
+
+Grupo "1" --> "1..*" Empresa : Agrupa
+Empresa "1" --> "1..*" SucursalA : Posee
+Empresa "1" --> "1..*" SucursalB : Posee
+
+SucursalA "1" --> "1..*" BodegaA1 : Administra
+SucursalA "1" --> "1..*" BodegaA2 : Administra
+SucursalB "1" --> "1..*" BodegaB1 : Administra
+
+@enduml
+
+@startuml Proceso_Operativo_Completo
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundcorner 8
+skinparam shadowing false
+
+title Proceso Operativo Diario: De la Compra a la Venta en el Restaurante
+
+|#E3F2FD|1. Nivel EMPRESA (Fiscal y Compras)|
+|#E8F5E9|2. Nivel SUCURSAL y BODEGA (Operaciones)|
+|#FFF3E0|3. Nivel PUNTO DE VENTA (Caja y POS)|
+
+|1. Nivel EMPRESA (Fiscal y Compras)|
+start
+:Se realiza orden de compra a proveedores\ncon el **NIT y Razón Social de la Empresa**;
+
+|2. Nivel SUCURSAL y BODEGA (Operaciones)|
+:El proveedor entrega la mercadería físicamente;
+:El bodeguero registra la recepción en la\n**Bodega Principal de la Sucursal**;
+:El stock de inventario aumenta en la bodega;
+
+if (¿Cocina solicita insumos?) then (Sí)
+  :Se hace un traslado interno de inventario\nde **Bodega Principal** a **Bodega Cocina**;
+endif
+
+|3. Nivel PUNTO DE VENTA (Caja y POS)|
+:El cliente llega al restaurante y ordena;
+:El cajero/mesero toma el pedido en la **Sucursal**;
+:Al momento de cobrar, el sistema verifica:\n- Métodos de pago permitidos en la **Sucursal**\n- Descuento de stock en la **Bodega** correspondiente;
+
+|1. Nivel EMPRESA (Fiscal y Compras)|
+:Se emite la Factura Electrónica (FEL):\n- Datos de la **Empresa** (NIT y Razón Social)\n- Código de establecimiento de la **Sucursal**;
+
+|3. Nivel PUNTO DE VENTA (Caja y POS)|
+:Se entrega ticket al cliente y el dinero entra a la caja;
+
+|1. Nivel EMPRESA (Fiscal y Compras)|
+:Al final del día, los dueños ven reportes consolidados\nde toda la **Empresa** o de cada **Sucursal y Bodega**;
+
+stop
+@enduml
+
+@startuml Roles_Y_Alcance_Usuarios
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam roundcorner 10
+skinparam shadowing false
+
+title ¿Quién puede ver y hacer qué? (Alcance de Usuarios)
+
+actor "Super Admin / Dueño" as Admin #E91E63
+actor "Gerente de Sucursal" as Gerente #3F51B5
+actor "Cajero / Mesero" as Cajero #4CAF50
+actor "Encargado de Bodega" as Bodeguero #FF9800
+
+node "Nivel Grupo / Empresa" as NivelEmpresa #E3F2FD {
+  [Configuración General de Empresa]
+  [Reportes Financieros Consolidados]
+  [Gestión de Proveedores y Catálogo Global]
+}
+
+node "Nivel Sucursal" as NivelSucursal #E8F5E9 {
+  [Apertura y Cierre de Caja]
+  [Cobro en POS / Mesas]
+  [Excepciones de Sucursal]
+}
+
+node "Nivel Bodegas" as NivelBodega #FFF8E1 {
+  [Entrada de Mercadería]
+  [Traslados entre Bodegas]
+  [Toma de Inventario Físico]
+}
+
+Admin --> NivelEmpresa : Acceso Total
+Admin --> NivelSucursal : Supervisa
+Admin --> NivelBodega : Supervisa
+
+Gerente --> NivelSucursal : Administra su sucursal
+Gerente --> NivelBodega : Controla sus bodegas
+
+Cajero --> [Apertura y Cierre de Caja] : Solo su caja
+Cajero --> [Cobro en POS / Mesas] : Atiende ventas
+
+Bodeguero --> NivelBodega : Solo mueve y cuenta stock
+
+@enduml

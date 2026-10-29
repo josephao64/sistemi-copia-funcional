@@ -1,0 +1,10 @@
+<dialog class="quick-create-modal" data-presentation-dialog>
+    <form class="quick-create-panel" data-presentation-form data-endpoint="@Url.Action("CreatePresentationInline", "Purchases")">
+        @Html.AntiForgeryToken()
+        <div class="modal-header"><h2>Nueva presentación</h2><button type="button" class="icon-button" aria-label="Cerrar" data-close-presentation>×</button></div>
+        <div class="field"><label>Nombre</label><input name="name" class="input" maxlength="100" placeholder="Ej. Caja 24" required /></div>
+        <div class="field"><label>Cantidad de unidades</label><input name="units" class="input" type="number" min="1" step="1" required /></div>
+        <p class="validation" data-presentation-error></p>
+        <div class="action-row"><button type="button" class="button-secondary" data-close-presentation>Cancelar</button><button type="submit" class="button-primary">Guardar presentación</button></div>
+    </form>
+</dialog>

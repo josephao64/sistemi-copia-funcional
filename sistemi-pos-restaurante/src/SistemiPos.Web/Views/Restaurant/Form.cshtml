@@ -1,0 +1,41 @@
+@model SistemiPos.Application.Restaurant.RestaurantWorkspace
+@using System.Text.Json
+@{ var draft = ViewBag.Draft as SistemiPos.Domain.Restaurant.RestaurantOrder; ViewData["Title"] = draft is null ? "Nuevo pedido" : "Editar borrador"; }
+<partial name="_Navigation" />
+<div class="restaurant-workspace">
+<header class="restaurant-page-header"><div><p class="restaurant-eyebrow">@Model.BranchName · Captura de pedido</p><h1>@ViewData["Title"]</h1><p>Elige el servicio, agrega productos y revisa el borrador antes de enviarlo.</p></div><span class="restaurant-badge" data-state="Draft">Borrador · Sin reserva</span></header>
+<form id="restaurant-order-form" data-endpoint="/restaurante/borrador" data-draft-id="@draft?.Id" data-draft-revision="@draft?.Revision">
+@Html.AntiForgeryToken()
+<section class="restaurant-panel restaurant-service-panel">
+<div class="restaurant-panel-heading"><h2><span class="restaurant-step">1</span> Servicio y cliente</h2><span class="restaurant-muted">Datos del pedido</span></div>
+<div class="restaurant-fields">
+<label>Bodega<select class="input" name="warehouseId" required>@foreach(var w in Model.Warehouses.OrderByDescending(x => x.IsDefault)) { <option value="@w.Id" selected="@(w.Id == Model.SelectedWarehouseId)">@w.Name</option> }</select></label>
+<label>Canal<select class="input" name="channelId" required>@foreach(var c in Model.Configuration.Channels.Where(x => x.Active)) { <option value="@c.Id">@c.Name</option> }</select></label>
+<label>Tipo de servicio<select class="input" name="serviceType"><option value="1">Salón</option><option value="2">Para llevar</option><option value="3">Delivery</option></select></label>
+<label data-service-field="1">Mesa<select class="input" name="tableId"><option value="">Seleccionar mesa</option>@foreach(var t in Model.Configuration.Tables.Where(x => x.Active)) { <option value="@t.Id">@t.Area / @t.Name</option> }</select></label>
+<label>Cliente<input class="input" name="customerName" maxlength="120" autocomplete="name" /></label>
+<label>Teléfono<input class="input" name="phone" type="tel" maxlength="40" autocomplete="tel" /></label>
+<label data-service-field="3">Zona de entrega<select class="input" name="zoneId"><option value="">Seleccionar zona</option>@foreach(var z in Model.Configuration.Zones.Where(x => x.Active)) { <option value="@z.Id" data-fee="@z.Fee.ToString(System.Globalization.CultureInfo.InvariantCulture)">@z.Name</option> }</select></label>
+<label data-service-field="3" class="restaurant-field-wide">Dirección<input class="input" name="address" maxlength="500" autocomplete="street-address" /></label>
+</div>
+<details class="restaurant-extra-fields"><summary>Referencia de plataforma y observaciones</summary><div class="restaurant-fields">
+<label>Referencia de plataforma<input class="input" name="externalReference" maxlength="120" /></label>
+<label class="restaurant-field-wide">Observaciones<textarea class="input" name="notes" maxlength="1000" rows="2" placeholder="Indicaciones para atención o cocina"></textarea></label>
+</div></details>
+</section>
+<div class="restaurant-order-layout">
+<section class="restaurant-panel restaurant-catalog">
+<div class="restaurant-panel-heading"><h2><span class="restaurant-step">2</span> Menú de la sucursal</h2><span class="restaurant-muted">@Model.Menu.Count productos</span></div>
+<div class="restaurant-menu-tools"><label class="restaurant-search">Buscar producto<input class="input" id="restaurant-menu-search" placeholder="Nombre, código o sección" /></label><label>Sección<select id="restaurant-menu-category" class="input"><option value="">Todas las secciones</option>@foreach(var category in Model.Menu.Select(x => x.Category).Distinct().Order()) { <option value="@category">@category</option> }</select></label><label class="restaurant-check"><input type="checkbox" id="restaurant-menu-favorites" /> Favoritos</label></div>
+<div id="restaurant-menu" class="restaurant-menu"></div>
+<div class="restaurant-combo-section"><h3>Combos vigentes</h3><div id="restaurant-combos" class="restaurant-combos"></div></div>
+</section>
+<aside class="restaurant-panel restaurant-order-summary">
+<div class="restaurant-panel-heading"><h2><span class="restaurant-step">3</span> Tu pedido</h2><span class="restaurant-count" id="restaurant-cart-count">0</span></div>
+<div id="restaurant-cart"></div>
+<div class="restaurant-summary-footer"><p class="restaurant-notice">El total definitivo se calcula al guardar. El inventario se reserva al enviar a cocina.</p><button class="button-primary" type="submit">Guardar y revisar borrador</button><p class="restaurant-message" role="status"></p></div>
+</aside></div></form></div>
+<script type="application/json" id="restaurant-menu-data">@Html.Raw(JsonSerializer.Serialize(new { Model.Menu, Model.Configuration.Combos, Model.Components }, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
+@if(draft is not null) { <script type="application/json" id="restaurant-edit-data">@Html.Raw(draft.DraftJson.Replace("<", "\\u003c"))</script> }
+@section Scripts { <script src="~/js/restaurant.js" asp-append-version="true"></script> }
+

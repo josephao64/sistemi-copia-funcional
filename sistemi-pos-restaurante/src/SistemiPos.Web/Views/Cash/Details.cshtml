@@ -1,0 +1,181 @@
+@model SistemiPos.Application.Cash.CashSessionDto
+@using SistemiPos.Domain.Cash
+@using SistemiPos.Domain.Configuration
+@using SistemiPos.Application.Security
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@inject SistemiPos.Application.Cash.CashAuthorizationPolicy CashAuthorization
+@{
+    ViewData["Title"] = "Arqueo y cierre";
+    var savedCurrency = Model.CurrencySnapshotJson is null ? null : System.Text.Json.JsonSerializer.Deserialize<CurrencySnapshot>(Model.CurrencySnapshotJson);
+    var symbol = savedCurrency?.Symbol ?? ViewBag.CurrencySymbol as string ?? string.Empty;
+    var denominations = ViewBag.Denominations as IReadOnlyList<CashDenomination> ?? [];
+    var lastCount = Model.Counts?.LastOrDefault();
+    var usedPos = ViewBag.UsedPosTotals as IReadOnlyList<SistemiPos.Application.Cash.UsedPosTotalDto> ?? [];
+    var assignedPos = Model.AssignedPosDevices?.ToList() ?? [];
+    if (assignedPos.Count == 0 && usedPos.Count > 0)
+        assignedPos = usedPos.Select(x => new SistemiPos.Application.Cash.CashSessionPosDeviceDto(x.PosDeviceId, x.PosDeviceName)).ToList();
+    var permissions = await NavigationPermissions.GetPermissionCodesAsync();
+    var canCreateSale = permissions.Contains(PermissionCodes.SalesManage);
+    var hasClosingPermission = permissions.Contains(PermissionCodes.CashCloseOwn);
+    var pendingPos = assignedPos.Where(pos => !(Model.PosClosings?.Any(closing => closing.PosDeviceId == pos.PosDeviceId) ?? false)).ToList();
+    var hasPendingPosClosing = pendingPos.Count > 0;
+    var difference = Model.Difference ?? 0m;
+    var differenceLabel = difference > 0m ? "Sobrante" : difference < 0m ? "Faltante" : "Caja cuadrada";
+    var differenceClass = difference > 0m ? "is-surplus" : difference < 0m ? "is-shortage" : "is-balanced";
+    var cashCloseBlocker = !hasClosingPermission
+        ? "No tienes permiso para cerrar esta caja."
+        : lastCount is null
+            ? "Debes realizar un arqueo antes de cerrar la caja."
+            : hasPendingPosClosing
+                ? "Debes registrar el cierre físico de todos los POS utilizados antes de cerrar la caja."
+                : null;
+}
+
+<div class="cash-page cashier-workspace cashier-closing-workspace">
+    <section class="page-header cash-page-header cashier-page-heading">
+        <div><p class="eyebrow">Punto de venta / Control del turno</p><h1>@(Model.Status == CashSessionStatus.Active ? "Arqueo y cierre de caja" : "Resumen de caja cerrada")</h1><p class="lead">@Model.RegisterCode · @Model.CashierUserName · Apertura @Model.OpenedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
+        @if (Model.Status == CashSessionStatus.Active) {
+            <div class="cash-header-actions">
+                @if (canCreateSale) { <a href="/pos" class="button-secondary link-button">← Volver al punto de venta</a> }
+                <button type="button" class="button-primary" data-open-cash-close data-cash-close-blocked="@cashCloseBlocker" title="@(cashCloseBlocker ?? "Cerrar caja")">Cerrar caja</button>
+            </div>
+        }
+    </section>
+
+    @if (permissions.Contains(PermissionCodes.CashClosingReport)) { <div class="action-row"><a asp-action="Cut" asp-route-id="@Model.Id" asp-route-kind="@(Model.Status == CashSessionStatus.Active ? "x" : "z")" class="button-secondary link-button">@(Model.Status == CashSessionStatus.Active ? "Corte X" : "Corte Z")</a></div> }
+
+    @if (TempData["Error"] is string error) { <div class="alert-error">@error</div> }
+
+    @if (Model.Status == CashSessionStatus.Active) {
+        <div class="cashier-turn-overview" aria-label="Preparación del cierre">
+            <div><span class="cashier-status-dot" aria-hidden="true"></span><div><small>Estado del turno</small><strong>Caja abierta</strong></div></div>
+            <div><span class="cashier-overview-icon" aria-hidden="true">▤</span><div><small>Arqueo de efectivo</small><strong>@(lastCount is null ? "Pendiente de contar" : "Conteo registrado")</strong></div></div>
+            <div><span class="cashier-overview-icon" aria-hidden="true">▣</span><div><small>Cierres bancarios</small><strong>@(assignedPos.Count == 0 ? "Sin dispositivos asignados" : hasPendingPosClosing ? $"{pendingPos.Count} pendiente(s)" : "Completados")</strong></div></div>
+        </div>
+        <section class="cash-close-steps" aria-label="Opciones de cierre">
+            <details class="cash-compact-section" open>
+                <summary><span class="cash-step-number">1</span><span><strong>Arqueo por denominaciones</strong><small>@(lastCount is null ? "Realizar conteo" : $"Último conteo: {symbol} {lastCount.CountedCash:N2}")</small></span></summary>
+                <div class="cash-section-body">
+                    <p class="helper-text">El efectivo esperado permanece oculto durante el conteo. Cada envío se conserva como conteo o reconteo.</p>
+                    @if (lastCount is not null) {
+                        <div class="cash-count-recorded"><span>Último arqueo registrado</span><strong>@symbol @lastCount.CountedCash.ToString("N2")</strong><small>@lastCount.CountedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></div>
+                    }
+                    @if (permissions.Contains(PermissionCodes.CashCount)) {
+                    <details class="cashier-recount" open="@(lastCount is null)">
+                    <summary>@(lastCount is null ? "Contar billetes y monedas" : "Registrar un reconteo")<span>Los conteos anteriores se conservan</span></summary>
+                    <form asp-action="RecordCount" method="post" class="cash-count-form" data-cash-count data-currency-symbol="@symbol" data-submission-lock>
+                        @Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
+                        <partial name="_DenominationCount" model="@(new SistemiPos.Web.Models.Cash.CashDenominationCountViewModel("closing", symbol, denominations))" />
+                        <div class="cash-count-footer cashier-count-footer"><span class="cashier-piece-badge"><output data-cash-piece-count>0</output> piezas contadas</span><div><span>Total contado</span><strong data-cash-count-total aria-live="polite" aria-atomic="true">@symbol 0.00</strong></div><button class="button-primary">@(lastCount is null ? "Guardar arqueo" : "Guardar reconteo")</button></div>
+                    </form>
+                    </details>
+                    } else if (lastCount is null) {
+                        <p class="cashier-summary-note">Se necesita un usuario con permiso de arqueo para registrar el conteo.</p>
+                    }
+                </div>
+            </details>
+
+            <details class="cash-compact-section" id="cierres-pos" open>
+                <summary><span class="cash-step-number">2</span><span><strong>Cierre POS / tarjetas</strong><small>@(assignedPos.Count == 0 ? "Sin POS asignados" : $"{assignedPos.Count} POS asignado(s)")</small></span></summary>
+                <div class="cash-section-body">
+                    <p class="helper-text">Registra el total y el código de cierre de cada POS bancario. Si no se utilizó y su cierre es cero, ingresa 0 y usa «SIN USO» como referencia.</p>
+                    @if (assignedPos.Count == 0) { <p class="helper-text">No hay dispositivos bancarios asignados a este turno.</p> }
+                    else {
+                        @if (pendingPos.Count > 0) {
+                            <div class="cash-pos-pending-list">
+                                @foreach (var pos in pendingPos) {
+                                    <form asp-action="RecordPosClosing" method="post" class="form-grid cash-pos-closing-grid" data-submission-lock>
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@Model.Id"/>
+                                        <input type="hidden" name="posDeviceId" value="@pos.PosDeviceId"/>
+                                        <div class="cash-pos-assigned"><small>POS asignado</small><strong>@pos.PosDeviceName</strong></div>
+                                        <div class="field"><label>Código de cierre o referencia</label><input name="batchReference" class="input" required maxlength="100"/></div>
+                                        <div class="field"><label>Monto de cierre</label><div class="money-input"><span>@symbol</span><input name="physicalTotal" type="number" min="0" step="0.01" class="input" required/></div></div>
+                                        <div class="action-row"><button class="button-secondary">Guardar cierre POS</button></div>
+                                    </form>
+                                }
+                            </div>
+                        }
+                        @foreach (var saved in Model.PosClosings ?? []) {
+                            <p class="cash-pos-closed"><strong>@saved.PosDeviceName</strong><span>Código: @(saved.BatchReference ?? "—")</span><span>Monto: @symbol @saved.PhysicalTotal.ToString("N2")</span></p>
+                        }
+                    }
+                </div>
+            </details>
+
+        </section>
+
+        <dialog class="cash-close-dialog" data-cash-close-dialog aria-labelledby="cash-close-title">
+            <form asp-action="Close" method="post" data-submission-lock>
+                @Html.AntiForgeryToken()<input type="hidden" name="Id" value="@Model.Id"/><input type="hidden" name="CountedCash" value="@(lastCount?.CountedCash ?? 0)"/>
+                <header><div><p class="eyebrow">Confirmación</p><h2 id="cash-close-title">Cerrar caja</h2></div><button type="button" class="icon-button" data-close-cash-close aria-label="Cerrar ventana">×</button></header>
+                <div class="cash-close-dialog-body">
+                    <div class="cash-count-recorded"><span>Efectivo declarado en el último arqueo</span><strong>@symbol @((lastCount?.CountedCash ?? 0).ToString("N2"))</strong></div>
+                    <label><span>Comentario</span><textarea name="Observation" class="input textarea" maxlength="500" placeholder="Agregar comentario opcional"></textarea></label>
+                    @if (!CashAuthorization.SkipAdditionalCredentials) { <details class="cashier-recount"><summary>Autorización de diferencia, si corresponde</summary><div class="field"><label for="difference-authorizer">Usuario autorizador</label><input id="difference-authorizer" name="AuthorizerUserName" autocomplete="off" class="input" /></div><div class="field"><label for="difference-password">Contraseña del autorizador</label><input id="difference-password" name="AuthorizerPassword" type="password" autocomplete="new-password" class="input" /></div></details> }
+                </div>
+                <footer><button type="button" class="button-secondary" data-close-cash-close>Cancelar</button><button class="button-primary">Confirmar cierre</button></footer>
+            </form>
+        </dialog>
+    } else {
+        <section class="cash-close-report">
+            <header class="cash-report-header">
+                <div>
+                    <p class="eyebrow">Reporte de cierre de caja</p>
+                    <h2>Resumen para cuadre</h2>
+                    <p>@Model.CashierUserName · Apertura @Model.OpenedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · Cierre @(Model.ClosedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</p>
+                </div>
+                <button type="button" class="button-secondary cash-report-print-button" onclick="window.print()">Imprimir reporte</button>
+            </header>
+
+            <div class="cash-report-columns">
+                <section class="cash-report-ledger" aria-labelledby="cash-balance-title">
+                    <h3 id="cash-balance-title">Cuadre de efectivo</h3>
+                    <div class="cash-report-line"><span>Fondo inicial</span><strong>@symbol @Model.OpeningAmount.ToString("N2")</strong></div>
+                    <div class="cash-report-line"><span>+ Ventas en efectivo</span><strong>@symbol @((Model.TotalCashSales ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line"><span>+ Otras entradas</span><strong>@symbol @((Model.OtherIncomeTotal ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line"><span>− Salidas de efectivo</span><strong>@symbol @((Model.ExpenseTotal ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line is-total"><span>Efectivo esperado</span><strong>@symbol @((Model.ExpectedCash ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line"><span>Efectivo contado (arqueo final)</span><strong>@symbol @((Model.CountedCash ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line cash-report-difference @differenceClass"><span>@differenceLabel</span><strong>@symbol @Math.Abs(difference).ToString("N2")</strong></div>
+                </section>
+
+                <section class="cash-report-ledger" aria-labelledby="sales-summary-title">
+                    <h3 id="sales-summary-title">Ventas por forma de pago</h3>
+                    <div class="cash-report-line"><span>Ventas en efectivo</span><strong>@symbol @((Model.TotalCashSales ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line"><span>Ventas por transferencia</span><strong>@symbol @((Model.TotalTransferSales ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line"><span>Ventas en POS</span><strong>@symbol @((Model.TotalPosSales ?? 0).ToString("N2"))</strong></div>
+                    <div class="cash-report-line is-total"><span>Total de ventas</span><strong>@symbol @((Model.TotalSold ?? 0).ToString("N2"))</strong></div>
+                </section>
+            </div>
+
+            @if (lastCount?.Lines.Count > 0) {
+                <section class="cash-report-section cash-final-count">
+                    <div class="cash-report-section-heading"><div><h3>Arqueo final entregado</h3><p>Detalle del efectivo contado para recepción de caja.</p></div><strong>@symbol @lastCount.CountedCash.ToString("N2")</strong></div>
+                    <div class="table-scroll"><table class="data-table cash-report-table"><thead><tr><th>Denominación</th><th>Cantidad</th><th>Subtotal</th></tr></thead><tbody>
+                    @foreach (var line in lastCount.Lines.Where(x => x.Quantity > 0).OrderByDescending(x => x.Value)) {
+                        <tr><td>@symbol @line.Value.ToString("N2")</td><td>@line.Quantity</td><td>@symbol @line.Subtotal.ToString("N2")</td></tr>
+                    }
+                    </tbody><tfoot><tr><th colspan="2">Total entregado</th><th>@symbol @lastCount.CountedCash.ToString("N2")</th></tr></tfoot></table></div>
+                </section>
+            }
+
+            @if (Model.PosClosings?.Count > 0) {
+                <section class="cash-report-section">
+                    <h3>Cierres POS</h3>
+                    <div class="table-scroll"><table class="data-table cash-report-table cash-pos-report-table"><thead><tr><th>Dispositivo</th><th>Código de cierre</th><th>Monto del POS</th><th>Diferencia</th></tr></thead><tbody>
+                    @foreach (var closing in Model.PosClosings) {
+                        <tr><td>@closing.PosDeviceName</td><td>@(closing.BatchReference ?? "—")</td><td>@symbol @closing.PhysicalTotal.ToString("N2")</td><td>@symbol @closing.Difference.ToString("N2")</td></tr>
+                    }
+                    </tbody></table></div>
+                </section>
+            }
+
+            <section class="cash-report-comment">
+                <h3>Comentario de cierre</h3>
+                <p>@(string.IsNullOrWhiteSpace(Model.ClosingObservation) ? "Sin comentario." : Model.ClosingObservation)</p>
+            </section>
+        </section>
+    }
+
+</div>

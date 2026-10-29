@@ -1,0 +1,63 @@
+@model SistemiPos.Web.Models.Home.DashboardOperationalViewModel
+@using SistemiPos.Domain.Configuration
+@{
+    ViewData["Title"] = "Dashboard";
+    string Money(decimal amount) => Model.CurrencySymbolPosition == CurrencySymbolPosition.After
+        ? $"{amount.ToString($"N{Model.CurrencyDecimals}")} {Model.CurrencySymbol}"
+        : $"{Model.CurrencySymbol} {amount.ToString($"N{Model.CurrencyDecimals}")}";
+}
+
+<section class="page-header dashboard-header compact-page-header">
+    <div>
+        <h1>Estado actual del negocio</h1>
+    </div>
+    <div class="dashboard-header-actions">
+        <span>Última actualización: @Model.UpdatedAt.ToString("HH:mm:ss")</span>
+        <a asp-action="Index" class="button-primary link-button">Actualizar</a>
+    </div>
+</section>
+
+<div class="dashboard-six-grid dashboard-operational-grid">
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-heading"><div><span class="dashboard-panel-number">1</span><h2>Cajas abiertas</h2></div></div>
+        <strong class="dashboard-count">@Model.OpenCashSessionsCount</strong>
+        <p class="helper-text">cajas actualmente abiertas</p>
+        <a asp-controller="CashControl" asp-action="Index" class="dashboard-detail-link">Ver detalle →</a>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-heading"><div><span class="dashboard-panel-number">2</span><h2>Cuentas vencidas / en mora</h2></div></div>
+        <strong class="dashboard-count dashboard-count-danger">@Model.OverdueReceivablesCount</strong>
+        <p class="helper-text">cuentas afectadas</p>
+        <strong class="dashboard-operational-amount">@Money(Model.OverdueReceivablesAmount)</strong>
+        <a asp-controller="AccountsReceivable" asp-action="Index" class="dashboard-detail-link">Ver detalle →</a>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-heading"><div><span class="dashboard-panel-number">3</span><h2>Productos con existencia baja</h2></div></div>
+        <strong class="dashboard-count">@Model.LowStockCount</strong>
+        <p class="helper-text">productos</p>
+        <a asp-action="LowStock" class="dashboard-detail-link">Ver detalle →</a>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-heading"><div><span class="dashboard-panel-number">4</span><h2>Productos agotados</h2></div></div>
+        <strong class="dashboard-count dashboard-count-danger">@Model.OutOfStockCount</strong>
+        <p class="helper-text">productos</p>
+        <a asp-action="OutOfStock" class="dashboard-detail-link">Ver detalle →</a>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-heading"><div><span class="dashboard-panel-number">5</span><h2>Productos por caducar</h2></div></div>
+        <strong class="dashboard-count dashboard-count-danger">@Model.ExpiringLotsCount</strong>
+        <p class="helper-text">lotes dentro del período de alerta</p>
+        <a asp-controller="Products" asp-action="Expiring" class="dashboard-detail-link">Ver detalle →</a>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-heading"><div><span class="dashboard-panel-number">6</span><h2>Recepciones pendientes</h2></div></div>
+        <strong class="dashboard-count">@Model.PendingReceiptsCount</strong>
+        <p class="helper-text">órdenes con mercancía pendiente</p>
+        <a asp-controller="Purchases" asp-action="Receipts" class="dashboard-detail-link">Ver detalle →</a>
+    </article>
+</div>

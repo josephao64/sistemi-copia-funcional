@@ -1,0 +1,47 @@
+@model SistemiPos.Application.Reports.ControlReport
+@using System.Globalization
+@inject SistemiPos.Web.Services.INavigationPermissionService Navigation
+@{
+    ViewData["Title"] = Model.Title;
+    var permissions = await Navigation.GetPermissionCodesAsync();
+    var reports = new Dictionary<string,string> { ["sales"]="Ventas y cobros", ["purchases"]="Compras", ["purchase-orders"]="Órdenes pendientes",
+        ["purchase-costs"]="Costos de compra", ["inventory"]="Existencias", ["movements"]="Kardex y movimientos", ["profit"]="Rentabilidad",
+        ["counts"]="Diferencias de conteo",["pos-orders"]="Seguimiento POS",["waste"]="Mermas de restaurante",["production"]="Rendimiento de producción",["orders"]="Pedidos pendientes" };
+    if (permissions.Contains(PermissionCodes.OperationsAuditView)) reports["audit"]="Auditoría operativa";
+    string Query(int? page = null) => "?" + string.Join("&", new Dictionary<string,string?> {
+        ["report"]=Model.Query.Report, ["from"]=Model.Query.From?.ToString("yyyy-MM-dd"), ["to"]=Model.Query.To?.ToString("yyyy-MM-dd"),
+        ["companyId"]=Model.Query.CompanyId?.ToString(),["branchId"]=Model.Query.BranchId?.ToString(),
+        ["warehouseId"]=Model.Query.WarehouseId?.ToString(),["user"]=Model.Query.User,["register"]=Model.Query.Register,
+        ["productId"]=Model.Query.ProductId?.ToString(),["supplierId"]=Model.Query.SupplierId?.ToString(),
+        ["outOfStock"]=Model.Query.OutOfStock ? "true" : null,["page"]=(page ?? Model.Query.Page).ToString()
+    }.Where(x=>!string.IsNullOrEmpty(x.Value)).Select(x=>x.Key+"="+Uri.EscapeDataString(x.Value!)));
+}
+<link rel="stylesheet" href="~/css/control.css" asp-append-version="true" />
+<header class="control-heading"><div><h1>@Model.Title</h1><p>Consulta por ubicación · Actualizado @Model.UpdatedAt.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</p></div>
+@if(permissions.Contains(PermissionCodes.ReportsExport)) { <div class="action-row"><a class="button-secondary" href="/control/reportes/excel@Query()">Excel de esta página</a><a class="button-secondary" href="/control/reportes/pdf@Query()">PDF de esta página</a></div> }
+</header>
+<form method="get" class="control-filters form-card">
+<label>Reporte<select class="input" name="report">@foreach(var item in reports){<option value="@item.Key" selected="@(item.Key==Model.Query.Report)">@item.Value</option>}</select></label>
+<label>Desde<input class="input" type="date" name="from" value="@Model.Query.From?.ToString("yyyy-MM-dd")" required /></label>
+<label>Hasta<input class="input" type="date" name="to" value="@Model.Query.To?.ToString("yyyy-MM-dd")" required /></label>
+<label>Empresa<select class="input" name="companyId"><option value="">Todas las autorizadas</option>@foreach(var company in Model.Branches.DistinctBy(x=>x.CompanyId)){<option value="@company.CompanyId" selected="@(company.CompanyId==Model.Query.CompanyId)">@company.CompanyTradeName</option>}</select></label>
+<label>Sucursal<select class="input" name="branchId"><option value="">Alcance autorizado</option>@foreach(var branch in Model.Branches){<option value="@branch.Id" selected="@(branch.Id==Model.Query.BranchId)">@branch.Name</option>}</select></label>
+<label>Usuario<input class="input" name="user" value="@Model.Query.User" /></label>
+<label>Bodega<select class="input" name="warehouseId"><option value="">Todas las seleccionadas</option>@foreach(var warehouse in Model.Warehouses??[]){<option value="@warehouse.Id" selected="@(warehouse.Id==Model.Query.WarehouseId)">@warehouse.Name</option>}</select></label>
+<label class="control-picker">Producto<input class="input" type="search" data-control-picker="products" autocomplete="off" placeholder="Buscar producto" /><input type="hidden" name="productId" value="@Model.Query.ProductId" /><span data-picker-results></span></label>
+<label class="control-picker">Proveedor<input class="input" type="search" data-control-picker="suppliers" autocomplete="off" placeholder="Buscar proveedor" /><input type="hidden" name="supplierId" value="@Model.Query.SupplierId" /><span data-picker-results></span></label>
+<label><span>Solo agotados (existencias)</span><input type="checkbox" name="outOfStock" value="true" checked="@Model.Query.OutOfStock" /></label>
+<label>Código de caja<input class="input" name="register" value="@Model.Query.Register" /></label>
+<button class="button-primary">Consultar</button><a class="button-secondary" href="/control/reportes">Limpiar</a>
+</form>
+<p class="helper-text">Alcance aplicado: @Model.ScopeDescription</p>
+@if(Model.Metrics.Count>0){<div class="control-metrics">@foreach(var metric in Model.Metrics){<article><span>@metric.Label</span><strong>@metric.Value.ToString("N2") <small>@metric.Currency</small></strong></article>}</div>}
+@if(Model.Alerts.Count>0){<div class="control-alerts">@foreach(var alert in Model.Alerts){<a href="@alert.Url"><strong>@alert.Count</strong> @alert.Label <span>Ver detalle →</span></a>}</div>}
+@if(!string.IsNullOrWhiteSpace(Model.Note)){<p class="helper-text">@Model.Note</p>}
+<div class="table-card control-table"><table class="data-table"><thead><tr>@foreach(var col in Model.Columns){<th>@col.Header</th>}<th>Detalle</th></tr></thead><tbody>
+@foreach(var row in Model.Rows){<tr>@foreach(var cell in row.Cells){<td>@if(cell is string text && text.StartsWith("{")){<details><summary>Ver cambios</summary><pre>@text</pre></details>}else{@(cell is decimal amount ? amount.ToString("0.######",CultureInfo.CurrentCulture) : cell)}</td>}<td>@if(row.DetailUrl is not null){<a href="@row.DetailUrl">Ver</a>}</td></tr>}
+</tbody></table>@if(Model.Rows.Count==0){<p class="control-empty">No hay registros para estos filtros.</p>}</div>
+<footer class="control-pagination"><span>@Model.TotalCount registros · Página @Model.Query.Page</span><div class="action-row">@if(Model.Query.Page>1){<a class="button-secondary" href="@Query(Model.Query.Page-1)">Anterior</a>}@if(Model.Query.Page*Model.PageSize<Model.TotalCount){<a class="button-secondary" href="@Query(Model.Query.Page+1)">Siguiente</a>}</div></footer>
+<script type="application/json" id="control-picker-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {products=ViewBag.Products,suppliers=ViewBag.Suppliers},new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))</script>
+@section Scripts {<script src="~/js/control.js" asp-append-version="true"></script>}
+

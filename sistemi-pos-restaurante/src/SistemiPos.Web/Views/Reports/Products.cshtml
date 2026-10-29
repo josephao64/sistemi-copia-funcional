@@ -1,0 +1,17 @@
+@model SistemiPos.Web.Models.Reports.ProductReportViewModel
+@{
+    ViewData["Title"] = "Reporte de productos";
+}
+
+<section class="page-header"><div><p class="eyebrow">Reportes</p><h1>Productos</h1></div></section>
+<div class="topbar-actions">
+    <a asp-action="Sales" class="button-secondary link-button">Ventas</a>
+    <a asp-action="Inventory" class="button-secondary link-button">Inventario</a>
+    <a asp-action="Purchases" class="button-secondary link-button">Compras</a>
+    <a asp-action="Cash" class="button-secondary link-button">Caja</a>
+</div>
+<div class="grid">
+    <article class="table-card"><h2>Más vendidos</h2><table class="data-table"><thead><tr><th>Código</th><th>Nombre</th><th>Cantidad</th></tr></thead><tbody>@foreach (var item in Model.Report.MostSold){<tr><td>@item.InternalCode</td><td>@item.ProductName</td><td>@DisplayFormats.Quantity(item.Quantity)</td></tr>}</tbody></table></article>
+    <article class="table-card"><h2>Menos vendidos</h2><table class="data-table"><thead><tr><th>Código</th><th>Nombre</th><th>Cantidad</th></tr></thead><tbody>@foreach (var item in Model.Report.LeastSold){<tr><td>@item.InternalCode</td><td>@item.ProductName</td><td>@DisplayFormats.Quantity(item.Quantity)</td></tr>}</tbody></table></article>
+</div>
+<div class="table-card"><h2>Sin movimiento</h2><table class="data-table"><thead><tr><th>Código</th><th>Nombre</th></tr></thead><tbody>@foreach (var item in Model.Report.WithoutMovement){<tr><td>@item.InternalCode</td><td>@item.ProductName</td></tr>}</tbody></table></div>

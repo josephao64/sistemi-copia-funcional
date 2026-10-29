@@ -1,0 +1,71 @@
+@model SistemiPos.Web.Models.Security.RoleFormViewModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Nuevo rol" : "Editar rol";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad</p>
+        <h1>@ViewData["Title"]</h1>
+    </div>
+</section>
+
+<div class="form-card">
+    <form method="post" class="form-grid">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+        @if (Model.IsProtected)
+        {
+            <input asp-for="Name" type="hidden" />
+            <input asp-for="Description" type="hidden" />
+            <div class="role-protection-note">Este rol es protegido: siempre conserva acceso total y solo puede ser administrado por un Super Administrador.</div>
+        }
+        else
+        {
+            <div class="field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="input" />
+                <span asp-validation-for="Name" class="validation"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Description"></label>
+                <input asp-for="Description" class="input" />
+                <span asp-validation-for="Description" class="validation"></span>
+            </div>
+        }
+
+        @if (Model.Id is null)
+        {
+        <div class="field">
+            <label>Permisos</label>
+            <div class="permission-groups">
+            @foreach (var module in Model.AvailablePermissions.GroupBy(x => x.Module))
+            {
+                <fieldset class="permission-group">
+                    <legend>@module.Key</legend>
+                    @foreach (var permission in module)
+                    {
+                        <label class="permission-item">
+                            <input type="checkbox" name="SelectedPermissionIds" value="@permission.Id" checked="@permission.Selected" disabled="@Model.IsProtected" />
+                            <span>@permission.Action</span>
+                        </label>
+                    }
+                </fieldset>
+            }
+            </div>
+        </div>
+        }
+
+        <div class="action-row">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

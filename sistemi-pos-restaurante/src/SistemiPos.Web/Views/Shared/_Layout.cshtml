@@ -1,0 +1,520 @@
+@using SistemiPos.Application.Security
+@inject SistemiPos.Web.Services.INavigationPermissionService NavigationPermissions
+@inject SistemiPos.Application.Settings.ISettingsService LayoutSettings
+@inject SistemiPos.Application.Abstractions.IOperationContextAccessor OperationContext
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var layoutCurrencySymbol = "Q";
+    var layoutCurrencyPosition = "Before";
+    var currentBranchName = "Sucursal Principal";
+    Guid? currentBranchId = null;
+    IReadOnlyList<SistemiPos.Application.Organizations.BranchDto> authorizedBranches = [];
+    if (isAuthenticated)
+    {
+        var layoutSettings = await LayoutSettings.GetSystemSettingAsync();
+        layoutCurrencySymbol = layoutSettings.CurrencySymbol;
+        layoutCurrencyPosition = layoutSettings.CurrencySymbolPosition.ToString();
+        currentBranchName = OperationContext.CurrentBranchName ?? "Sucursal Principal";
+        currentBranchId = OperationContext.CurrentBranchId;
+        authorizedBranches = await OperationContext.GetAuthorizedBranchesAsync();
+    }
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var currentTitle = ViewData["Title"]?.ToString() ?? "Inicio";
+    var displayName = User.Identity?.Name ?? "Usuario";
+    var isSuperAdministrator = User.IsInRole(SecurityRoleNames.SuperAdministrator);
+    var isAdministrator = !isSuperAdministrator && User.IsInRole(SecurityRoleNames.Administrator);
+    var isManager = !isSuperAdministrator && !isAdministrator && User.IsInRole(SecurityRoleNames.Manager);
+    var isPosTerminal = !isSuperAdministrator && !isAdministrator && !isManager &&
+        (User.IsInRole(SecurityRoleNames.PointOfSale) || User.IsInRole(SecurityRoleNames.Cashier));
+    var displayRole = isSuperAdministrator ? SecurityRoleNames.SuperAdministrator
+        : isAdministrator ? SecurityRoleNames.Administrator
+        : isManager ? SecurityRoleNames.Manager
+        : isPosTerminal ? (User.IsInRole(SecurityRoleNames.PointOfSale) ? SecurityRoleNames.PointOfSale : SecurityRoleNames.Cashier)
+        : User.Claims.FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Sin rol";
+    var initials = string.Concat(displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+    IReadOnlySet<string> allowedPermissions = isAuthenticated
+        ? await NavigationPermissions.GetPermissionCodesAsync()
+        : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    bool Has(string permission) => allowedPermissions.Contains(permission);
+    var canSwitchBranch = isSuperAdministrator || Has(PermissionCodes.BranchSwitch);
+    var startController = "Account";
+    var startAction = "AccessDenied";
+    if (isPosTerminal) { startController = "Sales"; startAction = "Create"; }
+    else if (Has(PermissionCodes.DashboardView)) { startController = "Home"; startAction = "Index"; }
+    else if (Has(PermissionCodes.OrdersView)) { startController = "Restaurant"; startAction = Has(PermissionCodes.KitchenOrdersView) ? "Kitchen" : "Index"; }
+    else if (Has(PermissionCodes.ProductsView)) { startController = "Products"; startAction = "Index"; }
+    else if (Has(PermissionCodes.RecipesView)) { startController = "Recipes"; startAction = "Index"; }
+    else if (Has(PermissionCodes.InventoryView)) { startController = "Inventory"; startAction = "Index"; }
+    else if (Has(PermissionCodes.PurchasesView)) { startController = "Purchases"; startAction = "Index"; }
+    else if (Has(PermissionCodes.SuppliersView)) { startController = "Suppliers"; startAction = "Index"; }
+    else if (Has(PermissionCodes.CustomersView)) { startController = "Customers"; startAction = "Index"; }
+    else if (Has(PermissionCodes.CashView)) { startController = "Cash"; startAction = "Index"; }
+    else if (Has(PermissionCodes.ReportsView)) { startController = "Reports"; startAction = "Sales"; }
+    var isPosSalesHome = isPosTerminal && currentController.Equals("Sales", StringComparison.OrdinalIgnoreCase) &&
+        currentAction.Equals("Create", StringComparison.OrdinalIgnoreCase);
+    var showBackLink = isAuthenticated && !isPosSalesHome && !currentAction.Equals("Index", StringComparison.OrdinalIgnoreCase) &&
+        !currentAction.Equals("Drafts", StringComparison.OrdinalIgnoreCase) && !currentAction.Equals("Requested", StringComparison.OrdinalIgnoreCase) &&
+        !currentAction.Equals("Receipts", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("Purchases", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("AccountsPayable", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("AccountsReceivable", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("Cash", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("CashControl", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("PettyCash", StringComparison.OrdinalIgnoreCase) &&
+        !currentController.Equals("Home", StringComparison.OrdinalIgnoreCase) &&
+        !(currentController.Equals("Products", StringComparison.OrdinalIgnoreCase) && currentAction.Equals("Expiring", StringComparison.OrdinalIgnoreCase)) &&
+        !(currentController.Equals("Reports", StringComparison.OrdinalIgnoreCase) && currentAction.Equals("Sales", StringComparison.OrdinalIgnoreCase)) &&
+        !(currentController.Equals("Purchases", StringComparison.OrdinalIgnoreCase) && currentAction.Equals("History", StringComparison.OrdinalIgnoreCase)) &&
+        !currentController.Equals("Account", StringComparison.OrdinalIgnoreCase);
+    var fallbackUrl = Url.Action("Index", currentController) ?? Url.Action("Index", "Home");
+    var requestedReturnUrl = Context.Request.Query["returnUrl"].ToString();
+    var localReturnUrl = Url.IsLocalUrl(requestedReturnUrl) ? requestedReturnUrl : null;
+    var moduleLabel = currentController switch
+    {
+        "Purchases" => "Compras", "Products" => "Productos", "Suppliers" => "Proveedores", "Customers" => "Clientes",
+        "Recipes" => "Recetas",
+        "Orders" => "Pedidos",
+        "Inventory" => "Inventario", "InventoryTransfers" => "Traslados", "Cash" => "Caja", "CashControl" => "Caja", "AccountsPayable" => "Compras",
+        "AccountsReceivable" => "Ventas", "Settings" => "Administración", "Users" => "Administración",
+        "Roles" => "Administración", "Permissions" => "Administración", "SecurityAudit" => "Seguridad", "Reports" when currentAction == "CashierSales" => "Análisis comercial", "Reports" => "Reportes", "ControlReports" => "Control por ubicación", "Fiscal" => "Facturación por empresa", "Backups" => "Respaldo y recuperación", "Sales" => "Ventas",
+        "Restaurant" => "Restaurante",
+        "Categories" => "Productos", "PettyCash" => "Caja", _ => currentTitle
+    };
+    var backLabel = currentController switch
+    {
+        "Purchases" when currentAction == "Details" => "historial de compras",
+        "Purchases" when currentAction is "OrderDetails" or "CreateOrder" or "EditOrder" => "órdenes de compra",
+        "Purchases" when currentAction == "ReceiveOrder" => "la orden",
+        "Home" => "Dashboard",
+        "Products" or "Categories" => "productos", "Suppliers" => "proveedores", "Customers" => "clientes",
+        "Inventory" => "inventario", "InventoryTransfers" => "traslados", "Cash" => "caja", "AccountsPayable" => "cuentas por pagar",
+        "Settings" => "administración", "Users" => "usuarios", "Roles" or "Permissions" => "permisos",
+        "Organization" => "estructura empresarial",
+        "Restaurant" => "pedidos",
+        "Sales" => "ventas", _ => moduleLabel.ToLowerInvariant()
+    };
+    if (currentController == "Purchases" && currentAction == "Details") fallbackUrl = Url.Action("History", "Purchases");
+    if (currentController == "Reports" && currentAction is "CashierSales" or "ProductSalesRanking")
+        fallbackUrl = localReturnUrl ?? Url.Action("Sales", "Reports");
+    if (currentController == "Sales" && currentAction == "Details" && localReturnUrl is not null)
+        fallbackUrl = localReturnUrl;
+    if (currentController == "Purchases" && currentAction == "ReceiveOrder" && ViewContext.RouteData.Values["id"] is { } orderId)
+        fallbackUrl = Url.Action("OrderDetails", "Purchases", new { id = orderId });
+    if (currentController == "Settings" && currentAction == "BankAccountForm") fallbackUrl = Url.Action("BankAccounts", "Settings");
+    if (currentController == "Roles") fallbackUrl = Url.Action("Index", "Permissions");
+    if (currentController == "Categories" && !string.IsNullOrWhiteSpace(Context.Request.Query["returnUrl"]))
+        fallbackUrl = Context.Request.Query["returnUrl"]!;
+
+    string NavClass(string controller, string? action = null) =>
+        currentController.Equals(controller, StringComparison.OrdinalIgnoreCase) &&
+        (action is null || currentAction.Equals(action, StringComparison.OrdinalIgnoreCase))
+            ? "sidebar-link is-active"
+            : "sidebar-link";
+    string PosNavClass(string controller, string? action = null) =>
+        currentController.Equals(controller, StringComparison.OrdinalIgnoreCase) &&
+        (action is null || currentAction.Equals(action, StringComparison.OrdinalIgnoreCase))
+            ? "pos-top-nav-link is-active"
+            : "pos-top-nav-link";
+}
+<!DOCTYPE html>
+<html lang="es-GT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#12263a" />
+    <title>@currentTitle · SISTEMI POS Restaurante</title>
+    <link rel="icon" type="image/png" href="~/images/brand/sistemi-logo.png" />
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @if (isPosTerminal || currentController.Equals("Cash", StringComparison.OrdinalIgnoreCase) || currentController.Equals("Sales", StringComparison.OrdinalIgnoreCase))
+    {
+        <link rel="stylesheet" href="~/css/cashier.css" asp-append-version="true" />
+    }
+</head>
+<body data-current-user-id="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" data-current-branch-id="@currentBranchId" class="@(isAuthenticated ? $"app-body{(isPosTerminal ? " pos-terminal" : string.Empty)}" : "auth-body")" data-global-currency-symbol="@layoutCurrencySymbol" data-global-currency-position="@layoutCurrencyPosition">
+    @if (isAuthenticated)
+    {
+        <div class="app-shell">
+            @if (!isPosTerminal)
+            {
+            <aside class="sidebar" id="app-sidebar" aria-label="Navegación principal">
+                <a class="sidebar-brand" asp-controller="@startController" asp-action="@startAction" aria-label="SISTEMI POS Restaurante, ir al inicio">
+                    <span class="brand-mark"><img src="~/images/brand/sistemi-logo.png" alt="" /></span>
+                    <span class="brand-copy"><strong>SISTEMI <em>POS</em> Restaurante</strong><small>@(isPosTerminal ? "Operación de ventas" : "Punto de venta e inventario")</small></span>
+                </a>
+
+                <div class="sidebar-branch-panel" aria-label="Sucursal de trabajo">
+                    <span class="sidebar-branch-caption">Sucursal de trabajo</span>
+                    @if (canSwitchBranch && authorizedBranches.Count > 1)
+                    {
+                        <form asp-controller="Organization" asp-action="SelectBranch" method="post" class="sidebar-branch-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                            <div class="sidebar-branch-select-wrap">
+                                <select name="branchId" onchange="this.form.submit()" class="sidebar-branch-select" aria-label="Seleccionar sucursal de trabajo">
+                                    @foreach (var branch in authorizedBranches)
+                                    {
+                                        var branchDisplay = !string.IsNullOrWhiteSpace(branch.Code) && !string.Equals(branch.Name, branch.Code, StringComparison.OrdinalIgnoreCase)
+                                            ? $"{branch.Name} ({branch.Code})"
+                                            : branch.Name;
+                                        <option value="@branch.Id" selected="@(branch.Id == currentBranchId)">@branchDisplay</option>
+                                    }
+                                </select>
+                                <span class="sidebar-branch-arrow" aria-hidden="true">▾</span>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="sidebar-branch-static" title="Sucursal asignada de operación">
+                            <span class="sidebar-branch-static-text">@currentBranchName</span>
+                            @if (!canSwitchBranch)
+                            {
+                                <small class="sidebar-branch-badge-locked" title="Cambio de sucursal restringido por permisos">🔒 Fija</small>
+                            }
+                            else
+                            {
+                                <small class="sidebar-branch-badge-single">Única</small>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <nav class="sidebar-nav">
+                    @if (Has(PermissionCodes.DashboardView) || Has(PermissionCodes.ReportsView))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="inicio">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Inicio</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (Has(PermissionCodes.DashboardView))
+                        {
+                        <a class="@NavClass("Home")" asp-controller="Home" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></svg><span>Dashboard</span>
+                        </a>
+                        }
+                        @if (Has(PermissionCodes.ReportsView))
+                        {
+                        <a class="@NavClass("ControlReports")" asp-controller="ControlReports" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg><span>Control por ubicación</span></a>
+                        <a class="@NavClass("Reports")" asp-controller="Reports" asp-action="Sales">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg><span>Análisis comercial</span>
+                        </a>
+                        }
+                        </div>
+                    </div>
+                    }
+                    @if (Has(PermissionCodes.OrdersView) || Has(PermissionCodes.SalesView) || Has(PermissionCodes.SalesManage) || Has(PermissionCodes.DiscountsAuthorize) || Has(PermissionCodes.AccountsReceivableView) || Has(PermissionCodes.CustomersView))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="ventas">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Ventas</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (isPosTerminal && Has(PermissionCodes.SalesManage)) { <a class="@NavClass("Sales")" href="/pos"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/></svg><span>Ventas</span></a> }
+                        else if (Has(PermissionCodes.SalesView)) { <a class="@NavClass("Sales", "Index")" asp-controller="Sales" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/></svg><span>Ventas</span></a> }
+                        @if (Has(PermissionCodes.DiscountsAuthorize)) { <a class="@NavClass("DiscountApprovals")" asp-controller="DiscountApprovals" asp-action="Index" data-discount-approvals-link><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7v4l-2 3h18l-2-3v-4a7 7 0 0 0-7-7zM9 20h6"/></svg><span>Aprobaciones</span><b class="nav-count" data-discount-approval-count hidden></b></a> }
+                        @if (Has(PermissionCodes.OrdersView)) { <a class="@NavClass("Orders")" asp-controller="Orders" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5" /></svg><span>Pedidos</span></a> }
+                        @if (Has(PermissionCodes.AccountsReceivableView)) {
+                            <div class="sidebar-submodule" data-sidebar-section="ventas-cuentas-por-cobrar">
+                                <button class="sidebar-submodule-toggle" type="button" data-sidebar-section-toggle aria-expanded="true"><span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M12 10v7M14.5 11.5c-.5-.45-1.2-.7-2-.7-1.15 0-2 .58-2 1.5 0 2.1 4 1.05 4 3.15 0 .92-.85 1.55-2 1.55-.82 0-1.58-.28-2.1-.78"/></svg>Cuentas por cobrar</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                                <div class="sidebar-section-items" data-sidebar-section-items>
+                                    <a class="@NavClass("AccountsReceivable", "Index") sidebar-child-link" asp-controller="AccountsReceivable" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>Resumen</span></a>
+                                    <a class="@NavClass("AccountsReceivable", "Overdue") sidebar-child-link" asp-controller="AccountsReceivable" asp-action="Overdue"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>Vencidas</span></a>
+                                    <a class="@NavClass("AccountsReceivable", "Delinquent") sidebar-child-link" asp-controller="AccountsReceivable" asp-action="Delinquent"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 3 20h18zM12 9v5M12 17h.01"/></svg><span>En mora</span></a>
+                                    <a class="@NavClass("AccountsReceivable", "WithoutPayments") sidebar-child-link" asp-controller="AccountsReceivable" asp-action="WithoutPayments"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 13h6M9 17h4"/></svg><span>Sin abonos</span></a>
+                                    <a class="@NavClass("AccountsReceivable", "PartiallyPaid") sidebar-child-link" asp-controller="AccountsReceivable" asp-action="PartiallyPaid"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="12" r="5"/><path d="M9 9v6M11 10.5c-.4-.35-1-.55-1.65-.55-.95 0-1.65.48-1.65 1.25 0 1.75 3.3.88 3.3 2.63 0 .77-.7 1.3-1.65 1.3-.68 0-1.3-.23-1.75-.65M16 8h4M16 12h4M16 16h4"/></svg><span>Parcialmente abonadas</span></a>
+                                </div>
+                            </div>
+                            <a class="@NavClass("AccountsReceivable", "History")" asp-controller="AccountsReceivable" asp-action="History"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.35-5.65L4 8.7M4 4v4.7h4.7M12 8v4l3 2"/></svg><span>Historial</span></a>
+                        }
+                        @if (Has(PermissionCodes.CustomersView)) { <a class="@NavClass("Customers")" asp-controller="Customers" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg><span>Clientes</span>
+                        </a> }
+                        </div>
+                    </div>
+                    }
+                    @if (Has(PermissionCodes.CashControlAccess) || Has(PermissionCodes.PettyCashViewBalance) || Has(PermissionCodes.CashAuditAccess) ||
+                        (!Has(PermissionCodes.CashControlAccess) && (Has(PermissionCodes.CashOpen) || Has(PermissionCodes.CashCloseOwn))))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="control">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Caja</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (!Has(PermissionCodes.CashControlAccess) && (Has(PermissionCodes.CashOpen) || Has(PermissionCodes.CashCloseOwn))) { <a class="@NavClass("Cash")" asp-controller="Cash" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/></svg><span>Cerrar caja</span></a> }
+                        @if (Has(PermissionCodes.CashControlAccess)) { <a class="@NavClass("CashControl", "Index")" asp-controller="CashControl" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14v13H5zM8 7V4h8v3M8 12h8M12 10v4"/></svg><span>Cajas activas</span></a> }
+                        @if (Has(PermissionCodes.CashControlAccess)) { <a class="@NavClass("CashControl", "History")" asp-controller="CashControl" asp-action="History"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.35-5.65L4 8.7M4 4v4.7h4.7M12 8v4l3 2"/></svg><span>Historial de cajas</span></a> }
+                        @if (Has(PermissionCodes.CashAuditAccess)) { <a class="@NavClass("CashControl", "Audit")" asp-controller="CashControl" asp-action="Audit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.4 3 8.5 7 10 4-1.5 7-5.6 7-10V6zM10 12l2 2 3-4"/></svg><span>Auditoría de caja</span></a> }
+                        @if (Has(PermissionCodes.PettyCashViewBalance)) { <div class="sidebar-submodule" data-sidebar-section="caja-chica"><button class="sidebar-submodule-toggle" type="button" data-sidebar-section-toggle aria-expanded="true"><span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 8h18v11H3zM7 8V5h10v3M7 13h4M15 13h2"/></svg>Caja chica</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button><div class="sidebar-section-items" data-sidebar-section-items><a class="@NavClass("PettyCash", "Index") sidebar-child-link" asp-controller="PettyCash" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 8h18v11H3zM7 8V5h10v3M7 13h4M15 13h2"/></svg><span>Caja activa</span></a><a class="@NavClass("PettyCash", "History") sidebar-child-link" asp-controller="PettyCash" asp-action="History"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.35-5.65L4 8.7M4 4v4.7h4.7M12 8v4l3 2"/></svg><span>Historial</span></a></div></div> }
+                        </div>
+                    </div>
+                    }
+                    @if (Has(PermissionCodes.OrdersView))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="restaurante">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Restaurante</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                            <a class="@NavClass("Restaurant", "Index")" asp-controller="Restaurant" asp-action="Index"><span>Pedidos</span></a>
+                            @if (Has(PermissionCodes.KitchenOrdersView)) { <a class="@NavClass("Restaurant", "Kitchen")" asp-controller="Restaurant" asp-action="Kitchen"><span>Cocina</span></a> }
+                            @if (Has(PermissionCodes.TablesView)) { <a class="@NavClass("Restaurant", "Tables")" asp-controller="Restaurant" asp-action="Tables"><span>Mesas</span></a> }
+                            @if (Has(PermissionCodes.DeliveryManage)) { <a class="@NavClass("Restaurant", "Delivery")" asp-controller="Restaurant" asp-action="Delivery"><span>Delivery</span></a> }
+                            @if (Has(PermissionCodes.RestaurantConfigure)) { <a class="@NavClass("Restaurant", "Configuration")" asp-controller="Restaurant" asp-action="Configuration"><span>Configuración</span></a> }
+                        </div>
+                    </div>
+                    }
+                    @if (!isPosTerminal && (Has(PermissionCodes.ProductsView) || Has(PermissionCodes.RecipesView) || Has(PermissionCodes.ProductionView) || Has(PermissionCodes.InventoryView) || Has(PermissionCodes.InventoryTransfersView)))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="inventario">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Inventario</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (Has(PermissionCodes.ProductsView)) {
+                            <div class="sidebar-submodule" data-sidebar-section="productos">
+                                <button class="sidebar-submodule-toggle" type="button" data-sidebar-section-toggle aria-expanded="true"><span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5" /></svg>Productos</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                                <div class="sidebar-section-items" data-sidebar-section-items>
+                                    <a class="@NavClass("Products", "Index") sidebar-child-link" asp-controller="Products" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h14" /></svg><span>Catálogo</span></a>
+                                    <a class="@NavClass("Products", "Expiring") sidebar-child-link" asp-controller="Products" asp-action="Expiring"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v9l4 2M5.6 5.6a9 9 0 1 0 12.8 0" /></svg><span>Por caducar</span></a>
+                                </div>
+                            </div>
+                        }
+                        @if (Has(PermissionCodes.RecipesView)) { <a class="@NavClass("Recipes")" asp-controller="Recipes" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5" /></svg><span>Recetas</span></a> }
+                        @if (Has(PermissionCodes.ProductionView)) { <a class="@NavClass("Production")" asp-controller="Production" asp-action="Index"><span>Producción</span></a> }
+                        @if (Has(PermissionCodes.InventoryView)) { <a class="@NavClass("Inventory")" asp-controller="Inventory" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM2 4h20v3H2zM9 11h6" /></svg><span>Inventario</span>
+                        </a> }
+                        @if (Has(PermissionCodes.InventoryTransfersView)) { <a class="@NavClass("InventoryTransfers")" asp-controller="InventoryTransfers" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg><span>Traslados</span>
+                        </a> }
+                        </div>
+                    </div>
+                    }
+                    @if (!isPosTerminal && (Has(PermissionCodes.PurchasesView) || Has(PermissionCodes.AccountsPayableView) || Has(PermissionCodes.SuppliersView)))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="compras">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Compras</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (Has(PermissionCodes.PurchasesView)) {
+                            <a class="@NavClass("Purchases", "Index") sidebar-child-link" asp-controller="Purchases" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>General</span></a>
+                            @if (Has(PermissionCodes.PurchasesManage)) { <a class="@NavClass("Purchases", "CreateOrder") sidebar-child-link" asp-controller="Purchases" asp-action="CreateOrder"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M12 10v7M8.5 13.5h7"/></svg><span>Nueva orden</span></a> }
+                            <a class="@NavClass("Purchases", "Drafts") sidebar-child-link" asp-controller="Purchases" asp-action="Drafts"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 13h6M9 17h4"/></svg><span>Borradores</span></a>
+                            <a class="@NavClass("Purchases", "Requested") sidebar-child-link" asp-controller="Purchases" asp-action="Requested"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 14l2 2 4-4"/></svg><span>Solicitadas</span></a>
+                            <a class="@NavClass("Purchases", "Receipts") sidebar-child-link" asp-controller="Purchases" asp-action="Receipts"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg><span>Recepciones</span></a>
+                            <a class="@NavClass("Purchases", "CompareSuppliers") sidebar-child-link" asp-controller="Purchases" asp-action="CompareSuppliers"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M7 6l-3 6h6L7 6zm10 0-3 6h6l-3-6zM12 4v16M8 20h8"/></svg><span>Comparar proveedores</span></a>
+                        }
+                        @if (Has(PermissionCodes.AccountsPayableView)) { <a class="@NavClass("AccountsPayable") sidebar-child-link" asp-controller="AccountsPayable" asp-action="Index"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M12 10v7M14.5 11.5c-.5-.45-1.2-.7-2-.7-1.15 0-2 .58-2 1.5 0 2.1 4 1.05 4 3.15 0 .92-.85 1.55-2 1.55-.82 0-1.58-.28-2.1-.78"/></svg><span>Cuentas por pagar</span></a> }
+                        @if (Has(PermissionCodes.PurchasesView)) { <a class="@NavClass("Purchases", "History") sidebar-child-link" asp-controller="Purchases" asp-action="History"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.35-5.65L4 8.7M4 4v4.7h4.7M12 8v4l3 2"/></svg><span>Historial de compras</span></a> }
+                        @if (Has(PermissionCodes.SuppliersView)) { <a class="@NavClass("Suppliers") sidebar-child-link" asp-controller="Suppliers" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 21V8l6-4v17M9 10l6-3v14M15 12l6-2v11M6 11h.01M12 12h.01M18 14h.01" /></svg><span>Proveedores</span>
+                        </a> }
+                        </div>
+                    </div>
+                    }
+                    @if ((isSuperAdministrator && (Has(PermissionCodes.UsersView) || Has(PermissionCodes.PermissionsView) || Has(PermissionCodes.SettingsView) || Has(PermissionCodes.OrganizationsView))) || Has(PermissionCodes.FiscalManage) || Has(PermissionCodes.BackupsManage))
+                    {
+                    <div class="sidebar-section" data-sidebar-section="administracion">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Administración</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (Has(PermissionCodes.OrganizationsView)) { <a class="@NavClass("Organization")" asp-controller="Organization" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 21h18M3 7v14M21 7v14M6 7V3h12v4M9 21v-4h6v4M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Estructura empresarial</span>
+                        </a> }
+                        @if (Has(PermissionCodes.UsersView)) { <a class="@NavClass("Users")" asp-controller="Users" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg><span>Usuarios</span>
+                        </a> }
+                        @if (Has(PermissionCodes.PermissionsView)) { <a class="@NavClass("Permissions")" asp-controller="Permissions" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="m11 12 8-8M17 4l3 3M14 7l3 3" /></svg><span>Permisos</span>
+                        </a> }
+                        @if (Has(PermissionCodes.SecurityAuditView)) { <a class="@NavClass("SecurityAudit")" asp-controller="SecurityAudit" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.4 3 8.5 7 10 4-1.5 7-5.6 7-10V6zM10 12l2 2 3-4"/></svg><span>Auditoría</span>
+                        </a> }
+                        @if (Has(PermissionCodes.FiscalManage)) { <a class="@NavClass("Fiscal")" asp-controller="Fiscal" asp-action="Index"><span>Facturación por empresa</span></a> }
+                        @if (Has(PermissionCodes.BackupsManage)) { <a class="@NavClass("Backups")" asp-controller="Backups" asp-action="Index"><span>Respaldo y recuperación</span></a> }
+                        @if (Has(PermissionCodes.SettingsView)) { <a class="@NavClass("Settings")" asp-controller="Settings" asp-action="Index">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.51-1H3v-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88L4.2 7.06l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.51V3h4v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.51 1H21v4h-.09A1.7 1.7 0 0 0 19.4 15z" /></svg><span>Configuración</span>
+                        </a> }
+                        </div>
+                    </div>
+                    }
+                    @if (isSuperAdministrator)
+                    {
+                    <div class="sidebar-section" data-sidebar-section="sincronizacion">
+                        <button class="sidebar-label" type="button" data-sidebar-section-toggle aria-expanded="true"><span>Sincronización</span><span class="sidebar-section-indicator" aria-hidden="true">▾</span></button>
+                        <div class="sidebar-section-items" data-sidebar-section-items>
+                        @if (Has(PermissionCodes.SalesManage)) { <a class="@NavClass("Pos")" asp-controller="Pos" asp-action="Offline">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.5 16a6 6 0 0 1 7 0M12 20h.01M2 8.82a16 16 0 0 1 20 0" /></svg><span>POS offline</span><span class="nav-shortcut" data-offline-pending-badge hidden>0</span>
+                        </a> }
+                        </div>
+                    </div>
+                    }
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="connection-state" data-connection-state><span class="status-dot"></span><span data-connection-label>En línea</span></div>
+                    <div class="sidebar-account">
+                        <a asp-controller="Account" asp-action="Profile" class="sidebar-user" title="Mi perfil de usuario" style="text-decoration: none; color: inherit;">
+                            <span class="user-avatar">@initials</span>
+                            <span class="sidebar-user-copy"><strong>Usuario: @displayName</strong><small>Rol: @displayRole</small></span>
+                        </a>
+                        <form class="sidebar-logout-form" asp-controller="Account" asp-action="Logout" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="icon-button logout-button sidebar-logout-button" aria-label="Salir del sistema" title="Salir del sistema"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M15 3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-5" /></svg><span>Salir</span></button>
+                        </form>
+                    </div>
+                </div>
+            </aside>
+
+            <button class="sidebar-overlay" type="button" data-sidebar-close aria-label="Cerrar navegación"></button>
+            }
+
+            <div class="workspace">
+                <header class="topbar">
+                    <div class="topbar-leading">
+                        @if (!isPosTerminal)
+                        {
+                        <button class="icon-button menu-button" type="button" data-sidebar-toggle aria-label="Abrir navegación">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        </button>
+                        }
+                        <div class="breadcrumbs" aria-label="Ruta de navegación">
+                            <span>@moduleLabel</span>
+                            @if (currentController.Equals("AccountsReceivable", StringComparison.OrdinalIgnoreCase)) { <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg><span>Cuentas por cobrar</span> }
+                            @if (!string.Equals(moduleLabel, currentTitle, StringComparison.OrdinalIgnoreCase)) { <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg><span>@currentTitle</span> }
+                        </div>
+                        @if (showBackLink)
+                        {
+                            <a class="context-back-link" href="@fallbackUrl"><span aria-hidden="true">←</span> Volver a @backLabel</a>
+                        }
+                    </div>
+                    @if (!isPosTerminal)
+                    {
+                        <div class="topbar-trailing" style="display: flex; align-items: center; gap: 0.75rem; margin-left: auto;">
+                            @if (canSwitchBranch && authorizedBranches.Count > 1)
+                            {
+                                <form asp-controller="Organization" asp-action="SelectBranch" method="post" style="margin: 0; display: inline-flex; align-items: center;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <div style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; padding: 0.2rem 0.5rem;" title="Cambiar sucursal activa">
+                                        <span style="font-size: 0.85rem;" aria-hidden="true">🏢</span>
+                                        <select name="branchId" onchange="this.form.submit()" style="border: none; background: transparent; font-size: 0.82rem; font-weight: 600; color: var(--color-text, #1e293b); cursor: pointer; outline: none;" aria-label="Seleccionar sucursal activa">
+                                            @foreach (var branch in authorizedBranches)
+                                            {
+                                                var branchDisplay = !string.IsNullOrWhiteSpace(branch.Code) && !string.Equals(branch.Name, branch.Code, StringComparison.OrdinalIgnoreCase)
+                                                    ? $"{branch.Name} ({branch.Code})"
+                                                    : branch.Name;
+                                                <option value="@branch.Id" selected="@(branch.Id == currentBranchId)">@branchDisplay</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </form>
+                            }
+                            else
+                            {
+                                <div style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; padding: 0.2rem 0.6rem; font-size: 0.82rem; font-weight: 600; color: var(--color-text, #1e293b);" title="Sucursal activa asignada">
+                                    <span aria-hidden="true">🏢</span>
+                                    <span>@currentBranchName</span>
+                                    @if (!canSwitchBranch)
+                                    {
+                                        <span style="font-size: 0.72rem; color: #64748b;" title="Cambio de sucursal restringido">🔒</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (isPosTerminal)
+                    {
+                        <div class="topbar-actions">
+                            <nav class="pos-top-navigation" aria-label="Accesos del punto de venta">
+                                @if (Has(PermissionCodes.SalesManage)) { <a class="@PosNavClass("Sales", "Create")" href="/pos">Panel de venta</a> }
+                                @if (Has(PermissionCodes.OrdersView)) { <a class="@PosNavClass("Restaurant")" asp-controller="Restaurant" asp-action="Index">Pedidos</a> }
+                                @if (Has(PermissionCodes.SalesManage) || Has(PermissionCodes.CashOpen) || Has(PermissionCodes.CashCloseOwn)) { <a class="@PosNavClass("Cash")" href="@(Has(PermissionCodes.SalesManage) ? "/pos#caja" : Url.Action("Index", "Cash"))" data-pos-cash-menu>Caja / Apertura</a> }
+                                @if (Has(PermissionCodes.DiscountsAuthorize)) { <a class="@PosNavClass("DiscountApprovals")" asp-controller="DiscountApprovals" asp-action="Index">Aprobaciones</a> }
+                            </nav>
+                            @if (canSwitchBranch && authorizedBranches.Count > 1)
+                            {
+                                <form asp-controller="Organization" asp-action="SelectBranch" method="post" style="margin: 0; display: inline-flex; align-items: center;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <div style="display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.2rem 0.5rem;" title="Cambiar sucursal">
+                                        <span style="font-size: 0.85rem;" aria-hidden="true">🏢</span>
+                                        <select name="branchId" onchange="this.form.submit()" style="border: none; background: transparent; font-size: 0.82rem; font-weight: 600; color: inherit; cursor: pointer; outline: none;" aria-label="Sucursal activa">
+                                            @foreach (var branch in authorizedBranches)
+                                            {
+                                                var branchDisplay = !string.IsNullOrWhiteSpace(branch.Code) && !string.Equals(branch.Name, branch.Code, StringComparison.OrdinalIgnoreCase)
+                                                    ? $"{branch.Name} ({branch.Code})"
+                                                    : branch.Name;
+                                                <option value="@branch.Id" selected="@(branch.Id == currentBranchId)" style="color: #000;">@branchDisplay</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </form>
+                            }
+                            else
+                            {
+                                <div style="display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.2rem 0.6rem; font-size: 0.82rem; font-weight: 600;" title="Sucursal activa">
+                                    <span aria-hidden="true">🏢</span>
+                                    <span>@currentBranchName</span>
+                                    @if (!canSwitchBranch)
+                                    {
+                                        <span style="font-size: 0.72rem; color: rgba(255,255,255,0.6);" title="Cambio de sucursal restringido">🔒</span>
+                                    }
+                                </div>
+                            }
+                            <div class="topbar-user"><span class="user-avatar">@initials</span><span class="topbar-user-copy"><strong>Usuario: @displayName</strong><small>Rol: @displayRole</small></span></div>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="icon-button logout-button" aria-label="Salir del sistema" title="Salir del sistema"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M15 3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-5" /></svg><span>Salir</span></button>
+                            </form>
+                        </div>
+                    }
+                </header>
+                <main role="main" class="content">@RenderBody()</main>
+            </div>
+        </div>
+
+        <dialog id="crud-modal" class="crud-modal" data-crud-modal-dialog aria-labelledby="crud-modal-title">
+            <div class="crud-modal-panel">
+                <div class="crud-modal-toolbar">
+                    <h2 id="crud-modal-title" class="visually-hidden" data-crud-modal-title>Formulario</h2>
+                    <button type="button" class="icon-button" data-crud-modal-close aria-label="Cerrar">×</button>
+                </div>
+                <div class="crud-modal-loading" data-crud-modal-loading hidden>Cargando…</div>
+                <div class="alert-error" data-crud-modal-error hidden></div>
+                <div class="crud-modal-content" data-crud-modal-content></div>
+            </div>
+        </dialog>
+    }
+    else
+    {
+        <main role="main" class="public-content">@RenderBody()</main>
+    }
+
+    <div class="toast-region" aria-live="polite" aria-atomic="true" popover="manual" data-toast-region></div>
+    <dialog class="system-confirm-dialog" data-system-confirm-dialog aria-labelledby="system-confirm-title" aria-describedby="system-confirm-message">
+        <form method="dialog" class="system-confirm-panel">
+            <div class="system-confirm-icon" aria-hidden="true">!</div>
+            <div>
+                <p class="eyebrow">Confirmación requerida</p>
+                <h2 id="system-confirm-title" data-system-confirm-title>Confirmar operación</h2>
+                <p id="system-confirm-message" data-system-confirm-message>Revise la información antes de continuar.</p>
+            </div>
+            <div class="action-row system-confirm-actions">
+                <button type="button" class="button-secondary" data-system-confirm-cancel>Cancelar</button>
+                <button type="button" class="button-danger" data-system-confirm-accept>Confirmar</button>
+            </div>
+        </form>
+    </dialog>
+    @foreach (var notification in new[]
+    {
+        (Key: "Success", Type: "success"),
+        (Key: "Warning", Type: "warning"),
+        (Key: "Info", Type: "info"),
+        (Key: "Error", Type: "error")
+    })
+    {
+        if (TempData[notification.Key] is string message && !string.IsNullOrWhiteSpace(message))
+        {
+            <span hidden data-system-notification data-notification-type="@notification.Type">@message</span>
+        }
+    }
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/quick-create.js" asp-append-version="true"></script>
+    <script src="~/js/crud-modal.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

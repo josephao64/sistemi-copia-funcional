@@ -1,0 +1,83 @@
+@model SistemiPos.Web.Models.Organizations.CompanyFormViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Editar empresa" : "Nueva empresa";
+}
+
+<div class="modal-form-content">
+    <h2>@ViewData["Title"]</h2>
+    <form asp-action="@(Model.Id.HasValue ? "EditCompany" : "CreateCompany")" method="post" class="form-grid">
+        @Html.AntiForgeryToken()
+        @if (Model.Id.HasValue)
+        {
+            <input asp-for="Id" type="hidden" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+            <label asp-for="BusinessGroupId"></label>
+            <select asp-for="BusinessGroupId" asp-items="Model.AvailableBusinessGroups" class="input" required></select>
+            <span asp-validation-for="BusinessGroupId" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Code"></label>
+            <input asp-for="Code" class="input" placeholder="Ej. EMP-01" required />
+            <span asp-validation-for="Code" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="TradeName"></label>
+            <input asp-for="TradeName" class="input" placeholder="Ej. Restaurante Principal" required />
+            <span asp-validation-for="TradeName" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="LegalName"></label>
+            <input asp-for="LegalName" class="input" placeholder="Ej. Operadora de Alimentos S.A." />
+            <span asp-validation-for="LegalName" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Nit"></label>
+            <input asp-for="Nit" class="input" placeholder="Ej. 101085257" />
+            <span asp-validation-for="Nit" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" class="input" placeholder="administracion@empresa.com" />
+            <span asp-validation-for="Email" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Phone"></label>
+            <input asp-for="Phone" class="input" placeholder="7922-0000" />
+            <span asp-validation-for="Phone" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Address"></label>
+            <input asp-for="Address" class="input" placeholder="Dirección fiscal" />
+            <span asp-validation-for="Address" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="TaxRegime"></label>
+            <input asp-for="TaxRegime" class="input" placeholder="Ej. Régimen General o Pequeño Contribuyente" />
+            <span asp-validation-for="TaxRegime" class="validation"></span>
+        </div>
+
+        @if (Model.Id.HasValue)
+        {
+            <label class="checkbox">
+                <input asp-for="IsActive" />
+                <span>Activo</span>
+            </label>
+        }
+
+        <div class="action-row" style="grid-column: 1 / -1;">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+</div>

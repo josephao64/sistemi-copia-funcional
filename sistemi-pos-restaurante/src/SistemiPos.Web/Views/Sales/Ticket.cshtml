@@ -1,0 +1,149 @@
+@model SistemiPos.Web.Models.Sales.PrintableReceiptViewModel
+@using SistemiPos.Domain.Sales
+@{
+    Layout = null;
+    var sale = Model.Sale;
+    var settings = Model.Settings;
+    var payments = sale.Payments is { Count: > 0 } ? sale.Payments : new[] { sale.Payment };
+    var numberFormat = new System.Globalization.NumberFormatInfo
+    {
+        NumberDecimalSeparator = sale.DecimalSeparator,
+        NumberGroupSeparator = sale.ThousandsSeparator
+    };
+    string Money(decimal amount)
+    {
+        var value = amount.ToString($"N{sale.CurrencyDecimals}", numberFormat);
+        return sale.CurrencySymbolPosition == "After" ? $"{value} {sale.CurrencySymbol}" : $"{sale.CurrencySymbol} {value}";
+    }
+    string Method(SistemiPos.Application.Sales.SalePaymentDto payment) => payment.PaymentMethod switch
+    {
+        PaymentMethodType.Cash => "Efectivo",
+        PaymentMethodType.Transfer => "Transferencia",
+        PaymentMethodType.Pos => "Tarjeta / POS",
+        PaymentMethodType.Credit => "Crédito",
+        PaymentMethodType.Mixed => "Pagos mixtos",
+        PaymentMethodType.Other => payment.DefinitionName ?? "Otro medio",
+        _ => "Otro medio"
+    };
+    var status = sale.Status switch
+    {
+        SaleStatus.Confirmed => "Venta confirmada",
+        SaleStatus.Cancelled => "VENTA ANULADA",
+        SaleStatus.PartiallyReturned => "Devolución parcial",
+        SaleStatus.Returned => "Venta devuelta",
+        _ => "Comprobante"
+    };
+    var legalName = string.IsNullOrWhiteSpace(settings.BusinessLegalName) ? settings.BusinessName : settings.BusinessLegalName;
+    var showTradeName = !string.Equals(legalName, settings.BusinessName, StringComparison.OrdinalIgnoreCase);
+    var configuredLogo = settings.BusinessLogoUrl?.Trim().Replace('\\', '/');
+    string? logoUrl = null;
+    if (!string.IsNullOrWhiteSpace(configuredLogo))
+    {
+        logoUrl = configuredLogo.Length > 1 && configuredLogo[1] == ':' || configuredLogo.StartsWith("//")
+            ? Url.Action("BusinessLogo", "Sales")
+            : configuredLogo.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || configuredLogo.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                ? configuredLogo
+                : Url.Content(configuredLogo.StartsWith('/') || configuredLogo.StartsWith("~/") ? configuredLogo : "~/" + configuredLogo);
+    }
+    var narrow = Context.Request.Query["width"] == "58";
+    var autoPrint = bool.TryParse(Context.Request.Query["autoPrint"], out var printRequested) && printRequested;
+}
+<!DOCTYPE html>
+<html lang="es-GT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ticket @sale.Number · @settings.BusinessName</title>
+    <link rel="stylesheet" href="~/css/sale-ticket.css" asp-append-version="true" />
+    <script src="~/js/sale-ticket.js" asp-append-version="true" defer></script>
+</head>
+<body class="sale-ticket-body @(narrow ? "is-narrow" : "")" data-sale-ticket data-auto-print="@(autoPrint ? "true" : "false")">
+    <nav class="ticket-toolbar" aria-label="Opciones del ticket">
+        <a asp-action="Details" asp-route-id="@sale.Id" class="ticket-back">← Volver a la venta</a>
+        <div class="ticket-toolbar-controls">
+            <label for="ticket-width">Papel</label>
+            <select id="ticket-width" data-ticket-width aria-label="Ancho del papel">
+                <option value="80" selected="@(!narrow)">80 mm</option>
+                <option value="58" selected="@narrow">58 mm</option>
+            </select>
+            <button type="button" data-ticket-print>Imprimir ticket</button>
+        </div>
+    </nav>
+    <p class="ticket-preview-label">Vista previa del ticket <span data-ticket-size-label>@(narrow ? "58" : "80") mm</span></p>
+    <main class="sale-ticket" aria-label="Ticket de venta">
+        <header class="ticket-brand">
+            @if (logoUrl is not null) { <img src="@logoUrl" alt="Logo de @settings.BusinessName" class="ticket-logo" /> }
+            <h1>@legalName</h1>
+            @if (showTradeName) { <p class="ticket-trade-name">@settings.BusinessName</p> }
+            @if (!string.IsNullOrWhiteSpace(settings.BusinessNit)) { <p>NIT: @settings.BusinessNit</p> }
+            @if (!string.IsNullOrWhiteSpace(settings.BusinessAddress)) { <p>@settings.BusinessAddress</p> }
+            @if (!string.IsNullOrWhiteSpace(settings.BusinessPhone)) { <p>Tel. @settings.BusinessPhone</p> }
+        </header>
+
+        <section class="ticket-document" aria-label="Datos de la venta">
+            <h2>Comprobante de venta</h2>
+            <strong class="ticket-number">@sale.Number</strong>
+            @if (sale.Status != SaleStatus.Confirmed) { <p class="ticket-state">@status</p> }
+            <dl class="ticket-facts">
+                <div><dt>Fecha</dt><dd>@sale.SoldAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+                <div><dt>Cajero</dt><dd>@sale.CashierUserName</dd></div>
+                @if (!string.IsNullOrWhiteSpace(sale.TerminalCode)) { <div><dt>Terminal</dt><dd>@sale.TerminalCode</dd></div> }
+            </dl>
+        </section>
+
+        <section class="ticket-customer" aria-label="Datos del cliente">
+            <span class="ticket-section-label">Cliente</span>
+            <strong>@sale.CustomerName</strong>
+            <p>NIT / ID: @Model.CustomerNit</p>
+        </section>
+
+        <section class="ticket-products" aria-labelledby="ticket-products-title">
+            <div class="ticket-products-heading"><h2 id="ticket-products-title">Detalle de compra</h2><span>Importe</span></div>
+            @foreach (var item in sale.Items)
+            {
+                <article class="ticket-product">
+                    <h3>@item.ProductName</h3>
+                    <div class="ticket-product-amount"><span>@DisplayFormats.Quantity(item.Quantity) × @Money(item.UnitPrice)</span><strong>@Money(item.Subtotal)</strong></div>
+                    @if (item.DiscountAmount > 0) { <p class="ticket-item-note">Descuento aplicado: −@Money(item.DiscountAmount)</p> }
+                    @if (settings.ShowTaxOnReceipt && item.IsTaxExempt) { <p class="ticket-item-note">Exento de impuesto</p> }
+                </article>
+            }
+        </section>
+
+        <section class="ticket-totals" aria-label="Totales">
+            <div><span>Subtotal</span><span>@Money(sale.Subtotal)</span></div>
+            @if (sale.DiscountTotal > 0) { <div><span>Descuento</span><span>−@Money(sale.DiscountTotal)</span></div> }
+            <div class="ticket-grand-total"><strong>TOTAL</strong><strong>@Money(sale.Total)</strong></div>
+            @if (settings.ShowTaxOnReceipt)
+            {
+                <div class="ticket-tax"><span>Base imponible</span><span>@Money(sale.TaxableBaseTotal)</span></div>
+                <div class="ticket-tax"><span>Impuesto incluido</span><span>@Money(sale.TaxTotal)</span></div>
+            }
+        </section>
+
+        <section class="ticket-payments" aria-labelledby="ticket-payments-title">
+            <h2 id="ticket-payments-title">@(payments.Count > 1 ? "Pagos mixtos" : "Forma de pago")</h2>
+            @foreach (var payment in payments)
+            {
+                var reference = payment.TransferReference ?? payment.CardVoucherReference ?? payment.OtherReference;
+                <div class="ticket-payment">
+                    <div class="ticket-payment-method"><strong>@Method(payment) @(payment.AccountPartNumber.HasValue ? $"· Cuenta {payment.AccountPartNumber}" : "")</strong><strong>@Money(payment.TotalAmount)</strong></div>
+                    @if (payment.PaymentMethod == PaymentMethodType.Cash)
+                    {
+                        <div><span>Recibido</span><span>@Money(payment.ReceivedAmount ?? 0)</span></div>
+                        <div><span>Cambio</span><strong>@Money(payment.ChangeAmount ?? 0)</strong></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(payment.CardLast4)) { <p class="ticket-item-note">Tarjeta terminada en @payment.CardLast4</p> }
+                    @if (!string.IsNullOrWhiteSpace(reference)) { <p class="ticket-item-note">Referencia: @reference</p> }
+                </div>
+            }
+        </section>
+        <footer class="ticket-footer">
+            <strong>¡Gracias por su compra!</strong>
+            @if (!string.IsNullOrWhiteSpace(settings.ReceiptFooter)) { <p class="ticket-configured-footer">@settings.ReceiptFooter</p> }
+            <p>Comprobante de venta. No sustituye una factura FEL.</p>
+        </footer>
+    </main>
+    <p class="ticket-print-help">Selecciona el mismo ancho en tu impresora y desactiva los encabezados y pies del navegador.<br /><a asp-action="Ticket" asp-route-id="@sale.Id" asp-route-format="text">Ver versión de texto</a></p>
+</body>
+</html>

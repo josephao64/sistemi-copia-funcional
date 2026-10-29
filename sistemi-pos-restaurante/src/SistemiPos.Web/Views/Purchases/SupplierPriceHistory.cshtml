@@ -1,0 +1,10 @@
+@model SistemiPos.Web.Models.Purchases.SupplierPriceHistoryViewModel
+@using SistemiPos.Domain.Purchases
+@{
+    ViewData["Title"] = "Historial de precios";
+}
+<section class="page-header compact-page-header"><div><h1>Historial de precios</h1><p class="helper-text">@Model.ProductName</p></div></section>
+<div class="table-card"><div class="table-responsive"><table class="data-table"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Empaque</th><th class="number-column">Cantidad empaques</th><th class="number-column">Unidades</th><th class="money">Costo empaque</th><th class="money">Costo unitario</th><th class="money">Costo total</th></tr></thead><tbody>
+@foreach(var row in Model.Rows){<tr><td>@row.PurchaseDateUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy")</td><td>@row.SupplierName</td><td>@row.PackageName</td><td class="number-column">@DisplayFormats.Quantity(row.PackageQuantity)</td><td class="number-column">@DisplayFormats.Quantity(row.PackageQuantity * row.UnitsPerPackage)</td><td class="money">@Model.CurrencySymbol @row.PackageCost.ToString($"N{Model.CurrencyDecimals}")</td><td class="money">@Model.CurrencySymbol @row.UnitCost.ToString($"N{Model.CurrencyDecimals}")</td><td class="money">@Model.CurrencySymbol @row.TotalCost.ToString($"N{Model.CurrencyDecimals}")</td></tr>}
+@if(Model.Rows.Count == 0){<tr><td colspan="8">No existe historial de compras para esta relación.</td></tr>}
+</tbody></table></div></div>

@@ -1,0 +1,19 @@
+@model SistemiPos.Application.Restaurant.RestaurantWorkspace
+@using SistemiPos.Domain.Restaurant
+@using SistemiPos.Web.Models.Restaurant
+@{ ViewData["Title"] = "Delivery"; var deliveries = Model.Orders.Where(x => x.ServiceType == RestaurantServiceType.Delivery).ToList(); }
+<partial name="_Navigation" /><div class="restaurant-workspace">
+<header class="restaurant-page-header"><div><p class="restaurant-eyebrow">@Model.BranchName · Despacho y reparto</p><h1>Delivery</h1><p>Asigna un motorista desde el pedido, registra su salida y confirma la entrega.</p></div><span class="restaurant-badge" data-state="OutForDelivery">@deliveries.Count(x => x.Status == RestaurantOrderStatus.OutForDelivery) en ruta</span></header>
+<div class="restaurant-filters restaurant-panel"><label class="restaurant-search">Buscar entrega<input class="input" id="delivery-search" placeholder="Pedido, cliente, dirección o motorista" /></label><label>Estado<select class="input" id="delivery-status"><option value="active">Entregas activas</option><option value="">Todos los estados</option>@foreach(var state in Enum.GetValues<RestaurantOrderStatus>()) { <option value="@state">@RestaurantLabels.Order(state)</option> }</select></label><button class="button-secondary" type="button" id="delivery-clear">Limpiar</button></div>
+<div class="restaurant-delivery-grid">
+@foreach(var order in deliveries) {
+var incident = order.Events.Where(e => e.Action == "incident").OrderByDescending(e => e.AtUtc).FirstOrDefault();
+<article class="restaurant-delivery-card" data-delivery-card data-status="@order.Status">
+<div class="restaurant-panel-heading"><h2>@order.Number</h2><span class="restaurant-badge" data-state="@order.Status">@RestaurantLabels.Order(order.Status)</span></div>
+<h3>@(string.IsNullOrWhiteSpace(order.CustomerName) ? "Cliente sin nombre" : order.CustomerName)</h3><p>@order.Phone</p><p class="restaurant-address">@order.Address<small>@order.DeliveryZoneName</small></p>
+<dl class="restaurant-meta"><div><dt>Motorista</dt><dd>@(order.DriverName ?? "Sin asignar")</dd></div><div><dt>Ruta</dt><dd>@(string.IsNullOrWhiteSpace(order.Route) ? "Sin instrucciones" : order.Route)</dd></div><div><dt>Salida</dt><dd>@(order.DepartedAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM HH:mm") ?? "Pendiente")</dd></div><div><dt>Entrega</dt><dd>@(order.DeliveredAtUtc?.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM HH:mm") ?? "Pendiente")</dd></div></dl>
+@if(incident is not null) { <p class="restaurant-note"><strong>Última incidencia</strong><br />@incident.Detail</p> }
+<div class="restaurant-card-footer"><div><small>Tarifa de entrega</small><strong data-money="@order.DeliveryFee.ToString(System.Globalization.CultureInfo.InvariantCulture)">@order.DeliveryFee.ToString("N2")</strong></div><a class="button-secondary" href="/restaurante/@order.Id">@(order.Status == RestaurantOrderStatus.Ready ? "Asignar y despachar" : "Ver pedido")</a></div></article>
+}
+</div><div class="restaurant-empty restaurant-panel" id="delivery-empty" hidden><strong>No hay entregas en esta vista</strong><p>Los pedidos con servicio delivery aparecerán aquí. Puedes cambiar los filtros.</p></div></div>
+

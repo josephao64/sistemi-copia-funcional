@@ -1,0 +1,17 @@
+@model SistemiPos.Web.Models.Purchases.PurchaseHistoryViewModel
+@using SistemiPos.Domain.Common
+@using SistemiPos.Domain.Purchases
+@{ ViewData["Title"]="Historial de compras"; }
+<div class="table-card" data-filter-table>
+    <form method="get" class="form-grid compact-form-grid purchase-history-filters" data-auto-filter-form>
+        <div class="field"><label>Proveedor</label><input name="supplierId" type="hidden" value="@Model.SupplierId" data-supplier-filter-id/><input class="input" value="@Model.SupplierName" list="purchase-history-suppliers" autocomplete="off" placeholder="Buscar proveedor..." data-supplier-filter-search/></div>
+        <datalist id="purchase-history-suppliers">@foreach(var supplier in Model.Suppliers){<option value="@supplier.Text" data-id="@supplier.Value"></option>}</datalist>
+        <div class="field"><label>Desde</label><input name="from" value="@Model.From.ToString("yyyy-MM-dd")" type="date" class="input"/></div>
+        <div class="field"><label>Hasta</label><input name="to" value="@Model.To.ToString("yyyy-MM-dd")" type="date" class="input"/></div>
+        <div class="field"><label>Condición</label><select name="terms" class="input"><option value="">Todos</option><option value="@PurchaseTermsType.Cash" selected="@(Model.Terms==PurchaseTermsType.Cash)">Contado</option><option value="@PurchaseTermsType.Credit" selected="@(Model.Terms==PurchaseTermsType.Credit)">Crédito</option></select></div>
+        <div class="field"><label>Estado</label><select name="status" class="input"><option value="">Todos</option><option value="@DocumentStatus.Confirmed" selected="@(Model.Status==DocumentStatus.Confirmed)">Confirmada</option><option value="@DocumentStatus.Cancelled" selected="@(Model.Status==DocumentStatus.Cancelled)">Anulada</option></select></div>
+        <div class="action-row"><a asp-action="History" class="button-ghost link-button">Limpiar</a></div>
+    </form>
+    <div class="search-bar"><input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por número, proveedor, factura u origen" aria-label="Buscar compras y facturas" /></div>
+    <partial name="_PurchaseTable" model="Model" />
+</div>

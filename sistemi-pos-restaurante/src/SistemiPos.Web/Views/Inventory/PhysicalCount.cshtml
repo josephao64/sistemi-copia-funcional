@@ -1,0 +1,154 @@
+@model SistemiPos.Web.Models.Inventory.PhysicalInventoryCountPageViewModel
+@using SistemiPos.Domain.Inventory
+@using SistemiPos.Web.Models.Inventory
+@{ ViewData["Title"] = "Toma física de inventario"; var count = Model.Count; var editable = count.Status == PhysicalInventoryCountStatus.InProgress; }
+
+<section class="page-header">
+    <div><p class="eyebrow">Inventario</p><h1>Toma física de inventario</h1><p class="lead">@count.Name</p></div>
+    <div class="action-row inventory-tabs" aria-label="Secciones de inventario">
+        <a asp-action="Index" class="button-secondary link-button">Existencias</a>
+        <a asp-action="PhysicalCount" class="button-primary link-button">Tomas físicas</a>
+        <a asp-action="Kardex" class="button-secondary link-button">Kardex</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success) { <div class="alert-success">@success</div> }
+@if (TempData["Error"] is string error) { <div class="alert-error">@error</div> }
+<div class="alert-error" data-count-error hidden></div>
+<div class="alert-success" data-count-success hidden></div>
+
+<div class="physical-count-meta">
+    <div><span class="status-badge @(editable ? "status-warning" : "status-success")">@(editable ? "En proceso" : "Finalizada")</span><span>Creada @count.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") por @count.CreatedBy</span></div>
+    <div><strong>Alcance:</strong> @(count.Scope == PhysicalInventoryCountScope.AllInventory ? "Todo el inventario" : string.Join(", ", count.Categories))</div>
+</div>
+
+<div class="stats-grid physical-count-summary" data-count-summary>
+    <article class="stat-card"><span>Total</span><strong data-summary="totalProducts">@count.Summary.TotalProducts</strong></article>
+    <article class="stat-card"><span>Contados</span><strong data-summary="countedProducts">@count.Summary.CountedProducts</strong></article>
+    <article class="stat-card"><span>Pendientes</span><strong data-summary="pendingProducts">@count.Summary.PendingProducts</strong></article>
+    <article class="stat-card"><span>Correctos</span><strong data-summary="correctProducts">@count.Summary.CorrectProducts</strong></article>
+    <article class="stat-card"><span>Faltantes</span><strong data-summary="shortageProducts">@count.Summary.ShortageProducts</strong></article>
+    <article class="stat-card"><span>Sobrantes</span><strong data-summary="surplusProducts">@count.Summary.SurplusProducts</strong></article>
+    <article class="stat-card"><span>Reconteo</span><strong data-summary="recountRequiredProducts">@count.Summary.RecountRequiredProducts</strong></article>
+</div>
+
+<div class="table-card" data-physical-count data-count-id="@count.Id" data-editable="@editable.ToString().ToLowerInvariant()">
+    <div class="table-toolbar"><div><h2>@(editable ? "Registrar conteo" : "Detalle histórico")</h2><p class="helper-text">@(editable ? "La referencia se captura al comenzar cada producto. Guardar conserva el conteo sin modificar la existencia operativa." : "Los valores muestran la fotografía histórica y el ajuste aplicado al finalizar.")</p></div>@if (!editable){<a asp-action="ExportPhysicalCount" asp-route-id="@count.Id" class="button-secondary link-button">Exportar Excel</a>}</div>
+    <form method="get" asp-action="PhysicalCount" class="physical-count-filters">
+        <input type="hidden" name="id" value="@count.Id" />
+        <input type="search" class="input" name="search" value="@Model.Search" placeholder="Buscar por código, nombre o categoría" aria-label="Buscar productos para conteo" />
+        <select class="input" name="category" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option>@foreach(var category in count.Items.Select(x => x.CategoryName).Distinct().OrderBy(x => x)){<option value="@category" selected="@(Model.Category == category)">@category</option>}</select>
+        <select class="input" name="filter" aria-label="Filtrar por estado">
+            <option value="All" selected="@(Model.Filter == PhysicalInventoryCountFilter.All)">Todos</option>
+            <option value="Pending" selected="@(Model.Filter == PhysicalInventoryCountFilter.Pending)">Pendientes</option>
+            <option value="Counted" selected="@(Model.Filter == PhysicalInventoryCountFilter.Counted)">Contados</option>
+            <option value="Difference" selected="@(Model.Filter == PhysicalInventoryCountFilter.Difference)">Con diferencia</option>
+            <option value="Shortage" selected="@(Model.Filter == PhysicalInventoryCountFilter.Shortage)">Faltantes</option>
+            <option value="Surplus" selected="@(Model.Filter == PhysicalInventoryCountFilter.Surplus)">Sobrantes</option>
+            <option value="RecountRequired" selected="@(Model.Filter == PhysicalInventoryCountFilter.RecountRequired)">Reconteo requerido</option>
+        </select>
+        <button type="submit" class="button-secondary">Filtrar</button>
+    </form>
+    <div class="table-responsive">
+        <table class="data-table physical-count-table">
+            <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Existencia sistema</th><th>Existencia contada</th><th>Diferencia</th><th>Comentario</th><th>Acción</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.VisibleItems)
+            {
+                var displayStock = item.ReferenceStock ?? item.CurrentOperationalStock;
+                var buttonClass = item.Status == PhysicalInventoryCountItemStatus.Counted ? "button-counted" : item.Status == PhysicalInventoryCountItemStatus.RecountRequired ? "button-recount" : "button-primary";
+                <tr data-count-row data-item-id="@item.Id" data-status="@item.Status" data-started="@((item.ReferenceStock.HasValue && item.Status != PhysicalInventoryCountItemStatus.Counted).ToString().ToLowerInvariant())">
+                    <td><strong>@item.InternalCode</strong></td><td>@item.ProductName</td><td>@item.CategoryName</td>
+                    <td><span data-reference data-value="@displayStock.ToString(System.Globalization.CultureInfo.InvariantCulture)">@DisplayFormats.Quantity(displayStock)</span></td>
+                    <td><input class="input count-input" data-counted type="number" min="0" step="1" inputmode="numeric" value="@item.CountedStock" placeholder="0" aria-label="Existencia contada de @item.ProductName" disabled="@(!editable)" /></td>
+                    <td><span data-difference class="status-badge @(item.Difference switch { < 0 => "status-danger", > 0 => "status-warning", 0 => "status-success", _ => "status-neutral" })">@(item.Status == PhysicalInventoryCountItemStatus.RecountRequired ? "Reconteo" : item.Difference.HasValue ? DisplayFormats.Quantity(item.Difference.Value) : "Pendiente")</span></td>
+                    <td><input class="input" data-comment type="text" maxlength="500" value="@item.Comment" placeholder="Comentario opcional" aria-label="Comentario de @item.ProductName" disabled="@(!editable)" /></td>
+                    <td><button type="button" class="@buttonClass" data-save disabled="@(!editable)">@(item.Status == PhysicalInventoryCountItemStatus.Counted ? "Contado" : item.Status == PhysicalInventoryCountItemStatus.RecountRequired ? "Recontar" : "Guardar")</button></td>
+                </tr>
+            }
+            @if (Model.VisibleItems.Count == 0){<tr><td colspan="8" class="empty-state">No hay productos que coincidan con los filtros.</td></tr>}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (editable)
+{
+    <div class="physical-count-finalize-bar"><div><strong>Finalizar toma</strong><p class="helper-text">Se habilita cuando todos los productos estén contados y no existan reconteos pendientes.</p></div><button type="button" class="button-primary" data-open-finalize disabled="@(count.Summary.PendingProducts > 0 || count.Summary.RecountRequiredProducts > 0)">Finalizar toma de inventario</button></div>
+    <dialog class="confirmation-dialog" data-finalize-dialog>
+        <form method="dialog"><button class="dialog-close" aria-label="Cerrar">×</button></form>
+        <h2>Confirmar finalización</h2>
+        <p>Se aplicará únicamente la diferencia de cada conteo sobre la existencia operativa actual.</p>
+        <div class="dialog-summary"><span>Total: <strong data-dialog-total>@count.Summary.TotalProducts</strong></span><span>Correctos: <strong data-dialog-correct>@count.Summary.CorrectProducts</strong></span><span>Faltantes: <strong data-dialog-shortage>@count.Summary.ShortageProducts</strong></span><span>Sobrantes: <strong data-dialog-surplus>@count.Summary.SurplusProducts</strong></span></div>
+        <form asp-action="FinalizePhysicalCount" method="post" class="action-row"><input type="hidden" name="id" value="@count.Id" />@Html.AntiForgeryToken()<button type="submit" class="button-primary">Confirmar y aplicar diferencias</button><button type="button" class="button-secondary" data-close-finalize>Cancelar</button></form>
+    </dialog>
+}
+
+<form hidden data-antiforgery>@Html.AntiForgeryToken()</form>
+
+@section Scripts {
+<script>
+(() => {
+    const container = document.querySelector('[data-physical-count]');
+    if (!container || container.dataset.editable !== 'true') return;
+    const countId = container.dataset.countId;
+    const token = document.querySelector('[data-antiforgery] input[name="__RequestVerificationToken"]').value;
+    const errorBox = document.querySelector('[data-count-error]');
+    const successBox = document.querySelector('[data-count-success]');
+    const showMessage = (element, message) => { element.textContent = message; element.hidden = false; window.setTimeout(() => element.hidden = true, 6000); };
+    const updateSummary = summary => {
+        Object.entries(summary).forEach(([key, value]) => { const target = document.querySelector(`[data-summary="${key}"]`); if (target) target.textContent = value; });
+        const finish = document.querySelector('[data-open-finalize]');
+        if (finish) finish.disabled = summary.pendingProducts > 0 || summary.recountRequiredProducts > 0;
+        const mappings = { totalProducts: 'total', correctProducts: 'correct', shortageProducts: 'shortage', surplusProducts: 'surplus' };
+        Object.entries(mappings).forEach(([key, target]) => { const node = document.querySelector(`[data-dialog-${target}]`); if (node) node.textContent = summary[key]; });
+    };
+    const setDifference = row => {
+        const input = row.querySelector('[data-counted]'); const badge = row.querySelector('[data-difference]');
+        if (input.value === '') { badge.textContent = 'Pendiente'; badge.className = 'status-badge status-neutral'; return; }
+        const difference = Number(input.value) - Number(row.querySelector('[data-reference]').dataset.value);
+        badge.textContent = difference.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        badge.className = `status-badge ${difference < 0 ? 'status-danger' : difference > 0 ? 'status-warning' : 'status-success'}`;
+    };
+    const begin = async row => {
+        if (row.dataset.started === 'true' && row.dataset.status !== 'Counted') return;
+        if (row.dataset.started === 'loading') { await new Promise(resolve => window.setTimeout(resolve, 120)); return begin(row); }
+        row.dataset.started = 'loading';
+        const response = await fetch(`@Url.Action("BeginPhysicalCountItem")?id=${countId}&itemId=${row.dataset.itemId}`, { method: 'POST', headers: { 'RequestVerificationToken': token } });
+        const body = await response.json();
+        if (!response.ok) { row.dataset.started = 'false'; throw new Error(body.message || 'No fue posible iniciar el conteo.'); }
+        row.dataset.started = 'true'; row.dataset.status = 'Pending';
+        const reference = row.querySelector('[data-reference]'); reference.textContent = Number(body.referenceStock).toLocaleString(undefined, { maximumFractionDigits: 2 }); reference.dataset.value = body.referenceStock;
+        const button = row.querySelector('[data-save]'); button.textContent = 'Guardar'; button.className = 'button-primary';
+        updateSummary(body.summary); setDifference(row);
+    };
+    container.querySelectorAll('[data-count-row]').forEach(row => {
+        const counted = row.querySelector('[data-counted]'); const comment = row.querySelector('[data-comment]'); const button = row.querySelector('[data-save]');
+        const markChanged = async () => { try { await begin(row); setDifference(row); } catch (error) { showMessage(errorBox, error.message); } };
+        counted.addEventListener('focus', () => { if (row.dataset.status !== 'Counted') markChanged(); });
+        counted.addEventListener('input', markChanged); comment.addEventListener('input', markChanged);
+        button.addEventListener('click', async () => {
+            errorBox.hidden = true; successBox.hidden = true;
+            try {
+                await begin(row);
+                if (counted.value === '' || !Number.isInteger(Number(counted.value)) || Number(counted.value) < 0) throw new Error('Ingrese una existencia contada entera igual o mayor que cero.');
+                button.disabled = true; button.textContent = 'Guardando...';
+                const response = await fetch(`@Url.Action("SavePhysicalCountItem")?id=${countId}&itemId=${row.dataset.itemId}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token }, body: JSON.stringify({ countedStock: Number(counted.value), comment: comment.value }) });
+                const body = await response.json();
+                if (!response.ok && response.status !== 409) throw new Error(body.message || 'No fue posible guardar el conteo.');
+                updateSummary(body.summary);
+                if (response.status === 409) {
+                    row.dataset.status = 'RecountRequired'; row.dataset.started = 'false'; button.textContent = 'Recontar'; button.className = 'button-recount';
+                    const badge = row.querySelector('[data-difference]'); badge.textContent = 'Reconteo'; badge.className = 'status-badge status-danger'; showMessage(errorBox, body.message); return;
+                }
+                row.dataset.status = 'Counted'; row.dataset.started = 'false'; button.textContent = 'Contado'; button.className = 'button-counted'; showMessage(successBox, body.message);
+            } catch (error) { button.textContent = row.dataset.status === 'RecountRequired' ? 'Recontar' : 'Guardar'; showMessage(errorBox, error.message); }
+            finally { button.disabled = false; }
+        });
+    });
+    const dialog = document.querySelector('[data-finalize-dialog]');
+    document.querySelector('[data-open-finalize]')?.addEventListener('click', () => dialog.showModal());
+    document.querySelector('[data-close-finalize]')?.addEventListener('click', () => dialog.close());
+})();
+</script>
+}

@@ -1,0 +1,133 @@
+@model SistemiPos.Web.Models.Inventory.InventoryTransferIndexViewModel
+@using SistemiPos.Domain.Inventory
+@{
+    ViewData["Title"] = "Traslados de inventario";
+}
+
+<div class="table-card" data-filter-table>
+    <div class="purchase-receipt-top-actions" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+            <h2 style="margin:0; font-size:1.25rem;">Traslados entre bodegas</h2>
+            <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.875rem;">Distribución y abastecimiento desde Bodega Central a sucursales</p>
+        </div>
+        <a asp-action="Create" class="button-primary link-button">
+            <svg aria-hidden="true" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:6px;vertical-align:-2px;" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo traslado
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] is string success)
+    {
+        <div class="alert alert-success" style="margin-bottom:1rem; padding:0.75rem 1rem; border-radius:6px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#065f46;">
+            @success
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string error)
+    {
+        <div class="alert alert-danger" style="margin-bottom:1rem; padding:0.75rem 1rem; border-radius:6px; background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#991b1b;">
+            @error
+        </div>
+    }
+
+    <form method="get" asp-action="Index" class="form-grid compact-form-grid" data-auto-filter-form style="margin-bottom:1rem;">
+        <div class="field">
+            <label>Bodega origen</label>
+            <select name="originWarehouseId" class="input">
+                <option value="">Todas las bodegas</option>
+                @foreach (var wh in Model.Warehouses)
+                {
+                    <option value="@wh.Value" selected="@(Model.OriginWarehouseId?.ToString() == wh.Value)">@wh.Text</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Bodega destino</label>
+            <select name="destinationWarehouseId" class="input">
+                <option value="">Todas las bodegas</option>
+                @foreach (var wh in Model.Warehouses)
+                {
+                    <option value="@wh.Value" selected="@(Model.DestinationWarehouseId?.ToString() == wh.Value)">@wh.Text</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Estado</label>
+            <select name="status" class="input">
+                <option value="">Todos los estados</option>
+                <option value="@InventoryTransferStatus.Draft" selected="@(Model.Status == InventoryTransferStatus.Draft)">Borrador</option>
+                <option value="@InventoryTransferStatus.Dispatched" selected="@(Model.Status == InventoryTransferStatus.Dispatched)">Despachado</option>
+                <option value="@InventoryTransferStatus.Received" selected="@(Model.Status == InventoryTransferStatus.Received)">Recibido</option>
+                <option value="@InventoryTransferStatus.Cancelled" selected="@(Model.Status == InventoryTransferStatus.Cancelled)">Cancelado</option>
+            </select>
+        </div>
+        <div class="action-row" style="align-self:end;">
+            <button type="submit" class="button-secondary">Filtrar</button>
+            <a asp-action="Index" class="button-ghost link-button">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Bodega origen</th>
+                    <th>Bodega destino</th>
+                    <th>Fecha solicitud</th>
+                    <th>Solicitado por</th>
+                    <th>Líneas</th>
+                    <th>Estado</th>
+                    <th class="action-column">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Transfers.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                            No se encontraron traslados de inventario registrados.
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in Model.Transfers)
+                {
+                    var statusClass = item.Status switch
+                    {
+                        InventoryTransferStatus.Draft => "status-warning",
+                        InventoryTransferStatus.Dispatched => "status-info",
+                        InventoryTransferStatus.Received => "status-success",
+                        InventoryTransferStatus.Cancelled => "status-danger",
+                        _ => "status-neutral"
+                    };
+                    var statusLabel = item.Status switch
+                    {
+                        InventoryTransferStatus.Draft => "Borrador",
+                        InventoryTransferStatus.Dispatched => "Despachado",
+                        InventoryTransferStatus.Received => "Recibido",
+                        InventoryTransferStatus.Cancelled => "Cancelado",
+                        _ => item.Status.ToString()
+                    };
+
+                    <tr>
+                        <td><strong>@item.Number</strong></td>
+                        <td>@item.OriginWarehouseName</td>
+                        <td>@item.DestinationWarehouseName</td>
+                        <td>@item.RequestedAtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@item.RequestedBy</td>
+                        <td>@item.Items.Count prod.</td>
+                        <td>
+                            <span class="status-badge @statusClass">@statusLabel</span>
+                        </td>
+                        <td class="action-column">
+                            <div class="table-actions">
+                                <a asp-action="Details" asp-route-id="@item.Id" class="button-secondary link-button" style="padding:4px 8px; font-size:0.8125rem;">
+                                    Ver detalle
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

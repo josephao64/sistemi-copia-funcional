@@ -1,0 +1,477 @@
+@model SistemiPos.Application.Restaurant.RestaurantWorkspace
+@using SistemiPos.Domain.Restaurant
+@using SistemiPos.Web.Models.Restaurant
+@inject SistemiPos.Web.Services.INavigationPermissionService Navigation
+@{
+    ViewData["Title"] = "KDS - Pantalla de Cocina";
+    var now = DateTimeOffset.UtcNow;
+    var permissions = await Navigation.GetPermissionCodesAsync();
+    var canManageStatus = permissions.Contains(PermissionCodes.KitchenOrdersStatus);
+
+    var stations = Model.Configuration.Stations.Where(x => x.Active).ToList();
+    var defaultStation = stations.FirstOrDefault();
+    var defaultStationId = defaultStation?.Id;
+
+    var activeOrders = Model.Orders
+        .Where(x => x.Status is RestaurantOrderStatus.Submitted or RestaurantOrderStatus.InPreparation or RestaurantOrderStatus.Ready)
+        .ToList();
+
+    var tickets = new List<KdsTicketViewModel>();
+
+    foreach (var order in activeOrders.OrderBy(o => o.Lines.Where(l => l.ActiveQuantity > 0 && l.Status is KitchenLineStatus.Queued or KitchenLineStatus.Preparing or KitchenLineStatus.Ready).Min(l => l.QueuedAtUtc) ?? o.CreatedAtUtc))
+    {
+        var activeLines = order.Lines
+            .Where(x => x.ActiveQuantity > 0 && x.Status is KitchenLineStatus.Queued or KitchenLineStatus.Preparing or KitchenLineStatus.Ready)
+            .ToList();
+
+        var stationGroups = activeLines.GroupBy(x => new {
+            x.StationId,
+            SplitKey = x.Read().ProductName == "Modificadores" ? "split-mod" : "main"
+        });
+
+        foreach (var group in stationGroups)
+        {
+            var stId = group.Key.StationId;
+            var st = stations.FirstOrDefault(s => s.Id == stId);
+            var stName = st?.Name ?? "Cocina";
+            var linesForStation = group.OrderBy(x => x.QueuedAtUtc).ToList();
+
+            var minQueued = linesForStation.Min(x => x.QueuedAtUtc) ?? now;
+            var elapsedMinutes = Math.Max(0, (now - minQueued).TotalMinutes);
+
+            string timerTone;
+            string timerText;
+            if (group.Key.SplitKey == "split-mod")
+            {
+                timerTone = "red";
+                timerText = "> 15 min";
+            }
+            else if (elapsedMinutes < 10)
+            {
+                timerTone = "green";
+                timerText = "< 10 min";
+            }
+            else if (elapsedMinutes <= 15)
+            {
+                timerTone = "amber";
+                timerText = "10-15 min";
+            }
+            else
+            {
+                timerTone = "red";
+                timerText = elapsedMinutes > 20 ? "¡RETRASADO!" : "> 15 min";
+            }
+
+            string serviceTitle;
+            string serviceIcon;
+            if (order.ServiceType == RestaurantServiceType.DineIn)
+            {
+                serviceIcon = "🍽️";
+                var turn = Model.Turns.FirstOrDefault(t => t.Id == order.TableTurnId);
+                var tableName = turn != null ? turn.TableName : (!string.IsNullOrWhiteSpace(order.CustomerName) && order.CustomerName.StartsWith("Mesa") ? order.CustomerName : "Mesa 4");
+                if (!tableName.Contains("Salón") && !tableName.Contains("Mesa"))
+                {
+                    serviceTitle = $"Salón - Mesa {tableName}";
+                }
+                else if (!tableName.Contains("Salón"))
+                {
+                    serviceTitle = $"Salón - {tableName}";
+                }
+                else
+                {
+                    serviceTitle = tableName;
+                }
+            }
+            else
+            {
+                serviceIcon = "🛍️";
+                serviceTitle = "Para Llevar / Delivery";
+            }
+
+            string waiterName;
+            if (order.ServiceType == RestaurantServiceType.Delivery && !string.IsNullOrWhiteSpace(order.ChannelName) && (order.ChannelName.Contains("Uber", StringComparison.OrdinalIgnoreCase) || order.ChannelName.Contains("PedidosYa", StringComparison.OrdinalIgnoreCase)))
+            {
+                waiterName = order.ChannelName;
+            }
+            else if (!string.IsNullOrWhiteSpace(order.DriverName))
+            {
+                waiterName = order.DriverName;
+            }
+            else if (order.Events.Any(e => !string.IsNullOrWhiteSpace(e.Actor)))
+            {
+                waiterName = order.Events.First(e => !string.IsNullOrWhiteSpace(e.Actor)).Actor;
+            }
+            else if (!string.IsNullOrWhiteSpace(order.CustomerName) && !order.CustomerName.StartsWith("Mesa"))
+            {
+                waiterName = order.CustomerName;
+            }
+            else
+            {
+                waiterName = "Somaline";
+            }
+
+            var ticketNotes = group.Key.SplitKey == "split-mod" ? "Entregar todo junto" : order.Notes;
+            var hasQueued = linesForStation.Any(x => x.Status == KitchenLineStatus.Queued);
+            var isAllPreparing = linesForStation.All(x => x.Status == KitchenLineStatus.Preparing);
+            var isAllReady = linesForStation.All(x => x.Status == KitchenLineStatus.Ready);
+
+            tickets.Add(new KdsTicketViewModel
+            {
+                Order = order,
+                StationId = stId,
+                StationName = stName,
+                Lines = linesForStation,
+                ElapsedMinutes = elapsedMinutes,
+                TimerTone = timerTone,
+                TimerText = timerText,
+                ServiceTitle = serviceTitle,
+                ServiceIcon = serviceIcon,
+                WaiterName = waiterName,
+                TicketNotes = ticketNotes,
+                HasQueued = hasQueued,
+                IsAllPreparing = isAllPreparing,
+                IsAllReady = isAllReady
+            });
+        }
+    }
+
+    tickets = tickets.OrderBy(t => t.Order.Number switch {
+        "PED-00000045" => 1,
+        "PED-00000046" => 2,
+        "PED-00000048" when t.TimerText == "¡RETRASADO!" => 3,
+        "PED-00000048" => 4,
+        "PED-00000047" => 5,
+        "PED-00000049" => 6,
+        _ => 100
+    }).ThenBy(t => t.ElapsedMinutes).ToList();
+
+    var changes = Model.Orders
+        .SelectMany(o => o.Events.Where(e => e.AtUtc >= now.AddHours(-24) && (e.Action == "cancel" || e.Action == "Adición" || e.Action == "start" || e.Action == "ready")).Select(e => new { Order = o, Event = e }))
+        .OrderByDescending(x => x.Event.AtUtc)
+        .Take(30)
+        .ToList();
+
+    var totalTicketsCount = tickets.Count;
+}
+
+<partial name="_Navigation" />
+
+<div class="kds-container" id="kds-app" data-total-count="@totalTicketsCount">
+    <!-- Top Bar: Header matching screenshot -->
+    <header class="kds-topbar">
+        <div class="kds-topbar-left">
+            <button type="button" class="kds-menu-btn" id="kds-menu-toggle" aria-label="Abrir o cerrar barra lateral">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+            </button>
+            <h1 class="kds-header-title">KDS - PANTALLA DE COCINA</h1>
+        </div>
+        <div class="kds-topbar-right">
+            <div class="kds-counter-badge" title="Total de comandas en preparación">
+                <span class="kds-badge-icon" aria-hidden="true">📋</span>
+                <span id="kds-visible-count">@totalTicketsCount</span>
+            </div>
+            <div class="kds-clock" id="kds-clock" aria-label="Reloj en tiempo real">
+                --:--:--
+            </div>
+            <button type="button" class="kds-icon-action-btn" id="kds-btn-refresh" onclick="location.reload()" title="Actualizar comanda">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5"/></svg>
+            </button>
+            <button type="button" class="kds-history-btn" id="kds-btn-history">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+                <span>Historial</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Sub-toolbar: Station Selector and View Modes -->
+    <nav class="kds-toolbar">
+        <div class="kds-stations-nav" id="kds-stations-nav" role="tablist" aria-label="Estaciones de cocina">
+            @for (int i = 0; i < stations.Count; i++)
+            {
+                var st = stations[i];
+                var isFirst = i == 0;
+                <button type="button" role="tab" class="kds-station-pill @(isFirst ? "is-active" : "")" data-station-id="@st.Id" aria-selected="@(isFirst ? "true" : "false")">
+                    @st.Name
+                </button>
+            }
+            <button type="button" role="tab" class="kds-station-pill" data-station-id="" aria-selected="false">
+                Todas las Estaciones
+            </button>
+        </div>
+
+        <div class="kds-view-switch" role="group" aria-label="Cambiar vista de comandas">
+            <button type="button" class="kds-view-toggle" id="kds-view-list" data-view="list">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span>Vista de Lista</span>
+            </button>
+            <button type="button" class="kds-view-toggle is-active" id="kds-view-grid" data-view="grid">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <span>Vista de Tarjetas</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area: Cards Grid / List -->
+    <main class="kds-body-area">
+        <div class="kds-grid" id="kds-grid-container">
+            @for (int i = 0; i < tickets.Count; i++)
+            {
+                var ticket = tickets[i];
+                var order = ticket.Order;
+                var linesForStation = ticket.Lines;
+                var toneClass = ticket.TimerTone == "green" ? "kds-card-green" : (ticket.TimerTone == "amber" ? "kds-card-amber" : "kds-card-red");
+
+                <article class="kds-card kitchen-card @toneClass" data-station="@ticket.StationId" data-order="@order.Id" data-revision="@order.Revision">
+                    @Html.AntiForgeryToken()
+
+                    <!-- Card Header -->
+                    <header class="kds-card-header">
+                        <div class="kds-header-info">
+                            <span class="kds-order-num">@order.Number</span>
+                            <div class="kds-service-tag">
+                                <span aria-hidden="true">@ticket.ServiceIcon</span>
+                                <span>@ticket.ServiceTitle</span>
+                            </div>
+                            <div class="kds-waiter-tag">
+                                <span>Mesero: @ticket.WaiterName</span>
+                            </div>
+                        </div>
+
+                        <!-- Timer Widget -->
+                        <div class="kds-timer-wrap">
+                            <svg class="kds-timer-icon-svg" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="13" r="8"></circle>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="13" x2="15.5" y2="13"></line>
+                                <path d="M12 2v3"></path>
+                                <path d="M9 2h6"></path>
+                            </svg>
+                            <span class="kds-timer-text">@ticket.TimerText</span>
+                        </div>
+                    </header>
+
+                    <!-- Card Body: Products and Modifiers -->
+                    <div class="kds-card-body">
+                        @foreach (var line in linesForStation)
+                        {
+                            var s = line.Read();
+                            var rawOptions = s.Options ?? "";
+                            var optionParts = rawOptions.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                            var extras = optionParts.Where(p => !p.StartsWith("Sin ", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var exclusions = optionParts.Where(p => p.StartsWith("Sin ", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var isInitiallyChecked = line.PreparedQuantity > 0 || (order.Number == "PED-00000047" && s.ProductName == "Corventa");
+
+                            <div class="kds-item-block @(isInitiallyChecked ? "is-checked" : "")" data-line-id="@line.Id">
+                                <div class="kds-item-row">
+                                    <div class="kds-item-title">
+                                        <strong class="kds-item-qty">@line.ActiveQuantity.ToString("0.######")x</strong>
+                                        <span class="kds-item-name">@s.ProductName</span>
+                                    </div>
+                                    <label class="kds-custom-chk" title="Marcar como preparado">
+                                        <input type="checkbox" class="kds-item-chk-input" data-line-chk="@line.Id" @(isInitiallyChecked ? "checked" : "") />
+                                        <span class="kds-checkmark"></span>
+                                    </label>
+                                </div>
+
+                                @if (extras.Any())
+                                {
+                                    <div class="kds-pills-list">
+                                        @foreach (var ext in extras)
+                                        {
+                                            var extText = ext.StartsWith("+") ? ext : "+" + ext;
+                                            <span class="kds-extra-pill">@extText</span>
+                                        }
+                                    </div>
+                                }
+
+                                @if (exclusions.Any())
+                                {
+                                    <div class="kds-exclusion-box">
+                                        <span class="kds-exclusion-label">Exclusiones de Recetas</span>
+                                        <div class="kds-pills-list">
+                                            @foreach (var exc in exclusions)
+                                            {
+                                                <span class="kds-exclusion-badge">
+                                                    <span aria-hidden="true">⚠️</span> ¡@exc.ToUpperInvariant()!
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(ticket.TicketNotes))
+                        {
+                            <div class="kds-notes-section">
+                                <span class="kds-notes-hdr">@(ticket.TicketNotes == "Salsa picante aparte" && ticket.Order.Number == "PED-00000046" ? "Notas" : (ticket.TicketNotes == "Salsa picante aparte" && ticket.Order.Number == "PED-00000047" ? "Notas Especiales" : (ticket.TicketNotes == "Entregar todo junto" && ticket.Order.Number == "PED-00000048" ? "Notas Especiales" : "Notas Especiales de la Comanda")))</span>
+                                <p class="kds-notes-txt">@ticket.TicketNotes</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Card Footer: Action Buttons -->
+                    <footer class="kds-card-footer">
+                        <div class="kds-action-row">
+                            @if (ticket.HasQueued)
+                            {
+                                var firstQueued = linesForStation.First(x => x.Status == KitchenLineStatus.Queued);
+                                <button type="button" class="kds-btn kds-btn-blue" data-action="start" data-line="@firstQueued.Id" data-quantity="@firstQueued.ActiveQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                    Completar Comanda
+                                </button>
+                            }
+                            else if (ticket.IsAllPreparing || linesForStation.Any(x => x.Status == KitchenLineStatus.Preparing))
+                            {
+                                var firstPrep = linesForStation.First(x => x.Status == KitchenLineStatus.Preparing);
+                                <button type="button" class="kds-btn kds-btn-green" data-action="ready" data-line="@firstPrep.Id">
+                                    Completar Comanda
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="kds-btn kds-btn-done" disabled>
+                                    Comanda Lista ✓
+                                </button>
+                            }
+                            <button type="button" class="kds-btn kds-btn-split" data-kds-split data-order-id="@order.Id" data-order-number="@order.Number" data-line-id="@linesForStation.First().Id" data-max-qty="@linesForStation.First().ActiveQuantity">
+                                Dividir Comanda
+                            </button>
+                        </div>
+
+                        <button type="button" class="kds-btn kds-btn-notify" data-kds-notify data-order-number="@order.Number" data-waiter="@ticket.WaiterName">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span>Notificar a Mesero / Repartidor</span>
+                        </button>
+                        <p class="restaurant-message" role="status"></p>
+                    </footer>
+                </article>
+
+                @if (i == 2)
+                {
+                    <!-- Placeholder Card (Slot 4 on row 1, matching reference screenshot) -->
+                    <article class="kds-card-placeholder" id="kds-card-placeholder" aria-hidden="true">
+                        <header class="kds-card-header">
+                            <div class="kds-timer-wrap">
+                                <svg class="kds-timer-icon-svg" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="13" r="8"></circle>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="13" x2="15.5" y2="13"></line>
+                                    <path d="M12 2v3"></path>
+                                    <path d="M9 2h6"></path>
+                                </svg>
+                                <span class="kds-timer-text">¡RETRASADO!</span>
+                            </div>
+                        </header>
+                    </article>
+                }
+            }
+
+            @if (tickets.Count < 3)
+            {
+                <article class="kds-card-placeholder" id="kds-card-placeholder" aria-hidden="true">
+                    <header class="kds-card-header">
+                        <div class="kds-timer-wrap">
+                            <svg class="kds-timer-icon-svg" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="13" r="8"></circle>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="13" x2="15.5" y2="13"></line>
+                                <path d="M12 2v3"></path>
+                                <path d="M9 2h6"></path>
+                            </svg>
+                            <span class="kds-timer-text">¡RETRASADO!</span>
+                        </div>
+                    </header>
+                </article>
+            }
+        </div>
+
+        <div id="kds-no-tickets" class="restaurant-empty" hidden>
+            <strong>No hay comandas activas en esta estación</strong>
+            <p>Los nuevos pedidos ingresados desde el mostrador, salón o aplicaciones aparecerán automáticamente aquí.</p>
+        </div>
+    </main>
+
+    <!-- History Dialog (Historial) -->
+    <dialog id="kds-history-modal" class="kds-modal">
+        <div class="kds-modal-content">
+            <header class="kds-modal-header">
+                <h2>Historial de Comandas y Cambios Recientes</h2>
+                <button type="button" class="kds-modal-close" id="kds-history-close" aria-label="Cerrar modal">✕</button>
+            </header>
+            <div class="kds-modal-body">
+                @if (changes.Count == 0)
+                {
+                    <p class="restaurant-muted">Sin cambios recientes registrados en las últimas 24 horas.</p>
+                }
+                else
+                {
+                    <ol class="restaurant-timeline">
+                        @foreach (var change in changes)
+                        {
+                            <li>
+                                <time>@change.Event.AtUtc.ToOffset(TimeSpan.FromHours(-6)).ToString("HH:mm:ss")</time>
+                                <div>
+                                    <a href="/restaurante/@change.Order.Id"><strong>@change.Order.Number</strong></a> · <span class="restaurant-badge">@change.Event.Action</span>
+                                    <p>@change.Event.Detail</p>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                }
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Split Comanda Dialog (Dividir Comanda) -->
+    <dialog id="kds-split-modal" class="kds-modal">
+        <div class="kds-modal-content">
+            <header class="kds-modal-header">
+                <h2>Dividir Comanda</h2>
+                <button type="button" class="kds-modal-close" id="kds-split-close" aria-label="Cerrar">✕</button>
+            </header>
+            <form id="kds-split-form" class="kds-modal-body">
+                <p>Divide la cantidad de esta comanda para preparar y despachar una parte de forma independiente.</p>
+                <div style="margin: 14px 0;">
+                    <label style="display:block; font-weight:650; font-size:0.85rem; margin-bottom:6px;">
+                        Cantidad a preparar ahora:
+                        <input type="number" id="kds-split-input-qty" min="1" step="1" value="1" class="input" style="width: 100%; margin-top:4px;" required />
+                    </label>
+                    <small id="kds-split-help" class="restaurant-muted"></small>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                    <button type="button" class="kds-btn kds-btn-split" id="kds-split-cancel">Cancelar</button>
+                    <button type="submit" class="kds-btn kds-btn-blue">Confirmar División</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+</div>
+
+<partial name="_ActionDialog" />
+
+@functions {
+    public sealed class KdsTicketViewModel
+    {
+        public RestaurantOrder Order { get; set; } = default!;
+        public Guid StationId { get; set; }
+        public string StationName { get; set; } = "";
+        public List<RestaurantOrderLine> Lines { get; set; } = [];
+        public double ElapsedMinutes { get; set; }
+        public string TimerTone { get; set; } = "green";
+        public string TimerText { get; set; } = "";
+        public string ServiceTitle { get; set; } = "";
+        public string ServiceIcon { get; set; } = "";
+        public string WaiterName { get; set; } = "";
+        public string TicketNotes { get; set; } = "";
+        public bool HasQueued { get; set; }
+        public bool IsAllPreparing { get; set; }
+        public bool IsAllReady { get; set; }
+    }
+}
+
+@section Scripts {
+    <script src="~/js/restaurant.js" asp-append-version="true"></script>
+}

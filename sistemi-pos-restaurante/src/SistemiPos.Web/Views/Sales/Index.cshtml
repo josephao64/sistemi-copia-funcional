@@ -1,0 +1,71 @@
+@model IReadOnlyList<SistemiPos.Application.Sales.SaleDto>
+@using SistemiPos.Domain.Sales
+@{
+    ViewData["Title"] = "Ventas";
+    var salesSearch = ViewBag.SalesSearch as string;
+    string PaymentLabel(PaymentMethodType method) => method switch
+    {
+        PaymentMethodType.Cash => "Efectivo",
+        PaymentMethodType.Transfer => "Transferencia",
+        PaymentMethodType.Pos => "Tarjeta / POS",
+        _ => method.ToString()
+    };
+
+    string Money(SistemiPos.Application.Sales.SaleDto sale) =>
+        sale.CurrencySymbolPosition == "After"
+            ? $"{sale.Total.ToString($"N{sale.CurrencyDecimals}")} {sale.CurrencySymbol}"
+            : $"{sale.CurrencySymbol} {sale.Total.ToString($"N{sale.CurrencyDecimals}")}";
+
+}
+
+<div class="table-card sales-list-card">
+    <form method="get" class="search-bar sales-history-search">
+        <input type="search" name="search" value="@salesSearch" class="input" placeholder="Buscar por NIT, cliente, fecha o nombre del producto" aria-label="Buscar ventas por NIT, cliente, fecha o nombre del producto" />
+        <button type="submit" class="button-secondary">Buscar</button>
+        @if (!string.IsNullOrWhiteSpace(salesSearch))
+        {
+            <a asp-action="Index" class="button-secondary link-button">Limpiar</a>
+        }
+    </form>
+
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-state-inner">
+                <span class="empty-icon">＋</span>
+                <h3>Aún no hay ventas registradas</h3>
+                <p class="helper-text">La primera venta aparecerá aquí con su método de pago.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="data-table sales-history-table">
+            <thead>
+                <tr>
+                    <th>No. venta</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>NIT</th>
+                    <th>Método de pago</th>
+                    <th>Total</th>
+                    <th class="action-column">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td title="@item.Number">@item.Number</td>
+                    <td>@item.SoldAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td title="@item.CustomerName">@item.CustomerName</td>
+                    <td title="@(string.IsNullOrWhiteSpace(item.CustomerNit) ? "CF" : item.CustomerNit)">@(string.IsNullOrWhiteSpace(item.CustomerNit) ? "CF" : item.CustomerNit)</td>
+                    <td title="@PaymentLabel(item.Payment.PaymentMethod)">@PaymentLabel(item.Payment.PaymentMethod)</td>
+                    <td class="money">@Money(item)</td>
+                    <td class="action-column"><a asp-action="Details" asp-route-id="@item.Id" aria-label="Ver detalle de @item.Number">Ver detalle</a></td>
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    }
+</div>

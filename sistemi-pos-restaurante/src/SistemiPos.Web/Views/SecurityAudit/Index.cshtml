@@ -1,0 +1,129 @@
+@model IReadOnlyList<SistemiPos.Web.Models.Security.SecurityAuditItemViewModel>
+@{
+    ViewData["Title"] = "Auditoría de seguridad y accesos";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad</p>
+        <h1>Registro de Auditoría y Accesos</h1>
+        <p class="lead">Trazabilidad detallada de inicios de sesión, terminales, dispositivos y actividades de usuarios.</p>
+    </div>
+</section>
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar" style="display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem 1.25rem; border-bottom:1px solid var(--border-color, #e5e7eb);">
+        <div style="flex:1; max-width:480px; position:relative;">
+            <input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por usuario, acción, computadora, IP o fecha..." aria-label="Buscar eventos de auditoría" style="width:100%;" />
+        </div>
+        <div style="font-size:0.8125rem; color:var(--text-muted, #64748b);">
+            Mostrando <strong>@Model.Count</strong> eventos recientes
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 140px;">Fecha y hora</th>
+                    <th style="min-width: 130px;">Evento / Acción</th>
+                    <th style="min-width: 130px;">Usuario / Actor</th>
+                    <th style="min-width: 180px;">Computadora / Red</th>
+                    <th style="min-width: 180px;">Dispositivo / Navegador</th>
+                    <th style="min-width: 250px;">Detalle del evento</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var log in Model)
+            {
+                <tr>
+                    <td style="white-space: nowrap; font-size: 0.8125rem;">
+                        <div style="font-weight: 600; color: var(--text-main, #1e293b);">
+                            @log.OccurredAtUtc.ToLocalTime().ToString("dd/MM/yyyy")
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted, #64748b);">
+                            @log.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge" style="padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; @log.BadgeColor">
+                            @if (log.Action == SistemiPos.Application.Security.SecurityAuditActions.LoginSuccess)
+                            {
+                                <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            }
+                            else if (log.Action == SistemiPos.Application.Security.SecurityAuditActions.LoginFailure || log.Action == SistemiPos.Application.Security.SecurityAuditActions.AccountLockedOut || log.Action == SistemiPos.Application.Security.SecurityAuditActions.UserNotFound)
+                            {
+                                <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            }
+                            @log.ActionLabel
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:#e0e7ff; color:#3730a3; font-size:0.75rem; font-weight:700;">
+                                @(string.IsNullOrWhiteSpace(log.UserName) ? "A" : log.UserName[0].ToString().ToUpper())
+                            </span>
+                            <strong>@log.UserName</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <div style="display:inline-flex; align-items:center; gap:5px; font-weight:600; font-size:0.8125rem; color:#1e293b;">
+                                <svg style="width:14px;height:14px;color:#475569;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                <span>@log.MachineName</span>
+                            </div>
+                            <div style="display:inline-flex; align-items:center; gap:5px; font-size:0.75rem; color:#64748b;">
+                                <svg style="width:13px;height:13px;color:#94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                                <span>@log.IpDisplay</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <div style="display:inline-flex; align-items:center; gap:5px; font-size:0.8125rem; font-weight:500; color:#334155;">
+                                <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#3b82f6;"></span>
+                                <span>@log.OperatingSystem</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:#64748b; padding-left:11px;">
+                                @log.Browser
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size:0.8125rem; color:#1e293b;">
+                            <strong>@log.EventSummary</strong>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(log.Reason))
+                        {
+                            <div style="margin-top:4px;">
+                                <span style="display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.75rem; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;">
+                                    Motivo: @log.Reason
+                                </span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(log.TargetUser))
+                        {
+                            <div style="margin-top:4px; font-size:0.75rem; color:#475569;">
+                                Usuario afectado: <strong>@log.TargetUser</strong>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(log.AdditionalDetails))
+                        {
+                            <div style="margin-top:2px; font-size:0.75rem; color:#64748b;">
+                                @log.AdditionalDetails
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(log.RawJson) && log.RawJson != "{}")
+                        {
+                            <details style="margin-top:6px; font-size:0.7rem; color:#94a3b8; cursor:pointer;">
+                                <summary style="user-select:none;">Ver datos técnicos</summary>
+                                <pre style="margin-top:4px; padding:6px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; white-space:pre-wrap; word-break:break-all; font-size:0.7rem; color:#334155;">@log.RawJson</pre>
+                            </details>
+                        }
+                    </td>
+                </tr>
+            }
+                <tr data-filter-empty hidden><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">No se encontraron registros de auditoría coincidentes con la búsqueda.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

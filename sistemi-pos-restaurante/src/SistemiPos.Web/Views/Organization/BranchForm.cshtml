@@ -1,0 +1,71 @@
+@model SistemiPos.Web.Models.Organizations.BranchFormViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Editar sucursal" : "Nueva sucursal";
+}
+
+<div class="modal-form-content">
+    <h2>@ViewData["Title"]</h2>
+    <form asp-action="@(Model.Id.HasValue ? "EditBranch" : "CreateBranch")" method="post" class="form-grid">
+        @Html.AntiForgeryToken()
+        @if (Model.Id.HasValue)
+        {
+            <input asp-for="Id" type="hidden" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+            <label asp-for="CompanyId"></label>
+            <select asp-for="CompanyId" asp-items="Model.AvailableCompanies" class="input" required></select>
+            <span asp-validation-for="CompanyId" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Code"></label>
+            <input asp-for="Code" class="input" placeholder="Ej. SUC-01" required />
+            <span asp-validation-for="Code" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Name"></label>
+            <input asp-for="Name" class="input" placeholder="Ej. Sucursal Central" required />
+            <span asp-validation-for="Name" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Phone"></label>
+            <input asp-for="Phone" class="input" placeholder="7922-1111" />
+            <span asp-validation-for="Phone" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="TimeZone"></label>
+            <input asp-for="TimeZone" class="input" value="@(string.IsNullOrWhiteSpace(Model.TimeZone) ? "America/Guatemala" : Model.TimeZone)" required />
+            <span asp-validation-for="TimeZone" class="validation"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="EstablishmentCode"></label>
+            <input asp-for="EstablishmentCode" class="input" placeholder="Ej. 1" />
+            <span asp-validation-for="EstablishmentCode" class="validation"></span>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+            <label asp-for="Address"></label>
+            <input asp-for="Address" class="input" placeholder="Dirección física de la sucursal" />
+            <span asp-validation-for="Address" class="validation"></span>
+        </div>
+
+        @if (Model.Id.HasValue)
+        {
+            <label class="checkbox">
+                <input asp-for="IsActive" />
+                <span>Activo</span>
+            </label>
+        }
+
+        <div class="action-row" style="grid-column: 1 / -1;">
+            <button type="submit" class="button-primary">Guardar</button>
+        </div>
+    </form>
+</div>

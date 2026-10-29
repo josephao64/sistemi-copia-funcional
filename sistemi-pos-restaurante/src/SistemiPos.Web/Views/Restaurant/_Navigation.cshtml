@@ -1,0 +1,6 @@
+@inject SistemiPos.Application.Settings.ISettingsService RestaurantSettings
+@{ var settings = await RestaurantSettings.GetSystemSettingAsync(); }
+<link rel="stylesheet" href="~/css/restaurant.css" asp-append-version="true" />
+<script type="application/json" id="restaurant-display-settings">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { symbol = settings.CurrencySymbol, decimals = settings.CurrencyDecimals, position = settings.CurrencySymbolPosition.ToString(), decimalSeparator = settings.DecimalSeparator, thousandsSeparator = settings.ThousandsSeparator }))</script>
+<script src="~/js/restaurant-ui.js" asp-append-version="true"></script>
+

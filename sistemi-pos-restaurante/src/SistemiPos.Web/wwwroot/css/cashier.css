@@ -1,0 +1,322 @@
+/* Cashier workspace: shared opening, denomination count and point-of-sale presentation. */
+body.pos-terminal { font-family: "Segoe UI", system-ui, sans-serif; background: #edf2ef; }
+body.pos-terminal .topbar { background: #183a31; border-bottom-color: #31564a; box-shadow: 0 3px 16px #12263a12; }
+body.pos-terminal .pos-top-nav-link { min-height: 42px; padding: 10px 15px; font-size: .82rem; }
+body.pos-terminal .pos-top-nav-link.is-active { box-shadow: inset 0 -3px 0 #a3e56b; }
+body.pos-terminal .content { padding: 22px 24px 32px; }
+.cashier-page-heading, .cashier-workspace { width: 100%; max-width: 1500px; margin-inline: auto; }
+.cashier-page-heading { align-items: center; gap: 18px; }
+.cashier-page-heading h1 { font-size: clamp(1.45rem, 2.2vw, 1.95rem); letter-spacing: -.045em; }
+.cashier-page-heading .lead { margin-top: 5px; max-width: 75ch; font-size: .88rem; }
+.cashier-workspace { --cashier-accent: #167b66; --cashier-tint: #edf7f2; display: grid; gap: 18px; }
+.cashier-workspace .input { min-height: 44px; border-radius: 9px; }
+.cashier-workspace .input:focus-visible, .cashier-quantity-control button:focus-visible { outline: 3px solid #167b6640; outline-offset: 2px; }
+.cashier-workspace .button-primary, .cashier-workspace .button-secondary { min-height: 44px; }
+.cashier-workspace .field > small, .cashier-workspace .field label small { color: var(--text-secondary); font-size: .76rem; font-weight: 400; }
+.cashier-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.cashier-flow li { display: flex; align-items: center; gap: 12px; padding: 16px 20px; color: var(--text-secondary); }
+.cashier-flow li + li { border-left: 1px solid var(--border); }
+.cashier-flow li > span { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border-radius: 50%; background: #f0f3f7; font-size: .78rem; font-weight: 750; }
+.cashier-flow li div { display: grid; gap: 2px; }
+.cashier-flow li strong { font-size: .85rem; }
+.cashier-flow li small { font-size: .73rem; }
+.cashier-flow .is-current { background: var(--cashier-tint); color: #165e4c; }
+.cashier-flow .is-current > span { background: var(--cashier-accent); color: white; }
+.cashier-workbench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+.cashier-main { min-width: 0; display: grid; gap: 20px; }
+.cashier-card { padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.cashier-section-heading { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 16px; }
+.cashier-section-heading h2 { margin: 0; font-size: 1rem; }
+.cashier-section-heading p { margin: 4px 0 0; color: var(--text-secondary); font-size: .78rem; line-height: 1.5; }
+.cashier-section-number { display: grid; place-items: center; flex: 0 0 27px; height: 27px; border-radius: 8px; background: #eaf0f7; color: #365778; font-weight: 750; font-size: .8rem; }
+.cashier-setup-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.cashier-session-identity { display: grid; gap: 5px; padding: 4px 0 4px 20px; border-left: 1px solid var(--border); }
+.cashier-session-identity small { color: var(--text-secondary); font-size: .72rem; }
+.cashier-session-identity strong { font-size: .92rem; }
+.cashier-session-identity span { color: var(--text-secondary); font-size: .77rem; overflow-wrap: anywhere; }
+.cashier-setup .cash-pos-assignment { margin-top: 18px; padding: 14px; background: #f7f9fc; }
+.cashier-workspace .cash-pos-options .checkbox:has(input:checked), .cashier-workspace .cash-pos-opt-out:has(input:checked) { border-color: #92bda9; background: var(--cashier-tint); }
+.cashier-workspace input[type="checkbox"] { accent-color: var(--cashier-accent); width: 17px; height: 17px; }
+.cashier-denominations { gap: 16px; align-items: stretch; }
+.cashier-denominations .cash-denomination-panel { background: white; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.cashier-panel-heading { display: flex; align-items: center; gap: 9px; min-height: 72px; padding: 14px; background: white; border-bottom: 1px solid var(--border); }
+.cashier-panel-heading > div { min-width: 0; }
+.cashier-panel-heading h3 { margin: 0; padding: 0; border: 0; background: none; color: var(--text-primary); font-size: .87rem; text-transform: none; }
+.cashier-panel-heading small { display: block; margin-top: 3px; font-size: .67rem; color: var(--text-secondary); line-height: 1.4; }
+.cashier-panel-heading > output { margin-left: auto; color: #17664d; font-size: .82rem; font-weight: 750; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cashier-denomination-icon { display: grid; place-items: center; flex: 0 0 32px; height: 32px; border-radius: 9px; font-size: 1.3rem; color: #28765b; background: #eaf5ef; }
+.cashier-denomination-icon.is-coins { color: #977024; background: #fff5db; }
+.cashier-denominations .cash-denomination-table { width: 100%; table-layout: auto; border-collapse: collapse; }
+.cashier-denominations .cash-denomination-table thead th { height: 34px; padding: 8px 12px; color: #62768a; background: #f8fafc; font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.cashier-denominations .cash-denomination-table tbody th, .cashier-denominations .cash-denomination-table td { padding: 10px 12px; border-bottom: 1px solid #edf1f5; font-size: .82rem; }
+.cashier-denominations .cash-denomination-table tbody th { text-align: left; font-weight: 650; white-space: nowrap; }
+.cashier-denominations .cash-denomination-table tr:last-child > * { border-bottom: 0; }
+.cashier-denominations .cash-denomination-table th:nth-child(2), .cashier-denominations .cash-denomination-table td:nth-child(2) { text-align: center; }
+.cashier-denominations .cash-denomination-table th:last-child, .cashier-denominations .cash-denomination-table td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cashier-denominations .has-cash-quantity { background: #f0f8f3; }
+.cashier-denominations .has-cash-quantity output { color: #17664d; font-weight: 750; }
+.cashier-quantity-control { display: inline-flex; align-items: center; overflow: visible; border: 1px solid #d7e1eb; border-radius: 9px; background: white; }
+.cashier-quantity-control button { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 38px; padding: 0; color: #35516b; background: #f6f8fb; border: 0; border-radius: 8px; font: inherit; font-size: 1.1rem; cursor: pointer; }
+.cashier-quantity-control button:hover:not(:disabled) { color: #116345; background: #e5f4eb; }
+.cashier-quantity-control button:disabled { color: #aab5c1; cursor: default; }
+.cashier-quantity-control .cash-quantity-input { width: 46px; min-width: 0; height: 38px; min-height: 38px; padding: 5px 1px; border: 0; border-radius: 0; box-shadow: none; font-size: .86rem; }
+.cashier-empty-denominations { margin: 0; padding: 24px 16px; color: var(--text-secondary); font-size: .82rem; line-height: 1.6; }
+.cashier-piece-badge { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 6px 10px; border: 1px solid var(--border); border-radius: 20px; background: white; color: var(--text-secondary); font-size: .72rem; white-space: nowrap; }
+.cashier-summary { position: sticky; top: calc(var(--topbar-height) + 18px); min-width: 0; padding: 24px 22px; border: 1px solid #d9e3ee; border-radius: 16px; background: white; box-shadow: 0 8px 28px #143b6308; }
+.cashier-summary .eyebrow { margin: 0 0 8px; color: #167b66; font-size: .65rem; letter-spacing: .1em; }
+.cashier-summary h2 { margin: 0 0 5px; font-size: 1.15rem; }
+.cashier-summary > p:not(.eyebrow) { color: var(--text-secondary); font-size: .8rem; line-height: 1.6; }
+.cashier-grand-total { display: grid; gap: 6px; margin: 20px -7px 16px; padding: 20px 16px; border-radius: 12px; color: white; background: #183a31; }
+.cashier-grand-total span { color: #d5e4f0; font-size: .75rem; }
+.cashier-grand-total strong { font-size: clamp(1.6rem, 2.5vw, 2.15rem); font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cashier-summary-breakdown { margin: 0; }
+.cashier-summary-breakdown > div { display: flex; justify-content: space-between; gap: 14px; padding: 11px 0; border-bottom: 1px solid #edf1f5; }
+.cashier-summary-breakdown dt { color: var(--text-secondary); font-size: .78rem; }
+.cashier-summary-breakdown dd { margin: 0; font-size: .83rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cashier-summary-note { margin: 18px 0; padding: 12px; color: #42604f; background: #f0f6f2; border-radius: 9px; font-size: .78rem; line-height: 1.6; }
+.cashier-summary-actions { display: grid; gap: 10px; }
+.cashier-summary-actions .button-primary { display: flex; justify-content: space-between; width: 100%; padding: 14px; background: #167b66; }
+.cashier-summary-actions .button-primary:hover { background: #10634f; }
+.cashier-summary-actions small { text-align: center; color: var(--text-secondary); font-size: .7rem; }
+.cashier-observation textarea { resize: vertical; }
+.cashier-turn-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 14px; background: white; }
+.cashier-turn-overview > div { display: flex; gap: 12px; align-items: center; padding: 18px 20px; }
+.cashier-turn-overview > div + div { border-left: 1px solid var(--border); }
+.cashier-turn-overview > div > div { display: grid; gap: 4px; }
+.cashier-turn-overview small { color: var(--text-secondary); font-size: .73rem; }
+.cashier-turn-overview strong { font-size: .86rem; }
+.cashier-status-dot { width: 11px; height: 11px; margin-inline: 6px; border-radius: 50%; background: #22825b; box-shadow: 0 0 0 5px #e9f5ed; }
+.cashier-overview-icon { font-size: 1.5rem; color: #63819e; }
+.cashier-closing-workspace .cash-close-steps { gap: 18px; }
+.cashier-closing-workspace .cash-compact-section { border-radius: 14px; background: white; }
+.cashier-closing-workspace .cash-compact-section > summary { padding: 18px 20px; }
+.cashier-closing-workspace .cash-section-body { padding: 0 20px 20px; }
+.cashier-closing-workspace .cash-step-number { background: #eaf3f0; color: #166b50; }
+.cashier-recount { margin-top: 14px; }
+.cashier-recount > summary { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline; padding: 12px 0; color: #235478; font-size: .87rem; font-weight: 700; cursor: pointer; }
+.cashier-recount > summary::before { content: "+"; font-size: 1rem; }
+.cashier-recount[open] > summary::before { content: "−"; }
+.cashier-recount > summary span { margin-left: auto; color: var(--text-secondary); font-size: .73rem; font-weight: 400; }
+.cashier-workspace .cashier-count-footer { position: sticky; bottom: 12px; z-index: 2; gap: 20px; padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 5px 24px #153b5d14; }
+.cashier-count-footer .cashier-piece-badge { margin: 0 auto 0 0; }
+.cashier-count-footer strong { color: #145b46; }
+.cashier-closing-workspace .cash-report-line.is-total { border-radius: 8px; }
+.pos-sales-workspace .pos-sales-heading h1 { letter-spacing: -.04em; }
+.pos-sales-workspace .pos-heading-cash-link { border-radius: 10px; padding: 11px 15px; color: #16654e; background: #edf7f1; border: 1px solid #cde2d6; }
+.pos-sales-workspace .pos-cash-context { border-radius: 14px; border-color: #d7e2ed; background: white; box-shadow: 0 3px 14px #17355305; }
+.pos-sales-workspace .pos-cash-status > strong { border-radius: 20px; }
+.pos-sales-workspace .product-browser, .pos-sales-workspace .pos-checkout { border-radius: 16px; border: 1px solid #dce5ef; box-shadow: 0 4px 20px #163b5e06; }
+.pos-sales-workspace .interactive-product-search .input { min-height: 48px; border-radius: 11px; background: #f8fafc; }
+.pos-sales-workspace .pos-category-tab { min-height: 40px; border-radius: 10px; }
+.pos-sales-workspace .pos-product-card { border-radius: 13px; transition: border-color .15s, box-shadow .15s; }
+.pos-sales-workspace .pos-product-card:not(.is-unavailable):hover { border-color: #7bad99; box-shadow: 0 4px 14px #167b6614; }
+.pos-sales-workspace .checkout-total .total-row.total { margin-top: 10px; padding: 16px; border-radius: 11px; background: #183a31; color: white; }
+.pos-sales-workspace .checkout-total .total-row.total strong { color: white; }
+.pos-sales-workspace .pos-cash-dialog { width: min(620px, calc(100vw - 28px)); border-radius: 18px; }
+.pos-sales-workspace .pos-cash-dialog .dialog-header { padding: 22px 24px; border-bottom: 1px solid var(--border); background: #f8fafc; }
+.pos-sales-workspace .pos-cash-dialog .dialog-header h2 { font-size: 1.25rem; }
+.pos-sales-workspace .pos-cash-dialog .checkout-dialog-body { padding: 22px 24px; gap: 18px; }
+.pos-sales-workspace .pos-cash-dialog .input { min-height: 44px; border-radius: 9px; }
+.pos-sales-workspace .pos-cash-dialog [name="amount"] { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; min-height: 62px; }
+.pos-sales-workspace .pos-cash-dialog .checkout-dialog-footer { padding: 16px 24px; background: #f8fafc; }
+.pos-sales-workspace .pos-cash-menu-status { border-radius: 10px; padding: 12px 14px; font-weight: 650; }
+.pos-sales-workspace .pos-cash-opening-facts { padding: 14px; border: 1px solid var(--border); border-radius: 12px; }
+.pos-sales-workspace .pos-cash-opening-facts dd { font-variant-numeric: tabular-nums; }
+.pos-cash-pos-help { display: grid; justify-items: start; gap: 6px; padding: 12px; border: 1px solid #d2e2d7; border-radius: 9px; background: #f5faf6; }
+.pos-cash-pos-help strong { color: #24553b; font-size: .86rem; }
+.pos-cash-pos-help p { margin: 0; color: var(--text-secondary); font-size: .8rem; line-height: 1.45; }
+/* Counter, catalog and payment surfaces share the receipt's restrained green palette. */
+.pos-sales-workspace { --pos-action: #246044; --pos-action-hover: #194a33; --focus: 0 0 0 3px #24604426; }
+.pos-sales-workspace.pos-page .pos-sales-heading { padding: 20px 22px; border: 1px solid #d8e3db; border-radius: 15px; background: white; color: #203c2f; }
+.cashier-counter-heading { display: flex; align-items: center; gap: 15px; min-width: 0; }
+.cashier-counter-icon { display: grid; place-items: center; flex: 0 0 54px; height: 54px; border-radius: 14px; background: #eaf3ec; color: #2a674b; }
+.cashier-counter-icon svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pos-sales-workspace .pos-sales-heading-copy p { color: #62826c; font-size: .64rem; letter-spacing: .1em; margin-bottom: 4px; }
+.pos-sales-workspace .pos-sales-heading-copy h1 { font-size: 1.75rem; font-weight: 750; }
+.pos-sales-workspace .pos-sales-heading-copy > span { color: #6b7f73; font-size: .79rem; }
+.pos-sales-workspace .pos-heading-cash-link { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 11px 15px; background: #183a31; border-color: #183a31; color: white; white-space: nowrap; }
+.pos-heading-cash-link svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.pos-sales-workspace .pos-heading-cash-link:hover { background: #285345; }
+.pos-sales-workspace .pos-cash-context { padding: 15px 18px; border-color: #d8e3db; border-left: 4px solid #afc1b3; box-shadow: none; }
+.pos-sales-workspace .pos-cash-context[data-state="open"] { border-left-color: #438361; }
+.cashier-shift-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5ece7; }
+.cashier-shift-caption > span { color: #487259; font-size: .64rem; font-weight: 750; letter-spacing: .1em; }
+.cashier-shift-caption small { color: #7a8b80; font-size: .67rem; }
+.pos-sales-workspace .pos-cash-topline { padding-top: 12px; }
+.pos-sales-workspace .pos-cash-bottomline { border-top-color: #e5ece7; }
+.pos-sales-workspace .pos-cash-topline > div > span, .pos-sales-workspace .pos-cash-bottomline > div > span { color: #6d8275; }
+.pos-sales-workspace .pos-cash-context-actions .button-secondary { min-height: 40px; border-color: #d1dfd5; background: #f5f8f5; color: #365b44; }
+.pos-sales-workspace .product-browser.form-card { padding: 20px; border-color: #d8e3db; box-shadow: none; }
+.cashier-section-eyebrow { margin: 0 0 4px; color: #6a8673; font-size: .63rem; letter-spacing: .09em; font-weight: 750; }
+.pos-sales-workspace .catalog-toolbar h2 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.025em; }
+.pos-sales-workspace .catalog-toolbar .pos-catalog-caption { margin-top: 4px; font-size: .77rem; color: #73857a; }
+.pos-sales-workspace .pos-terminal-field select { min-height: 42px; border-color: #cfddd3; border-radius: 9px; background: #f8faf8; font-size: .8rem; }
+.pos-sales-workspace .interactive-product-search .input { min-height: 50px; border-color: #d5e1d9; background: #f6f9f6; font-size: .9rem; }
+.pos-sales-workspace .pos-category-tabs { gap: 7px; padding-block: 3px; }
+.pos-sales-workspace .pos-category-tab { min-height: 40px; padding: 8px 13px; border: 1px solid #d9e3dc; border-radius: 8px; background: white; color: #5d7767; font-size: .78rem; }
+.pos-sales-workspace .pos-category-tab.is-active { background: #246044; border-color: #246044; color: white; }
+.pos-sales-workspace .pos-category-tab.is-active > span { background: #ffffff24; }
+.pos-sales-workspace .pos-view-switch { border-color: #dae4dd; background: #f1f5f2; border-radius: 8px; }
+.pos-sales-workspace .pos-view-switch button[aria-pressed="true"] { background: white; color: #246044; box-shadow: 0 1px 5px #234e3810; }
+.pos-sales-workspace .pos-product-card { border-color: #dce6df; box-shadow: none; }
+.pos-sales-workspace .pos-product-image { background: #f4f7f3; }
+.pos-sales-workspace .pos-product-placeholder { color: #90a898; }
+.pos-sales-workspace .pos-product-name { font-size: .88rem; font-weight: 650; }
+.pos-sales-workspace .pos-product-category { color: #778c7d; font-size: .67rem; }
+.pos-sales-workspace .pos-product-price { font-size: 1.2rem; color: #214e35; }
+.pos-sales-workspace .pos-product-cta { min-height: 38px; color: #285d40; border: 1px solid #d3e5d6; background: #edf6ed; border-radius: 8px; font-size: .79rem; }
+.pos-sales-workspace .pos-product-select:hover:not(:disabled) .pos-product-cta { background: #246044; border-color: #246044; color: white; }
+.pos-sales-workspace .pos-product-select:disabled .pos-product-cta { color: #849187; background: #f0f2f0; border-color: #e0e5e0; }
+.pos-sales-workspace .pos-checkout .checkout-card { border-color: #cfded4; box-shadow: 0 5px 20px #234e3808; overflow: hidden; }
+.pos-sales-workspace .checkout-header { border-top: 4px solid #2a6246; background: #f5f9f5; }
+.pos-sales-workspace .checkout-header .eyebrow { color: #718d79; font-size: .62rem; letter-spacing: .07em; }
+.pos-sales-workspace .checkout-header h2 { color: #264b35; font-size: 1.2rem; }
+.pos-sales-workspace .checkout-header .line-count { background: #e3eee4; color: #2b5e3d; border-radius: 10px; }
+.pos-sales-workspace .pos-order-columns { padding-bottom: 9px; border-bottom: 1px solid #e9eeea; font-size: .66rem; text-transform: uppercase; letter-spacing: .04em; }
+.pos-sales-workspace .checkout-lines { min-height: 220px; }
+.pos-sales-workspace .sale-line { border-bottom-color: #e3ebe5; }
+.pos-sales-workspace .sale-line-copy strong { font-size: .87rem; font-weight: 650; }
+.pos-sales-workspace .line-quantity-controls { border: 1px solid #ccdcd0; border-radius: 8px; overflow: hidden; }
+.pos-sales-workspace .line-quantity-controls button { color: #3d6849; background: #f2f7f2; }
+.pos-sales-workspace .line-quantity-controls button:hover { background: #e5f0e4; }
+.pos-sales-workspace .line-discount-link { color: #55755e; }
+.pos-sales-workspace .checkout-total, .pos-sales-workspace .checkout-primary-action { background: #f7faf7; }
+.pos-sales-workspace .checkout-total .total-row.total { align-items: center; gap: 14px; margin-top: 8px; padding: 20px 16px; border: 0; background: #183a31; }
+.pos-sales-workspace .total-row.total > span { color: #d5e7d9; font-size: .82rem; }
+.pos-sales-workspace .checkout-total .total-row.total strong { font-size: clamp(1.8rem, 2.4vw, 2.4rem); font-weight: 750; letter-spacing: -.04em; }
+.pos-sales-workspace .checkout-primary-action > [data-open-checkout] { display: flex; align-items: center; justify-content: space-between; min-height: 54px; padding-inline: 18px; border-radius: 10px; font-size: .98rem; }
+.pos-sales-workspace [data-open-checkout] > svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pos-sales-workspace .pos-quick-payments button { min-height: 68px; border-radius: 10px; border-color: #d6e3d9; background: white; font-size: .71rem; }
+.pos-sales-workspace .pos-quick-payments button:hover:not(:disabled) { border-color: #8daf97; background: #edf6ee; }
+.pos-sales-workspace .pos-quick-payments svg { color: #4b7a58; }
+.pos-sales-workspace .pos-proforma-button { color: #69806e; border-color: #dce6de; font-size: .78rem; }
+.pos-sales-workspace .pos-shift-summary { padding: 18px; border-color: #d8e3db; border-radius: 14px; box-shadow: none; }
+.pos-sales-workspace .pos-shift-summary h2 { margin-bottom: 9px; font-size: .92rem; }
+.pos-sales-workspace .pos-shift-summary .pos-cash-summary-row:last-of-type strong { color: #246044; }
+.pos-sales-workspace .checkout-dialog { border: 1px solid #d6e2d9; border-radius: 16px; box-shadow: 0 24px 90px #142b2355; }
+.pos-sales-workspace .checkout-dialog::backdrop { background: #142b2360; backdrop-filter: blur(3px); }
+.pos-sales-workspace .checkout-dialog .dialog-header { background: #f3f8f3; border-bottom-color: #dce7de; }
+.pos-sales-workspace .checkout-dialog .dialog-header h2 { color: #254b35; letter-spacing: -.025em; }
+.pos-sales-workspace .checkout-dialog .dialog-header .eyebrow { color: #6b8974; }
+.pos-sales-workspace .checkout-dialog .checkout-dialog-footer { background: #f5f9f5; border-top-color: #dce7de; }
+.pos-sales-workspace .checkout-dialog .input { min-height: 44px; border-color: #cfded4; border-radius: 9px; }
+.pos-sales-workspace .checkout-payment-row > strong { color: #204f35; font-variant-numeric: tabular-nums; }
+.pos-sales-workspace .pos-cash-dialog .dialog-header, .pos-sales-workspace .pos-cash-dialog .checkout-dialog-footer { background: #f3f8f3; }
+@media (max-width: 1200px) {
+  .cashier-workbench { grid-template-columns: minmax(0, 1fr) 270px; gap: 16px; }
+  .cashier-denominations { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .cashier-workbench { grid-template-columns: 1fr; }
+  .cashier-summary { position: static; }
+  .cashier-denominations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cashier-flow li { padding: 13px; gap: 9px; }
+  .cashier-flow li small { display: none; }
+  .cashier-turn-overview > div { padding: 14px; }
+}
+@media (max-width: 600px) {
+  body.pos-terminal .content { padding: 14px 10px 24px; }
+  .cashier-page-heading { align-items: stretch; }
+  .cashier-page-heading .button-secondary { justify-content: center; }
+  .cashier-flow li { flex-direction: column; gap: 7px; text-align: center; padding: 12px 5px; }
+  .cashier-flow li strong { font-size: .7rem; }
+  .cashier-setup-fields, .cashier-denominations { grid-template-columns: 1fr; }
+  .cashier-session-identity { padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  .cashier-card { padding: 16px; }
+  .cashier-section-heading { flex-wrap: wrap; }
+  .cashier-section-heading > div { flex: 1; min-width: 180px; }
+  .cashier-piece-badge { margin-left: 38px; }
+  .cashier-quantity-control button { width: 40px; height: 42px; flex-basis: 40px; }
+  .cashier-quantity-control .cash-quantity-input { width: 48px; min-height: 42px; }
+  .cashier-turn-overview { grid-template-columns: 1fr; }
+  .cashier-turn-overview > div + div { border-left: 0; border-top: 1px solid var(--border); }
+  .cashier-closing-workspace .cash-section-body { padding: 0 12px 14px; }
+  .cashier-recount > summary span { margin-left: 0; }
+  .cashier-workspace .cashier-count-footer { position: static; display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 14px; }
+  .cashier-count-footer .cashier-piece-badge { border: 0; padding: 0; background: transparent; white-space: normal; }
+  .cashier-count-footer > button { grid-column: 1 / -1; }
+  .pos-sales-workspace .pos-cash-dialog .dialog-header, .pos-sales-workspace .pos-cash-dialog .checkout-dialog-body, .pos-sales-workspace .pos-cash-dialog .checkout-dialog-footer { padding: 16px; }
+  .pos-sales-workspace.pos-page .pos-sales-heading { padding: 16px; align-items: stretch; }
+  .cashier-counter-icon { width: 43px; height: 43px; flex-basis: 43px; border-radius: 11px; }
+  .cashier-counter-icon svg { width: 25px; height: 25px; }
+  .pos-sales-workspace .pos-sales-heading-copy h1 { font-size: 1.4rem; }
+  .pos-sales-workspace .pos-heading-cash-link { justify-content: center; }
+  .cashier-shift-caption { flex-wrap: wrap; gap: 4px; }
+  .cashier-shift-caption small { font-size: .62rem; }
+  .pos-sales-workspace .product-browser.form-card { padding: 14px; }
+  .pos-sales-workspace .pos-product-cta { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-sales-workspace .pos-product-card { transition: none; }
+}
+/* Compact POS workspace: leave the catalog and order visible on small laptops. */
+.pos-sales-workspace { gap: 10px; }
+.pos-sales-workspace #product-search-form { display: none; }
+.pos-sales-workspace.pos-page .pos-sales-heading { min-height: 60px; padding: 10px 14px; }
+.pos-sales-workspace .cashier-counter-heading { gap: 10px; }
+.pos-sales-workspace .cashier-counter-icon { flex-basis: 40px; height: 40px; border-radius: 10px; }
+.pos-sales-workspace .cashier-counter-icon svg { width: 24px; height: 24px; }
+.pos-sales-workspace .pos-sales-heading-copy h1 { font-size: 1.3rem; }
+.pos-sales-workspace .pos-sales-heading-copy p { display: none; }
+.pos-sales-workspace .pos-sales-heading-copy > span { margin-top: 2px; font-size: .72rem; }
+.pos-sales-workspace .pos-heading-cash-link { min-height: 40px; padding: 8px 12px; }
+.pos-sales-workspace.is-cash-open .pos-opening-stage { min-width: 0; padding: 8px 12px; border-radius: 10px; }
+.pos-sales-workspace.is-cash-open .pos-opening-selection { max-width: none; }
+.pos-sales-workspace.is-cash-open .pos-opening-selection .pos-terminal-field { min-width: 0; flex-basis: 100%; }
+.pos-sales-workspace.is-cash-open .pos-terminal-help { display: none; }
+.pos-sales-workspace.is-cash-open .pos-terminal-field select { min-height: 38px; }
+.pos-sales-workspace.is-cash-open .pos-cash-context { position: relative; top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; padding: 8px 12px; border-radius: 10px; }
+.pos-cash-compact-facts { display: grid; flex: 1 1 auto; min-width: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: center; }
+.pos-cash-compact-facts > div, .pos-cash-extra-grid > div { display: grid; min-width: 0; gap: 3px; }
+.pos-cash-compact-facts > div + div { padding-left: 10px; border-left: 1px solid #e5ece7; }
+.pos-cash-compact-facts span, .pos-cash-extra-grid span { color: var(--text-secondary); font-size: .7rem; }
+.pos-cash-compact-facts strong, .pos-cash-extra-grid strong, .pos-cash-extra-grid time { font-size: .79rem; overflow-wrap: anywhere; }
+.pos-sales-workspace .pos-cash-compact-facts .pos-cash-status > strong { padding: 5px 8px; }
+.pos-cash-extra-details { position: relative; flex: 0 0 auto; }
+.pos-cash-extra-details > summary { display: flex; align-items: center; min-height: 38px; padding: 8px 10px; border: 1px solid #d1dfd5; border-radius: 8px; color: #24553b; font-size: .75rem; font-weight: 650; cursor: pointer; }
+.pos-cash-extra-details[open] { z-index: 15; }
+.pos-cash-extra-grid { position: absolute; top: calc(100% + 6px); right: 0; z-index: 2; display: grid; width: min(560px, 85vw); grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.pos-cash-extra-details > button { display: none; }
+.pos-sales-workspace .pos-cash-warning { flex: 1 0 100%; }
+.pos-sales-workspace .pos-category-tabs { flex-wrap: nowrap; max-height: none; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.pos-sales-workspace .pos-category-tab { flex: 0 0 auto; white-space: nowrap; }
+.pos-sales-workspace .pos-visual-catalog { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pos-sales-workspace .product-browser.form-card { min-height: 0; height: clamp(360px, calc(100dvh - 235px), 760px); gap: 10px; padding: 14px; }
+.pos-sales-workspace .checkout-header { padding: 12px 14px; }
+.pos-sales-workspace .checkout-lines { min-height: 130px; max-height: 250px; padding: 10px 14px; }
+.pos-sales-workspace .pos-cart-empty { min-height: 125px; }
+.pos-sales-workspace .checkout-total { padding: 10px 14px; }
+.pos-sales-workspace .checkout-total .total-row.total { margin-top: 4px; padding: 11px 14px; }
+.pos-sales-workspace .checkout-primary-action { gap: 7px; padding: 0 14px 14px; }
+.pos-sales-workspace .pos-quick-payments button { min-height: 48px; }
+.pos-sales-workspace .pos-shift-summary { padding: 12px 14px; }
+@media (min-width: 681px) {
+  .pos-sales-workspace.is-cash-open { grid-template-columns: minmax(175px, 205px) minmax(0, 1fr); }
+  .pos-sales-workspace.is-cash-open > .pos-sales-heading, .pos-sales-workspace.is-cash-open > .pos-layout { grid-column: 1 / -1; }
+  .pos-sales-workspace.is-cash-open > .pos-opening-stage { grid-column: 1; }
+  .pos-sales-workspace.is-cash-open > .pos-cash-context { grid-column: 2; }
+}
+@container (min-width: 681px) and (max-width: 800px) {
+  .pos-sales-workspace.pos-page .pos-layout { grid-template-columns: minmax(0, 1fr) minmax(285px, 40%); }
+  .pos-sales-workspace .product-browser.form-card { height: clamp(360px, calc(100dvh - 235px), 760px); }
+}
+@media (max-width: 680px) {
+  body.pos-terminal .content { padding: 10px; }
+  .pos-sales-workspace.is-cash-open .pos-cash-context { flex-wrap: wrap; }
+  .pos-cash-compact-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pos-cash-compact-facts > div + div { padding-left: 0; border-left: 0; }
+  .pos-sales-workspace .product-browser.form-card { height: auto; }
+  .pos-sales-workspace .pos-visual-catalog { max-height: 420px; }
+}
+@media (max-width: 430px) { .pos-cash-compact-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-height: 800px) {
+  body.pos-terminal .content { padding-top: 10px; }
+  .pos-sales-workspace .pos-product-image { height: 110px; }
+  .pos-sales-workspace .pos-product-copy { padding: 8px 10px; }
+  .pos-sales-workspace .pos-product-cta { min-height: 38px; }
+  .pos-sales-workspace .checkout-lines { max-height: 190px; }
+}
+@media print {
+  .cashier-page-heading > a, .cashier-workspace .cash-header-actions, .cashier-flow { display: none !important; }
+  .cashier-summary { position: static; box-shadow: none; }
+}

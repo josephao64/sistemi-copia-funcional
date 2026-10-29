@@ -1,0 +1,66 @@
+@model SistemiPos.Web.Models.Sales.CheckoutViewModel
+@using SistemiPos.Domain.Sales
+@{
+    ViewData["Title"] = "Cobrar cuenta";
+    var format = new System.Globalization.NumberFormatInfo { NumberDecimalSeparator = Model.DecimalSeparator, NumberGroupSeparator = Model.ThousandsSeparator };
+    string Money(decimal amount) => Model.SymbolPosition == "Before" ? $"{Model.CurrencySymbol} {amount.ToString($"N{Model.CurrencyDecimals}", format)}" : $"{amount.ToString($"N{Model.CurrencyDecimals}", format)} {Model.CurrencySymbol}";
+}
+<section class="page-header compact-page-header"><h1>Cobrar cuenta</h1></section>
+<form asp-action="Confirm" method="post" class="table-card" id="extended-checkout">
+    <div asp-validation-summary="All" class="validation-summary-errors" role="alert"></div>
+    <input asp-for="OrderId" type="hidden" /><input asp-for="OperationId" type="hidden" /><input asp-for="ApprovalId" type="hidden" /><input asp-for="CustomerId" type="hidden" />
+    <input asp-for="ExpectedTotal" type="hidden" />
+    <input asp-for="CashSessionId" type="hidden" />
+    <div class="form-grid compact-form-grid">
+        <div class="field"><label asp-for="TerminalId">Terminal de cobro</label><select asp-for="TerminalId" asp-items="Model.Terminals" class="input"><option value="">Seleccionar terminal</option></select></div>
+        <div class="field"><label asp-for="CustomerNit">NIT</label><input asp-for="CustomerNit" class="input" maxlength="50" /></div>
+        <div class="field"><label asp-for="CustomerName">Nombre</label><input asp-for="CustomerName" class="input" maxlength="200" /></div>
+        <div class="field"><label asp-for="CustomerAddress">Dirección</label><input asp-for="CustomerAddress" class="input" maxlength="500" /></div>
+    </div>
+    <div class="table-responsive"><table class="data-table"><thead><tr><th>Producto</th><th>Cantidad a cobrar</th><th>Descuento</th><th>Tipo</th><th>Total</th></tr></thead><tbody>
+    @for (var i = 0; i < Model.Items.Count; i++)
+    {
+        var quoted = Model.Items[i].Quantity > 0 ? Model.Quote?.Lines.ElementAtOrDefault(Model.Items.Take(i).Count(x => x.Quantity > 0)) : null;
+        <tr><td>@(quoted?.Name ?? "Producto")<input asp-for="Items[i].ProductId" type="hidden" /><input asp-for="Items[i].OrderLineId" type="hidden" /></td>
+        <td><input asp-for="Items[i].Quantity" type="number" min="0" step="0.01" class="input" /></td>
+        <td><input asp-for="Items[i].DiscountValue" type="number" min="0" step="0.01" class="input" /></td>
+        <td><select asp-for="Items[i].DiscountType" class="input"><option value="@SaleDiscountType.Percentage">Porcentaje</option><option value="@SaleDiscountType.FixedAmount">Monto fijo</option></select></td>
+        <td>@Money(quoted?.Total ?? 0)</td></tr>
+    }
+    </tbody></table></div>
+    <div class="action-row"><strong>Total: @Money(Model.Quote?.Total ?? 0)</strong><button type="submit" asp-action="Calculate" class="button-secondary">Recalcular</button></div>
+    @if (Model.Quote?.Shares is { } shares) { <p>Importes por persona: @string.Join(" · ", shares.Select((amount, index) => $"Cuenta {index + 1}: {Money(amount)}"))</p> }
+    <div class="field"><label asp-for="DiscountReason">Motivo del descuento</label><input asp-for="DiscountReason" class="input" maxlength="500" /></div>
+    @if (Model.ApprovalId.HasValue) { <p>Solicitud de descuento enviada. Un responsable debe aprobarla en Aprobaciones.</p> }
+    <div class="form-grid compact-form-grid">
+        <div class="field"><label asp-for="SplitMode">División</label><select asp-for="SplitMode" class="input"><option value="None">Sin división</option><option value="People">Por personas</option><option value="Amounts">Por importes</option></select></div>
+        <div class="field"><label asp-for="People">Personas</label><input asp-for="People" type="number" min="1" max="10" class="input" /></div>
+    </div>
+    <p>Para dividir por productos, selecciona sus cantidades y deja las demás en cero. Por personas o importes, asigna cada pago al número de cuenta correspondiente.</p>
+    <div id="account-amounts" class="form-grid compact-form-grid">
+        @for (var i = 0; i < Math.Max(2, Model.Amounts.Count); i++) { <div class="field"><label for="amount-@i">Importe cuenta @(i + 1)</label><input id="amount-@i" name="Amounts[@i]" value="@(i < Model.Amounts.Count ? Model.Amounts[i].ToString(System.Globalization.CultureInfo.InvariantCulture) : "0")" type="number" min="0" step="0.01" class="input" /></div> }
+    </div>
+    <button type="button" id="add-account-amount" class="button-secondary">Agregar importe</button>
+    <h2>Pagos</h2>
+    <div id="checkout-payments">
+    @for (var i = 0; i < Model.Payments.Count; i++)
+    {
+        <fieldset class="form-card checkout-payment"><legend>Pago @(i + 1)</legend><div class="form-grid compact-form-grid">
+            <div class="field"><label asp-for="Payments[i].Method">Método</label><select asp-for="Payments[i].Method" class="input"><option value="@PaymentMethodType.Cash">Efectivo</option><option value="@PaymentMethodType.Transfer">Transferencia</option><option value="@PaymentMethodType.Pos">Tarjeta</option>@if (Model.OtherMethods.Count > 0) { <option value="@PaymentMethodType.Other">Otro medio configurado</option> }</select></div>
+            <div class="field" data-method-field="Other"><label asp-for="Payments[i].DefinitionId">Medio configurado</label><select asp-for="Payments[i].DefinitionId" asp-items="Model.OtherMethods" class="input"><option value="">Seleccionar</option></select></div>
+            <div class="field"><label asp-for="Payments[i].Amount">Importe aplicado</label><input asp-for="Payments[i].Amount" type="number" min="0" step="0.01" class="input" required /></div>
+            <div class="field"><label asp-for="Payments[i].PartNumber">Número de cuenta dividida</label><input asp-for="Payments[i].PartNumber" type="number" min="1" max="10" class="input" /></div>
+            <div class="field" data-method-field="Cash"><label asp-for="Payments[i].Received">Efectivo recibido</label><input asp-for="Payments[i].Received" type="number" min="0" step="0.01" class="input" /></div>
+            <div class="field" data-method-field="Transfer"><label asp-for="Payments[i].BankId">Cuenta destino</label><select asp-for="Payments[i].BankId" asp-items="Model.Banks" class="input"><option value="">Seleccionar</option></select></div>
+            <div class="field" data-method-field="Transfer"><label asp-for="Payments[i].Sender">Remitente</label><input asp-for="Payments[i].Sender" class="input" maxlength="200" /></div>
+            <div class="field" data-method-field="Transfer,Other"><label asp-for="Payments[i].Reference">Referencia</label><input asp-for="Payments[i].Reference" class="input" maxlength="100" /></div>
+            <div class="field" data-method-field="Pos"><label asp-for="Payments[i].DeviceId">POS bancario</label><select asp-for="Payments[i].DeviceId" asp-items="Model.Devices" class="input"><option value="">Seleccionar</option></select></div>
+            <div class="field" data-method-field="Pos"><label asp-for="Payments[i].CardType">Tarjeta</label><select asp-for="Payments[i].CardType" class="input"><option value="@CardType.Debit">Débito</option><option value="@CardType.Credit">Crédito</option></select></div>
+            <div class="field" data-method-field="Pos"><label asp-for="Payments[i].Authorization">Autorización</label><input asp-for="Payments[i].Authorization" class="input" maxlength="100" /></div>
+            <div class="field" data-method-field="Pos"><label asp-for="Payments[i].Voucher">Comprobante</label><input asp-for="Payments[i].Voucher" class="input" maxlength="100" /></div>
+        </div><button type="button" class="button-ghost remove-checkout-payment">Quitar pago</button></fieldset>
+    }
+    </div>
+    <div class="action-row"><button type="button" id="add-checkout-payment" class="button-secondary">Agregar pago</button><button type="submit" class="button-primary">Confirmar cobro</button><a href="/pos" class="button-ghost link-button">Volver al POS</a></div>
+</form>
+@section Scripts { <script src="~/js/checkout.js" asp-append-version="true"></script> }
